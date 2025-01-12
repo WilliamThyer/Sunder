@@ -14,6 +14,7 @@ function love.load()
   player.groundY = 400
   player.speed = 3
   player.direction = 1 -- 1 = right, -1 = left
+  player.canMove = true
 
   -- Load sprite sheet
   player.spriteSheet = love.graphics.newImage('sprites/Chroma-Noir-8x8/Hero.png')
@@ -40,6 +41,7 @@ function love.load()
   -- Set default animation
   player.anim = player.animations.idle
   player.isIdle = true
+  player.isMoving = false
   player.idleTimer = 0
 
   -- Jump physics
@@ -53,101 +55,86 @@ function love.load()
   -- Attack logic
   player.isAttacking   = false
   player.attackTimer   = 0     -- counts down when attacking
-  player.attackDuration = 0.2  -- how long the attack lasts in seconds
+  player.attackDuration = 0.3  -- how long the attack lasts in seconds
   player.attackPressedLastFrame = false -- Prevent holding attack
+
+  -- Controller
+  joystick = love.joystick.getJoysticks()[1] -- Get the first connected joystick
 end
 
 function love.update(dt)
-  -- Reset idle to true each frame (we’ll switch it off if we move, jump, or attack)
   player.isIdle = true
+  local attackIsPressed = false
+  local jumpIsDown = false
+  local moveX = 0
 
-  ----------------------------------------------------------------------
-  -- 1) Handle Attack (pressing "x")
-  ----------------------------------------------------------------------
-  local attackIsPressed = love.keyboard.isDown("x")
+  if joystick then
+    -- Read controller inputs
+    attackIsPressed = joystick:isGamepadDown("x") -- Map "X" button for attack
+    jumpIsDown = joystick:isGamepadDown("a") -- Map "A" button for jump
+    moveX = joystick:getGamepadAxis("leftx") -- Map left stick horizontal movement
+  end
+
+  -- Handle attack
   if attackIsPressed and not player.attackPressedLastFrame and not player.isAttacking then
-    -- Start attack if not already attacking
+    player.canMove = false
     player.isAttacking = true
-    player.attackTimer = player.attackDuration  -- reset timer
-    player.anim        = player.animations.attack
-    -- Optionally, you could limit movement or jumping here if desired
+    player.attackTimer = player.attackDuration
+    player.anim = player.animations.attack
   end
   player.attackPressedLastFrame = attackIsPressed
 
-  -- If currently attacking, count down
   if player.isAttacking then
     player.attackTimer = player.attackTimer - dt
     if player.attackTimer <= 0 then
-      -- Attack time finished
       player.isAttacking = false
+      player.canMove = true
     end
   end
 
-  ----------------------------------------------------------------------
-  -- 2) Movement (only when not attacking, or allow movement anyway)
-  ----------------------------------------------------------------------
-  local canMove = true  -- Set false if you want to lock the player during attack
-  if canMove then
-    if love.keyboard.isDown("right") then
-      player.x = player.x + player.speed
-      player.direction = 1
+  -- Handle movement
+  if player.canMove or player.isJumping then
+    if math.abs(moveX) > 0.2 then -- Dead zone for analog stick
+      player.x = player.x + moveX * player.speed * 2 -- Multiply for analog sensitivity
+      player.direction = moveX > 0 and 1 or -1
       player.isIdle = false
-      -- Only set to "move" if we're not jumping or attacking
-      if (not player.isJumping) and (not player.isAttacking) then
-        player.anim = player.animations.move
-      end
-    elseif love.keyboard.isDown("left") then
-      player.x = player.x - player.speed
-      player.direction = -1
-      player.isIdle = false
-      if (not player.isJumping) and (not player.isAttacking) then
+      player.isMoving = true
+      if not player.isJumping and not player.isAttacking then
         player.anim = player.animations.move
       end
     end
   end
 
-  ----------------------------------------------------------------------
-  -- 3) Jump Logic (pressed detection)
-  ----------------------------------------------------------------------
-  local jumpIsDown = love.keyboard.isDown("up")
-
-  if jumpIsDown and not player.wasJumpPressedLastFrame then
+  -- Handle jump
+  if jumpIsDown and not player.wasJumpPressedLastFrame and not player.isAttacking then
     if not player.isJumping then
-      player.jumpVelocity   = player.jumpHeight
-      player.isJumping      = true
-      player.canDoubleJump  = true
-      player.anim           = player.animations.jump
-      player.isIdle         = false
+      player.jumpVelocity = player.jumpHeight
+      player.isJumping = true
+      player.canDoubleJump = true
+      player.anim = player.animations.jump
     elseif player.canDoubleJump then
-      player.jumpVelocity   = player.jumpHeight
-      player.canDoubleJump  = false
-      player.anim           = player.animations.jump
-      player.isIdle         = false
+      player.jumpVelocity = player.jumpHeight
+      player.canDoubleJump = false
+      player.anim = player.animations.jump
     end
   end
 
-  -- Apply gravity if jumping
   if player.isJumping then
     player.y = player.y + player.jumpVelocity * dt
     player.jumpVelocity = player.jumpVelocity + player.gravity * dt
 
-    -- Check for landing
     if player.y >= player.groundY then
       player.y = player.groundY
       player.isJumping = false
       player.jumpVelocity = 0
       player.canDoubleJump = false
-      -- If attack is still active, keep playing that animation;
-      -- otherwise revert to idle
       if not player.isAttacking then
         player.anim = player.animations.idle
       end
     end
   end
 
-  ----------------------------------------------------------------------
-  -- 4) Idle Animation (if not jumping or attacking or moving)
-  ----------------------------------------------------------------------
+  -- Handle idle stance 
   if player.isIdle and not player.isJumping and not player.isAttacking then
     -- Accumulate time in idle state
     player.idleTimer = player.idleTimer + dt
@@ -160,10 +147,8 @@ function love.update(dt)
     player.idleTimer = 0
   end
 
-  -- Update the animation
+  -- Update animation
   player.anim:update(dt)
-
-  -- Keep track of jump press state
   player.wasJumpPressedLastFrame = jumpIsDown
 end
 
