@@ -12,7 +12,7 @@ function love.load()
   player.x = 400
   player.y = 400
   player.groundY = 400
-  player.speed = 3
+  player.speed = 3.5
   player.direction = 1 -- 1 = right, -1 = left
   player.canMove = true
 
@@ -46,7 +46,7 @@ function love.load()
 
   -- Jump physics
   player.jumpHeight    = -550
-  player.gravity       = 1500
+  player.gravity       = 1750
   player.jumpVelocity  = 0
   player.isJumping     = false
   player.canDoubleJump = false
@@ -55,8 +55,15 @@ function love.load()
   -- Attack logic
   player.isAttacking   = false
   player.attackTimer   = 0     -- counts down when attacking
-  player.attackDuration = 0.3  -- how long the attack lasts in seconds
+  player.attackDuration = 0.15  -- how long the attack lasts in seconds
   player.attackPressedLastFrame = false -- Prevent holding attack
+
+  -- Dash logic
+  player.isDashing = false
+  player.dashTimer = 0
+  player.dashDuration = 0.06
+  player.canDash = true
+  player.dashSpeed = player.speed * 750
 
   -- Controller
   joystick = love.joystick.getJoysticks()[1] -- Get the first connected joystick
@@ -64,14 +71,17 @@ end
 
 function love.update(dt)
   player.isIdle = true
+  player.canMove = true
   local attackIsPressed = false
   local jumpIsDown = false
+  local dashIsPressed = false
   local moveX = 0
 
   if joystick then
     -- Read controller inputs
     attackIsPressed = joystick:isGamepadDown("x") -- Map "X" button for attack
     jumpIsDown = joystick:isGamepadDown("a") -- Map "A" button for jump
+    dashIsPressed = joystick:isGamepadDown("leftshoulder") -- Map "leftshoulder" button for dash
     moveX = joystick:getGamepadAxis("leftx") -- Map left stick horizontal movement
   end
 
@@ -92,9 +102,26 @@ function love.update(dt)
     end
   end
 
+  -- Handle dashing
+  if dashIsPressed and not player.isDashing and player.canDash then
+    player.isDashing = true
+    player.canDash = player.isJumping -- Allow only one dash per air jump
+    player.dashTimer = player.dashDuration
+    player.dashVelocity = player.dashSpeed * player.direction
+  end
+
+  if player.isDashing then
+    player.x = player.x + player.dashVelocity * dt
+    player.dashTimer = player.dashTimer - dt
+    if player.dashTimer <= 0 then
+      player.isDashing = false
+      player.dashVelocity = 0
+    end
+  end
+
   -- Handle movement
-  if player.canMove or player.isJumping then
-    if math.abs(moveX) > 0.2 then -- Dead zone for analog stick
+  if player.canMove and not player.isDashing or player.isJumping then
+    if math.abs(moveX) > 0.5 then -- Dead zone for analog stick
       player.x = player.x + moveX * player.speed * 2 -- Multiply for analog sensitivity
       player.direction = moveX > 0 and 1 or -1
       player.isIdle = false
@@ -111,6 +138,7 @@ function love.update(dt)
       player.jumpVelocity = player.jumpHeight
       player.isJumping = true
       player.canDoubleJump = true
+      player.canDash = true
       player.anim = player.animations.jump
     elseif player.canDoubleJump then
       player.jumpVelocity = player.jumpHeight
@@ -128,14 +156,15 @@ function love.update(dt)
       player.isJumping = false
       player.jumpVelocity = 0
       player.canDoubleJump = false
+      player.canDash = true
       if not player.isAttacking then
         player.anim = player.animations.idle
       end
     end
   end
 
-  -- Handle idle stance 
-  if player.isIdle and not player.isJumping and not player.isAttacking then
+  -- Handle idle stance
+  if player.isIdle and not player.isJumping and not player.isAttacking and not player.isDashing then
     -- Accumulate time in idle state
     player.idleTimer = player.idleTimer + dt
     player.anim = player.animations.idle
