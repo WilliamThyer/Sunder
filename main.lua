@@ -13,6 +13,8 @@ function love.load()
     player.x = x
     player.y = y
     player.groundY = y
+    player.width = 64 -- Scaled width of the sprite (8 * 8)
+    player.height = 64 -- Scaled height of the sprite
     player.speed = 3
     player.direction = 1 -- 1 = right, -1 = left
     player.canMove = true
@@ -40,6 +42,7 @@ function love.load()
     player.animations.dash = anim8.newAnimation(player.grid(1, 4), 1)
     player.animations.attack = anim8.newAnimation(player.attackGrid(1, 1), 1)
     player.animations.shield = anim8.newAnimation(player.grid(11, 2), 1)
+    player.animations.hurt = anim8.newAnimation(player.grid(10, 7), 1)
 
     -- Set default animation
     player.anim = player.animations.idle
@@ -83,7 +86,30 @@ function love.load()
   player2 = createPlayer(600, 700, 2)
 end
 
-function updatePlayer(dt, player, controls)
+function checkCollision(p1, p2)
+  return p1.x < p2.x + p2.width and
+         p1.x + p1.width > p2.x and
+         p1.y < p2.y + p2.height and
+         p1.y + p1.height > p2.y
+end
+
+function resolveCollision(p1, p2)
+  if checkCollision(p1, p2) then
+    local overlapLeft = (p1.x + p1.width - 1*8) - p2.x
+    local overlapRight = (p2.x + p2.width - 1*8) - p1.x
+
+    if overlapLeft < overlapRight then
+      p1.x = p1.x - overlapLeft / 2
+      p2.x = p2.x + overlapLeft / 2
+    else
+      p1.x = p1.x + overlapRight / 2
+      p2.x = p2.x - overlapRight / 2
+    end
+  end
+end
+
+
+function updatePlayer(dt, player, otherPlayer)
   player.isIdle = true
   local attackIsPressed = false
   local jumpIsDown = false
@@ -212,11 +238,14 @@ function updatePlayer(dt, player, controls)
   -- Update animation
   player.anim:update(dt)
   player.wasJumpPressedLastFrame = jumpIsDown
+
+  -- Resolve collisions
+  resolveCollision(player, otherPlayer)
 end
 
 function love.update(dt)
-  updatePlayer(dt, player1)
-  updatePlayer(dt, player2)
+  updatePlayer(dt, player1, player2)
+  updatePlayer(dt, player2, player1)
 end
 
 function love.draw()
