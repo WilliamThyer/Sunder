@@ -10,9 +10,9 @@ function love.load()
 
   player = {}
   player.x = 400
-  player.y = 400
-  player.groundY = 400
-  player.speed = 3.5
+  player.y = 700
+  player.groundY = 700
+  player.speed = 3
   player.direction = 1 -- 1 = right, -1 = left
   player.canMove = true
 
@@ -36,6 +36,7 @@ function love.load()
   player.animations.move   = anim8.newAnimation(player.grid('10-11', 1), 0.2)
   player.animations.jump   = anim8.newAnimation(player.grid(10, 2), 1)
   player.animations.idle   = anim8.newAnimation(player.grid('11-10', 6), .7)
+  player.animations.dash = anim8.newAnimation(player.grid(1, 4), 1)
   player.animations.attack = anim8.newAnimation(player.attackGrid(1, 1), 1)
 
   -- Set default animation
@@ -70,8 +71,8 @@ function love.load()
 end
 
 function love.update(dt)
+  print(player.canDash)
   player.isIdle = true
-  player.canMove = true
   local attackIsPressed = false
   local jumpIsDown = false
   local dashIsPressed = false
@@ -105,15 +106,19 @@ function love.update(dt)
   -- Handle dashing
   if dashIsPressed and not player.isDashing and player.canDash then
     player.isDashing = true
-    player.canDash = player.isJumping -- Allow only one dash per air jump
+    player.canDash = false -- Disable further dashes until reset
     player.dashTimer = player.dashDuration
     player.dashVelocity = player.dashSpeed * player.direction
+    player.anim = player.animations.dash
   end
 
   if player.isDashing then
     player.x = player.x + player.dashVelocity * dt
     player.dashTimer = player.dashTimer - dt
     if player.dashTimer <= 0 then
+      if not player.isJumping then
+        player.canDash = true
+      end
       player.isDashing = false
       player.dashVelocity = 0
     end
@@ -138,7 +143,7 @@ function love.update(dt)
       player.jumpVelocity = player.jumpHeight
       player.isJumping = true
       player.canDoubleJump = true
-      player.canDash = true
+      player.canDash = true -- Reset dash ability
       player.anim = player.animations.jump
     elseif player.canDoubleJump then
       player.jumpVelocity = player.jumpHeight
@@ -156,10 +161,13 @@ function love.update(dt)
       player.isJumping = false
       player.jumpVelocity = 0
       player.canDoubleJump = false
-      player.canDash = true
+      player.canDash = true -- Reset dash when landing
       if not player.isAttacking then
         player.anim = player.animations.idle
       end
+    end
+    if not player.isDashing and not player.isAttacking then
+      player.anim = player.animations.jump
     end
   end
 
