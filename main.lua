@@ -65,6 +65,7 @@ function love.load()
   player.dashDuration = 0.06
   player.canDash = true
   player.dashSpeed = player.speed * 750
+  player.dashPressedLastFrame = false -- Prevent holding dash
 
   -- Controller
   joystick = love.joystick.getJoysticks()[1] -- Get the first connected joystick
@@ -104,13 +105,14 @@ function love.update(dt)
   end
 
   -- Handle dashing
-  if dashIsPressed and not player.isDashing and player.canDash then
+  if dashIsPressed and not player.dashPressedLastFrame and not player.isDashing and player.canDash then
     player.isDashing = true
     player.canDash = false -- Disable further dashes until reset
     player.dashTimer = player.dashDuration
     player.dashVelocity = player.dashSpeed * player.direction
     player.anim = player.animations.dash
   end
+  player.dashPressedLastFrame = dashIsPressed
 
   if player.isDashing then
     player.x = player.x + player.dashVelocity * dt
