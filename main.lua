@@ -3,6 +3,8 @@ io.stdout:setvbuf("no")
 _G.love = require("love")
 anim8 = require 'libraries/anim8'
 
+
+-- print(("Player 1 is hurt:%s"):format(player1.isHurt))
 print('starting game')
 
 function love.load()
@@ -75,28 +77,33 @@ function love.load()
     -- Shield logic
     player.isShielding = false
 
+    -- Hurt logic
+    player.isHurt = false
+    player.hurtTimer = 0
+
     -- Assign joystick
+    player.index = joystickIndex
     player.joystick = love.joystick.getJoysticks()[joystickIndex]
 
     return player
   end
 
   -- Create two players
-  player1 = createPlayer(400, 700, 1)
-  player2 = createPlayer(600, 700, 2)
+  player1 = createPlayer(400, 300, 1)
+  player2 = createPlayer(600, 300, 2)
 end
 
 function checkCollision(p1, p2)
   return p1.x < p2.x + p2.width and
-         p1.x + p1.width > p2.x and
-         p1.y < p2.y + p2.height and
-         p1.y + p1.height > p2.y
+    p1.x + p1.width > p2.x and
+    p1.y < p2.y + p2.height and
+    p1.y + p1.height > p2.y
 end
 
 function resolveCollision(p1, p2)
   if checkCollision(p1, p2) then
-    local overlapLeft = (p1.x + p1.width - 1*8) - p2.x
-    local overlapRight = (p2.x + p2.width - 1*8) - p1.x
+    local overlapLeft = (p1.x + p1.width) - p2.x
+    local overlapRight = (p2.x + p2.width) - p1.x
 
     if overlapLeft < overlapRight then
       p1.x = p1.x - overlapLeft / 2
@@ -104,6 +111,59 @@ function resolveCollision(p1, p2)
     else
       p1.x = p1.x + overlapRight / 2
       p2.x = p2.x - overlapRight / 2
+    end
+  end
+end
+
+function checkHit(attacker, target)
+  -- Adjust hitbox closer to the attacker
+  local hitboxWidth = 28 -- Reduced width for more accurate range
+  local hitboxX = attacker.direction == 1 and (attacker.x + attacker.width) or (attacker.x - hitboxWidth)
+  local hitboxY = attacker.y
+  local hitboxHeight = attacker.height
+
+  -- Calculate target's hurtbox (central 7x7 pixels)
+  local hurtboxX = target.x + (target.width - 7 * 8) / 2
+  local hurtboxY = target.y + (target.height - 7 * 8) / 2
+  local hurtboxWidth = 7 * 8
+  local hurtboxHeight = 7 * 8
+
+  -- Check for overlap
+  local hit = hitboxX < hurtboxX + hurtboxWidth and
+    hitboxX + hitboxWidth > hurtboxX and
+    hitboxY < hurtboxY + hurtboxHeight and
+    hitboxY + hitboxHeight > hurtboxY
+
+  -- Check shield direction
+  if target.isShielding and target.direction ~= attacker.direction then
+    hit = false -- Blocked by shield
+  end
+
+  return hit
+end
+
+function handleAttack(attacker, target, dt)
+  if attacker.isAttacking then
+    -- Check if attack hits the target
+    if checkHit(attacker, target) then
+      -- Apply hurt animation if not already hurt
+      if not target.isHurt then
+        target.isHurt = true
+        target.hurtTimer = .2 -- Hurt duration
+        target.idleTimer = 0
+        target.anim = target.animations.hurt
+      end
+    end
+  end
+
+  -- Handle hurt state
+  if target.isHurt then
+    target.hurtTimer = target.hurtTimer - dt
+    target.anim = target.animations.hurt
+    target.canMove = false
+    if target.hurtTimer <= 0 then
+      target.isHurt = false
+      target.anim = target.animations.idle
     end
   end
 end
@@ -137,7 +197,7 @@ function updatePlayer(dt, player, otherPlayer)
   end
 
   -- Handle attack
-  if attackIsPressed and not player.attackPressedLastFrame and not player.isAttacking and not player.isShielding then
+  if attackIsPressed and not player.attackPressedLastFrame and not player.isAttacking and not player.isShielding and not player.isHurt then
     player.canMove = false
     player.isAttacking = true
     player.attackTimer = player.attackDuration
@@ -223,7 +283,8 @@ function updatePlayer(dt, player, otherPlayer)
   end
 
   -- Handle idle stance
-  if player.isIdle and not player.isJumping and not player.isAttacking and not player.isDashing and not player.isShielding then
+  if player.isIdle and not player.isJumping and not player.isAttacking
+    and not player.isDashing and not player.isShielding and not player.isHurt then
     -- Accumulate time in idle state
     player.idleTimer = player.idleTimer + dt
     player.anim = player.animations.idle
@@ -235,12 +296,16 @@ function updatePlayer(dt, player, otherPlayer)
     player.idleTimer = 0
   end
 
+  -- Handle attack/hurt
+  handleAttack(player, otherPlayer, dt)
+
   -- Update animation
   player.anim:update(dt)
   player.wasJumpPressedLastFrame = jumpIsDown
 
   -- Resolve collisions
   resolveCollision(player, otherPlayer)
+
 end
 
 function love.update(dt)
