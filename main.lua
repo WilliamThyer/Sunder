@@ -17,7 +17,7 @@ function love.load()
   player.canMove = true
 
   -- Load sprite sheet
-  player.spriteSheet = love.graphics.newImage('sprites/Chroma-Noir-8x8/Hero.png')
+  player.spriteSheet = love.graphics.newImage('sprites/Chroma-Noir-8x8/Hero_w_shield.png')
   -- Player grid
   player.grid = anim8.newGrid(8, 8,
     player.spriteSheet:getWidth(),
@@ -38,6 +38,7 @@ function love.load()
   player.animations.idle   = anim8.newAnimation(player.grid('11-10', 6), .7)
   player.animations.dash = anim8.newAnimation(player.grid(1, 4), 1)
   player.animations.attack = anim8.newAnimation(player.attackGrid(1, 1), 1)
+  player.animations.shield = anim8.newAnimation(player.grid(11, 2), 1)
 
   -- Set default animation
   player.anim = player.animations.idle
@@ -67,6 +68,9 @@ function love.load()
   player.dashSpeed = player.speed * 750
   player.dashPressedLastFrame = false -- Prevent holding dash
 
+  -- Shield logic
+  player.isShielding = false
+
   -- Controller
   joystick = love.joystick.getJoysticks()[1] -- Get the first connected joystick
 end
@@ -77,18 +81,30 @@ function love.update(dt)
   local attackIsPressed = false
   local jumpIsDown = false
   local dashIsPressed = false
+  local shieldIsPressed = false
   local moveX = 0
 
   if joystick then
     -- Read controller inputs
     attackIsPressed = joystick:isGamepadDown("x") -- Map "X" button for attack
     jumpIsDown = joystick:isGamepadDown("a") -- Map "A" button for jump
-    dashIsPressed = joystick:isGamepadDown("leftshoulder") -- Map "leftshoulder" button for dash
+    dashIsPressed = joystick:isGamepadDown("rightshoulder") -- Map "rightshoulder" button for dash
+    shieldIsPressed = joystick:isGamepadDown("leftshoulder") -- Map "leftshoulder" for shield
     moveX = joystick:getGamepadAxis("leftx") -- Map left stick horizontal movement
   end
 
+  -- Handle shield
+  if shieldIsPressed and not player.isJumping then
+    player.canMove = false
+    player.isShielding = true
+    player.anim = player.animations.shield
+  else
+    player.isShielding = false
+    player.canMove = true
+  end
+
   -- Handle attack
-  if attackIsPressed and not player.attackPressedLastFrame and not player.isAttacking then
+  if attackIsPressed and not player.attackPressedLastFrame and not player.isAttacking and not player.isShielding then
     player.canMove = false
     player.isAttacking = true
     player.attackTimer = player.attackDuration
@@ -105,7 +121,7 @@ function love.update(dt)
   end
 
   -- Handle dashing
-  if dashIsPressed and not player.dashPressedLastFrame and not player.isDashing and player.canDash then
+  if dashIsPressed and not player.dashPressedLastFrame and not player.isDashing and player.canDash and not player.isShielding then
     player.isDashing = true
     player.canDash = false -- Disable further dashes until reset
     player.dashTimer = player.dashDuration
@@ -127,7 +143,7 @@ function love.update(dt)
   end
 
   -- Handle movement
-  if player.canMove and not player.isDashing or player.isJumping then
+  if player.canMove and not player.isDashing and not player.isShielding or player.isJumping then
     if math.abs(moveX) > 0.5 then -- Dead zone for analog stick
       player.x = player.x + moveX * player.speed * 2 -- Multiply for analog sensitivity
       player.direction = moveX > 0 and 1 or -1
@@ -140,7 +156,7 @@ function love.update(dt)
   end
 
   -- Handle jump
-  if jumpIsDown and not player.wasJumpPressedLastFrame and not player.isAttacking then
+  if jumpIsDown and not player.wasJumpPressedLastFrame and not player.isAttacking and not player.isShielding then
     if not player.isJumping then
       player.jumpVelocity = player.jumpHeight
       player.isJumping = true
@@ -174,7 +190,7 @@ function love.update(dt)
   end
 
   -- Handle idle stance
-  if player.isIdle and not player.isJumping and not player.isAttacking and not player.isDashing then
+  if player.isIdle and not player.isJumping and not player.isAttacking and not player.isDashing and not player.isShielding then
     -- Accumulate time in idle state
     player.idleTimer = player.idleTimer + dt
     player.anim = player.animations.idle
