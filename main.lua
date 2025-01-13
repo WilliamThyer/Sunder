@@ -8,75 +8,82 @@ print('starting game')
 function love.load()
   love.graphics.setDefaultFilter("nearest", "nearest")
 
-  player = {}
-  player.x = 400
-  player.y = 700
-  player.groundY = 700
-  player.speed = 3
-  player.direction = 1 -- 1 = right, -1 = left
-  player.canMove = true
+  function createPlayer(x, y, joystickIndex)
+    local player = {}
+    player.x = x
+    player.y = y
+    player.groundY = y
+    player.speed = 3
+    player.direction = 1 -- 1 = right, -1 = left
+    player.canMove = true
 
-  -- Load sprite sheet
-  player.spriteSheet = love.graphics.newImage('sprites/Chroma-Noir-8x8/Hero_w_shield.png')
-  -- Player grid
-  player.grid = anim8.newGrid(8, 8,
-    player.spriteSheet:getWidth(),
-    player.spriteSheet:getHeight(),
-    0
-  )
-  -- Attack grid, to account for extra width of sword sprite
-  player.attackGrid = anim8.newGrid(10, 8,
-    player.spriteSheet:getWidth(),
-    player.spriteSheet:getHeight(),
-    8*9, 8*2
-  )
+    -- Load sprite sheet
+    player.spriteSheet = love.graphics.newImage('sprites/Chroma-Noir-8x8/Hero_w_shield.png')
+    -- Player grid
+    player.grid = anim8.newGrid(8, 8,
+      player.spriteSheet:getWidth(),
+      player.spriteSheet:getHeight(),
+      0
+    )
+    -- Attack grid, to account for extra width of sword sprite
+    player.attackGrid = anim8.newGrid(10, 8,
+      player.spriteSheet:getWidth(),
+      player.spriteSheet:getHeight(),
+      8*9, 8*2
+    )
 
-  -- Animations
-  player.animations = {}
-  player.animations.move   = anim8.newAnimation(player.grid('10-11', 1), 0.2)
-  player.animations.jump   = anim8.newAnimation(player.grid(10, 2), 1)
-  player.animations.idle   = anim8.newAnimation(player.grid('11-10', 6), .7)
-  player.animations.dash = anim8.newAnimation(player.grid(1, 4), 1)
-  player.animations.attack = anim8.newAnimation(player.attackGrid(1, 1), 1)
-  player.animations.shield = anim8.newAnimation(player.grid(11, 2), 1)
+    -- Animations
+    player.animations = {}
+    player.animations.move   = anim8.newAnimation(player.grid('10-11', 1), 0.2)
+    player.animations.jump   = anim8.newAnimation(player.grid(10, 2), 1)
+    player.animations.idle   = anim8.newAnimation(player.grid('11-10', 6), .7)
+    player.animations.dash = anim8.newAnimation(player.grid(1, 4), 1)
+    player.animations.attack = anim8.newAnimation(player.attackGrid(1, 1), 1)
+    player.animations.shield = anim8.newAnimation(player.grid(11, 2), 1)
 
-  -- Set default animation
-  player.anim = player.animations.idle
-  player.isIdle = true
-  player.isMoving = false
-  player.idleTimer = 0
+    -- Set default animation
+    player.anim = player.animations.idle
+    player.isIdle = true
+    player.isMoving = false
+    player.idleTimer = 0
 
-  -- Jump physics
-  player.jumpHeight    = -550
-  player.gravity       = 1750
-  player.jumpVelocity  = 0
-  player.isJumping     = false
-  player.canDoubleJump = false
-  player.wasJumpPressedLastFrame = false
+    -- Jump physics
+    player.jumpHeight    = -750
+    player.gravity       = 2250
+    player.jumpVelocity  = 0
+    player.isJumping     = false
+    player.canDoubleJump = false
+    player.wasJumpPressedLastFrame = false
 
-  -- Attack logic
-  player.isAttacking   = false
-  player.attackTimer   = 0     -- counts down when attacking
-  player.attackDuration = 0.15  -- how long the attack lasts in seconds
-  player.attackPressedLastFrame = false -- Prevent holding attack
+    -- Attack logic
+    player.isAttacking   = false
+    player.attackTimer   = 0     -- counts down when attacking
+    player.attackDuration = 0.15  -- how long the attack lasts in seconds
+    player.attackPressedLastFrame = false -- Prevent holding attack
 
-  -- Dash logic
-  player.isDashing = false
-  player.dashTimer = 0
-  player.dashDuration = 0.06
-  player.canDash = true
-  player.dashSpeed = player.speed * 750
-  player.dashPressedLastFrame = false -- Prevent holding dash
+    -- Dash logic
+    player.isDashing = false
+    player.dashTimer = 0
+    player.dashDuration = 0.06
+    player.canDash = true
+    player.dashSpeed = player.speed * 750
+    player.dashPressedLastFrame = false -- Prevent holding dash
 
-  -- Shield logic
-  player.isShielding = false
+    -- Shield logic
+    player.isShielding = false
 
-  -- Controller
-  joystick = love.joystick.getJoysticks()[1] -- Get the first connected joystick
+    -- Assign joystick
+    player.joystick = love.joystick.getJoysticks()[joystickIndex]
+
+    return player
+  end
+
+  -- Create two players
+  player1 = createPlayer(400, 700, 1)
+  player2 = createPlayer(600, 700, 2)
 end
 
-function love.update(dt)
-  print(player.canDash)
+function updatePlayer(dt, player, controls)
   player.isIdle = true
   local attackIsPressed = false
   local jumpIsDown = false
@@ -84,13 +91,13 @@ function love.update(dt)
   local shieldIsPressed = false
   local moveX = 0
 
-  if joystick then
+  if player.joystick then
     -- Read controller inputs
-    attackIsPressed = joystick:isGamepadDown("x") -- Map "X" button for attack
-    jumpIsDown = joystick:isGamepadDown("a") -- Map "A" button for jump
-    dashIsPressed = joystick:isGamepadDown("rightshoulder") -- Map "rightshoulder" button for dash
-    shieldIsPressed = joystick:isGamepadDown("leftshoulder") -- Map "leftshoulder" for shield
-    moveX = joystick:getGamepadAxis("leftx") -- Map left stick horizontal movement
+    attackIsPressed = player.joystick:isGamepadDown("x")
+    jumpIsDown = player.joystick:isGamepadDown("a")
+    dashIsPressed = player.joystick:isGamepadDown("rightshoulder")
+    shieldIsPressed = player.joystick:isGamepadDown("leftshoulder")
+    moveX = player.joystick:getGamepadAxis("leftx")
   end
 
   -- Handle shield
@@ -207,8 +214,18 @@ function love.update(dt)
   player.wasJumpPressedLastFrame = jumpIsDown
 end
 
+function love.update(dt)
+  updatePlayer(dt, player1)
+  updatePlayer(dt, player2)
+end
+
 function love.draw()
-  local scaleX = 8 * player.direction -- Flip horizontally if direction is -1
-  local offsetX = (player.direction == -1) and (8 * 8) or 0 -- Shift sprite when flipped
-  player.anim:draw(player.spriteSheet, player.x + offsetX, player.y, 0, scaleX, 8)
+  local function drawPlayer(player)
+    local scaleX = 8 * player.direction -- Flip horizontally if direction is -1
+    local offsetX = (player.direction == -1) and (8 * 8) or 0 -- Shift sprite when flipped
+    player.anim:draw(player.spriteSheet, player.x + offsetX, player.y, 0, scaleX, 8)
+  end
+
+  drawPlayer(player1)
+  drawPlayer(player2)
 end
