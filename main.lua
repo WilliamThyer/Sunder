@@ -206,7 +206,7 @@ function updatePlayer(dt, player, otherPlayer)
   end
 
   -- Handle shield
-  if shieldIsPressed and not player.isJumping then
+  if shieldIsPressed and not player.isJumping and not player.isHurt then
     player.canMove = false
     player.isShielding = true
     player.anim = player.animations.shield
@@ -233,7 +233,7 @@ function updatePlayer(dt, player, otherPlayer)
   end
 
   -- Handle dashing
-  if dashIsPressed and not player.dashPressedLastFrame and not player.isDashing and player.canDash and not player.isShielding then
+  if dashIsPressed and not player.dashPressedLastFrame and not player.isDashing and player.canDash and not player.isShielding and not player.isHurt then
     player.isDashing = true
     player.canDash = false -- Disable further dashes until reset
     player.dashTimer = player.dashDuration
@@ -255,7 +255,7 @@ function updatePlayer(dt, player, otherPlayer)
   end
 
   -- Handle movement
-  if player.canMove and not player.isDashing and not player.isShielding or player.isJumping then
+  if player.canMove and not player.isDashing and not player.isShielding and not player.isHurt or player.isJumping then
     if math.abs(moveX) > 0.5 then -- Dead zone for analog stick
       player.x = player.x + moveX * player.speed * 2 -- Multiply for analog sensitivity
       player.direction = moveX > 0 and 1 or -1
@@ -268,7 +268,7 @@ function updatePlayer(dt, player, otherPlayer)
   end
 
   -- Handle jump
-  if jumpIsDown and not player.wasJumpPressedLastFrame and not player.isAttacking and not player.isShielding then
+  if jumpIsDown and not player.wasJumpPressedLastFrame and not player.isAttacking and not player.isShielding and not player.isHurt then
     if not player.isJumping then
       player.jumpVelocity = player.jumpHeight
       player.isJumping = true
