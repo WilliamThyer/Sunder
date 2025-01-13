@@ -80,6 +80,10 @@ function love.load()
     -- Hurt logic
     player.isHurt = false
     player.hurtTimer = 0
+    player.knockbackSpeed = 150 * player.speed
+    player.knockbackDirection = 1
+    player.isInvincible = false
+    player.invincibleTimer = 0
 
     -- Assign joystick
     player.index = joystickIndex
@@ -147,11 +151,17 @@ function handleAttack(attacker, target, dt)
     -- Check if attack hits the target
     if checkHit(attacker, target) then
       -- Apply hurt animation if not already hurt
-      if not target.isHurt then
+      if not target.isHurt and not target.isInvincible then
+        target.canMove = false
         target.isHurt = true
         target.hurtTimer = .2 -- Hurt duration
+        target.isInvincible = true
+        target.invincibleTimer = .5 -- I-frames
         target.idleTimer = 0
         target.anim = target.animations.hurt
+        -- Apply knockback
+        target.knockbackDirection = attacker.direction
+        target.x = target.x - target.knockbackSpeed * target.knockbackDirection * dt * -1
       end
     end
   end
@@ -161,9 +171,18 @@ function handleAttack(attacker, target, dt)
     target.hurtTimer = target.hurtTimer - dt
     target.anim = target.animations.hurt
     target.canMove = false
+    -- Apply knockback during hurt state
+    target.x = target.x - target.knockbackSpeed * target.knockbackDirection * dt * -1
     if target.hurtTimer <= 0 then
       target.isHurt = false
       target.anim = target.animations.idle
+    end
+  end
+
+  if target.isInvincible then
+    target.invincibleTimer = target.invincibleTimer - dt -- I-frames
+    if target.invincibleTimer <= 0 then
+      target.isInvincible = false
     end
   end
 end
