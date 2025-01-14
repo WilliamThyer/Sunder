@@ -114,6 +114,7 @@ function PlayerHelper.updatePlayer(dt, player, otherPlayer)
     player.isAttacking = true
     player.attackTimer = player.attackDuration
     player.anim = player.animations.attack
+    player.anim:gotoFrame(1)
   end
   player.attackPressedLastFrame = attackIsPressed
 
@@ -217,8 +218,22 @@ end
 
 function PlayerHelper.drawPlayer(player)
     local scaleX = 8 * player.direction -- Flip horizontally if direction is -1
-    local offsetX = (player.direction == -1) and (8 * 8) or 0 -- Shift sprite when flipped
-    player.anim:draw(player.spriteSheet, player.x + offsetX, player.y, 0, scaleX, 8)
+    local offsetX = (player.direction == -1) and (8 * 8) or 0 -- Base offset for flipping
+    local offsetY = 0
+
+    -- Adjust offsets for specific states, like attacking
+    if player.isAttacking then
+        -- Adjust horizontally and vertically
+        if player.direction == 1 then -- Facing right
+            offsetX = offsetX + 1 * 8 -- Add to the right
+        else -- Facing left
+            offsetX = offsetX - 1 * 8 -- Subtract to the left
+        end
+        offsetY = offsetY - 4 * 8 -- Move up
+    end
+
+    -- Draw the sprite
+    player.anim:draw(player.spriteSheet, player.x + offsetX, player.y + offsetY, 0, scaleX, 8)
 end
 
 return PlayerHelper
