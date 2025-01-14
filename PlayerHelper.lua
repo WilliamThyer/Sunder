@@ -81,12 +81,37 @@ function PlayerHelper.handleAttack(attacker, target, dt)
   end
 end
 
+function PlayerHelper.handleDownAir(player, target, dt)
+    if player.isDownAir then
+        -- Check collision with target
+        if PlayerHelper.checkHit(player, target) then
+            if not target.isHurt and not target.isInvincible then
+                target.isHurt = true
+                target.hurtTimer = 0.5
+                target.anim = target.animations.hurt
+                target.knockbackSpeed = player.knockbackSpeed / 2 -- Reduce knockback for downAir
+                target.x = target.x - target.knockbackSpeed * target.knockbackDirection * dt
+            end
+        end
+
+        -- End the move when the timer ends or landing
+        player.downAirTimer = player.downAirTimer - dt
+        if player.downAirTimer <= 0 then
+            player:endDownAir()
+        elseif player.y >= player.groundY then
+            player:land()
+        end
+    end
+end
+
+
 function PlayerHelper.updatePlayer(dt, player, otherPlayer)
   player.isIdle = true
   local attackIsPressed = false
   local jumpIsDown = false
   local dashIsPressed = false
   local shieldIsPressed = false
+  local downIsPressed = false
   local moveX = 0
 
   -- Get joystick input
@@ -96,6 +121,7 @@ function PlayerHelper.updatePlayer(dt, player, otherPlayer)
     dashIsPressed = player.joystick:isGamepadDown("rightshoulder")
     shieldIsPressed = player.joystick:isGamepadDown("leftshoulder")
     moveX = player.joystick:getGamepadAxis("leftx")
+    downIsPressed = player.joystick:getGamepadAxis("lefty") > 0.5
   end
 
   -- SHIELD
@@ -108,8 +134,13 @@ function PlayerHelper.updatePlayer(dt, player, otherPlayer)
     player.canMove = true
   end
 
-  -- ATTACK 
-  if attackIsPressed and player:isAbleToAttack() then
+  -- ATTACKS
+  -- Downair
+  if downIsPressed and attackIsPressed and player:isAbleToDownAir() then
+    player:triggerDownAir()
+  end
+  -- Slash
+  if attackIsPressed and not downIsPressed and player:isAbleToAttack() then
     player.canMove = false
     player.isAttacking = true
     player.attackTimer = player.attackDuration
@@ -147,6 +178,7 @@ function PlayerHelper.updatePlayer(dt, player, otherPlayer)
       player.dashVelocity = 0
     end
   end
+
   -- DASH
   if player:isAbleToMove() then
     if math.abs(moveX) > 0.5 then
@@ -208,6 +240,9 @@ function PlayerHelper.updatePlayer(dt, player, otherPlayer)
 
   -- HANDLE ATTACK
   PlayerHelper.handleAttack(player, otherPlayer, dt)
+
+  -- Handle downAir logic
+  PlayerHelper.handleDownAir(player, otherPlayer, dt)
 
   -- ANIMATE
   player.anim:update(dt)

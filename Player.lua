@@ -40,9 +40,10 @@ function Player.createPlayer(x, y, joystickIndex)
     self.animations.idle   = anim8.newAnimation(self.grid('4-3', 6), .7)
     self.animations.dash = anim8.newAnimation(self.grid(1, 4), 1)
     self.animations.attack = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.05, 0.2, 0.05, 0.1})
+    self.animations.downAir = anim8.newAnimation(self.attackGrid(2, '1-2'), {0.3, 0.7})
     self.animations.shield = anim8.newAnimation(self.grid(5, 1), 1)
+    self.animations.shieldUp = anim8.newAnimation(self.grid(6, 1), 1)
     self.animations.hurt = anim8.newAnimation(self.grid(3, 7), 1)
-
 
     -- Set default animation
     self.anim = self.animations.idle
@@ -52,11 +53,17 @@ function Player.createPlayer(x, y, joystickIndex)
 
     -- Jump physics
     self.jumpHeight    = -750
-    self.gravity       = 2250
     self.jumpVelocity  = 0
     self.isJumping     = false
     self.canDoubleJump = false
     self.wasJumpPressedLastFrame = false
+    self.defaultGravity = 2250
+    self.gravity = self.defaultGravity
+
+    -- Downair
+    self.isDownAir = false
+    self.downAirDuration = 1
+    self.downAirTimer = 0
 
     -- Attack logic
     self.isAttacking   = false
@@ -91,6 +98,41 @@ function Player.createPlayer(x, y, joystickIndex)
     return self
 end
 
+function Player:triggerDownAir()
+    self.isAttacking = true
+    self.isDownAir = true
+    self.downAirTimer = self.downAirDuration
+    self.gravity = self.gravity * 2 -- Double gravity
+    self.anim = self.animations.downAir
+end
+
+function Player:resetGravity()
+    self.gravity = self.defaultGravity
+end
+
+function Player:endDownAir()
+    self.isDownAir = false
+    self.isAttacking = false
+    self.anim = self.animations.jump
+    if self.isJumping then
+        self:resetGravity()
+    else
+        self:land()
+    end
+end
+
+-- Reset gravity and state when landing
+function Player:land()
+    self:resetGravity()
+    self.isJumping = false
+    self.jumpVelocity = 0
+    self.canDoubleJump = false
+    self.canDash = true
+    self.isDownAir = false
+    self.isAttacking = false
+    self.anim = self.animations.idle
+end
+
 function Player:isAbleToShield()
     return not self.isJumping and not self.isHurt
 end
@@ -109,6 +151,10 @@ end
 
 function Player:isAbleToJump()
     return not self.wasJumpPressedLastFrame and not self.isAttacking and not self.isShielding and not self.isHurt
+end
+
+function Player:isAbleToDownAir()
+    return not self.attackPressedLastFrame and not self.isAttacking and not self.isShielding and self.isJumping and not self.isHurt
 end
 
 function Player:isAbleToIdle()

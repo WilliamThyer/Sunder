@@ -1,0 +1,3 @@
+Downair animation won't play.
+Downair knockback is slow and weird.
+Downair does damage during windup frames.
