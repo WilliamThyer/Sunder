@@ -19,8 +19,7 @@ function Player.createPlayer(x, y, joystickIndex)
     self.canMove = true
 
     -- Load sprite sheet
-    -- self.spriteSheet = love.graphics.newImage('sprites/Chroma-Noir-8x8/Hero_w_shield.png')
-    self.spriteSheet = love.graphics.newImage('sprites/Chroma-Noir-8x8/Hero_update.png')
+    self.spriteSheet = love.graphics.newImage('sprites/Hero_update.png')
     -- Player grid
     self.grid = anim8.newGrid(8, 8,
       self.spriteSheet:getWidth(),
@@ -28,28 +27,19 @@ function Player.createPlayer(x, y, joystickIndex)
       0
     )
     -- Attack grid, to account for extra width of sword sprite
-    -- self.attackGrid = anim8.newGrid(10, 8,
     self.attackGrid = anim8.newGrid(12, 12,
       self.spriteSheet:getWidth(),
       self.spriteSheet:getHeight(),
       8*6, 0
     )
-    --   8*9, 8*2
 
     -- Animations
     self.animations = {}
-    -- self.animations.move   = anim8.newAnimation(self.grid('10-11', 1), 0.2)
-    -- self.animations.jump   = anim8.newAnimation(self.grid(10, 2), 1)
-    -- self.animations.idle   = anim8.newAnimation(self.grid('11-10', 6), .7)
-    -- self.animations.dash = anim8.newAnimation(self.grid(1, 4), 1)
-    -- self.animations.attack = anim8.newAnimation(self.attackGrid(1, 1), 1)
-    -- self.animations.shield = anim8.newAnimation(self.grid(11, 2), 1)
-    -- self.animations.hurt = anim8.newAnimation(self.grid(10, 7), 1)
     self.animations.move   = anim8.newAnimation(self.grid('3-4', 1), 0.2)
     self.animations.jump   = anim8.newAnimation(self.grid(3, 2), 1)
     self.animations.idle   = anim8.newAnimation(self.grid('4-3', 6), .7)
     self.animations.dash = anim8.newAnimation(self.grid(1, 4), 1)
-    self.animations.attack = anim8.newAnimation(self.attackGrid(1, '1-2'), {0.2, 0.1})
+    self.animations.attack = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.05, 0.2, 0.05, 0.1})
     self.animations.shield = anim8.newAnimation(self.grid(5, 1), 1)
     self.animations.hurt = anim8.newAnimation(self.grid(3, 7), 1)
 
@@ -71,8 +61,8 @@ function Player.createPlayer(x, y, joystickIndex)
     -- Attack logic
     self.isAttacking   = false
     self.attackTimer   = 0     -- counts down when attacking
-    -- self.attackDuration = 0.15  -- how long the attack lasts in seconds
-    self.attackDuration = .3 -- how long the attack lasts in seconds
+    self.attackDuration = .5 -- how long the attack lasts in seconds
+    self.attackNoDamageDuration = .25 -- how long until the attack does damage
     self.attackPressedLastFrame = false -- Prevent holding attack
 
     -- Dash logic
@@ -114,7 +104,7 @@ function Player:isAbleToDash()
 end
 
 function Player:isAbleToMove()
-    return self.canMove and not self.isDashing and not self.isShielding and not self.isHurt or self.isJumping
+    return self.canMove and not self.isDashing and not self.isShielding and not self.isHurt and not self.isAttacking or self.isJumping
 end
 
 function Player:isAbleToJump()

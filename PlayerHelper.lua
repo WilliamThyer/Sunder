@@ -23,7 +23,7 @@ function PlayerHelper.resolveCollision(p1, p2)
 end
 
 function PlayerHelper.checkHit(attacker, target)
-  local hitboxWidth = 28 -- Reduced width for more accurate range
+  local hitboxWidth = 8*5 -- Reduced width for more accurate range
   local hitboxX = attacker.direction == 1 and (attacker.x + attacker.width) or (attacker.x - hitboxWidth)
   local hitboxY = attacker.y
   local hitboxHeight = attacker.height
@@ -46,7 +46,7 @@ function PlayerHelper.checkHit(attacker, target)
 end
 
 function PlayerHelper.handleAttack(attacker, target, dt)
-  if attacker.isAttacking then
+  if attacker.isAttacking and attacker.attackTimer <= attacker.attackNoDamageDuration then
     if PlayerHelper.checkHit(attacker, target) then
       if not target.isHurt and not target.isInvincible then
         target.canMove = false
