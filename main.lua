@@ -13,16 +13,16 @@ function love.load()
   love.graphics.setDefaultFilter("nearest", "nearest")
 
   -- Create two players
-  player1 = Player.createPlayer(250, 700, 1)
-  player2 = Player.createPlayer(1250, 700, 2)
+  Player1 = Player.createPlayer(250, 700, 1)
+  Player2 = Player.createPlayer(1250, 700, 2)
 end
 
 function love.update(dt)
-  PlayerHelper.updatePlayer(dt, player1, player2)
-  PlayerHelper.updatePlayer(dt, player2, player1)
+  PlayerHelper.updatePlayer(dt, Player1, Player2)
+  PlayerHelper.updatePlayer(dt, Player2, Player1)
 end
 
 function love.draw()
-  PlayerHelper.drawPlayer(player1)
-  PlayerHelper.drawPlayer(player2)
+  PlayerHelper.drawPlayer(Player1)
+  PlayerHelper.drawPlayer(Player2)
 end
