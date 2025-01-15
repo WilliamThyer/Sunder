@@ -40,7 +40,7 @@ function Player.createPlayer(x, y, joystickIndex)
     self.animations.idle   = anim8.newAnimation(self.grid('4-3', 6), .7)
     self.animations.dash = anim8.newAnimation(self.grid(1, 4), 1)
     self.animations.attack = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.05, 0.2, 0.05, 0.1})
-    self.animations.downAir = anim8.newAnimation(self.attackGrid(2, '1-2'), {0.3, 0.7})
+    self.animations.downAir = anim8.newAnimation(self.attackGrid(2, '1-2'), {.2, .8})
     self.animations.shield = anim8.newAnimation(self.grid(5, 1), 1)
     self.animations.shieldUp = anim8.newAnimation(self.grid(6, 1), 1)
     self.animations.hurt = anim8.newAnimation(self.grid(3, 7), 1)
@@ -52,7 +52,7 @@ function Player.createPlayer(x, y, joystickIndex)
     self.idleTimer = 0
 
     -- Jump physics
-    self.jumpHeight    = -750
+    self.jumpHeight    = -850
     self.jumpVelocity  = 0
     self.isJumping     = false
     self.canDoubleJump = false
@@ -86,6 +86,7 @@ function Player.createPlayer(x, y, joystickIndex)
     -- Hurt logic
     self.isHurt = false
     self.hurtTimer = 0
+    self.defaultKnockbackSpeed = 150 * self.speed
     self.knockbackSpeed = 150 * self.speed
     self.knockbackDirection = 1
     self.isInvincible = false
@@ -111,6 +112,7 @@ function Player:resetGravity()
 end
 
 function Player:endDownAir()
+    print('end downair')
     self.isDownAir = false
     self.isAttacking = false
     self.anim = self.animations.jump
@@ -123,6 +125,7 @@ end
 
 -- Reset gravity and state when landing
 function Player:land()
+    print('land')
     self:resetGravity()
     self.isJumping = false
     self.jumpVelocity = 0

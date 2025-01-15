@@ -22,22 +22,49 @@ function PlayerHelper.resolveCollision(p1, p2)
   end
 end
 
-function PlayerHelper.checkHit(attacker, target)
-  local hitboxWidth = 8*5 -- Reduced width for more accurate range
-  local hitboxX = attacker.direction == 1 and (attacker.x + attacker.width) or (attacker.x - hitboxWidth)
-  local hitboxY = attacker.y
-  local hitboxHeight = attacker.height
+function PlayerHelper.checkHit(attacker, target, attackType)
+  -- Define hitbox dimensions based on attack type
+  local hitboxWidth, hitboxHeight, hitboxX, hitboxY
 
-  local hurtboxX = target.x + (target.width - 7 * 8) / 2
-  local hurtboxY = target.y + (target.height - 7 * 8) / 2
+  if attackType == "downAir" then
+    -- Hitbox for downAir: positioned below the attacker
+    hitboxWidth = attacker.width * 0.8 -- Narrower than the player's width
+    hitboxHeight = attacker.height * 0.5 -- Half of the player's height
+    hitboxX = attacker.x + (attacker.width - hitboxWidth) / 2
+    hitboxY = attacker.y + attacker.height -- Below the player
+  elseif attackType == "sideAttack" then
+    -- Hitbox for side attack: positioned to the side of the attacker
+    hitboxWidth = 8 * 5 -- Default width for standard side attack
+    hitboxHeight = attacker.height -- Match player's height
+    hitboxX = attacker.direction == 1 and (attacker.x + attacker.width) or (attacker.x - hitboxWidth)
+    hitboxY = attacker.y
+  elseif attackType == "upAir" then
+    -- Hitbox for upAir: positioned above the attacker
+    hitboxWidth = attacker.width * 0.8 -- Narrower than the player's width
+    hitboxHeight = attacker.height * 0.5 -- Half of the player's height
+    hitboxX = attacker.x + (attacker.width - hitboxWidth) / 2
+    hitboxY = attacker.y - hitboxHeight -- Above the player
+  else
+    -- Default hitbox: for other or unspecified attacks
+    hitboxWidth = 8 * 5 -- Default width
+    hitboxHeight = attacker.height -- Match player's height
+    hitboxX = attacker.direction == 1 and (attacker.x + attacker.width) or (attacker.x - hitboxWidth)
+    hitboxY = attacker.y
+  end
+
+  -- Target's hurtbox
   local hurtboxWidth = 7 * 8
   local hurtboxHeight = 7 * 8
+  local hurtboxX = target.x + (target.width - hurtboxWidth) / 2
+  local hurtboxY = target.y + (target.height - hurtboxHeight) / 2
 
+  -- Check for collision
   local hit = hitboxX < hurtboxX + hurtboxWidth and
     hitboxX + hitboxWidth > hurtboxX and
     hitboxY < hurtboxY + hurtboxHeight and
     hitboxY + hitboxHeight > hurtboxY
 
+  -- Ignore hit if target is shielding and facing the attacker
   if target.isShielding and target.direction ~= attacker.direction then
     hit = false
   end
@@ -82,26 +109,64 @@ function PlayerHelper.handleAttack(attacker, target, dt)
 end
 
 function PlayerHelper.handleDownAir(player, target, dt)
-    if player.isDownAir then
-        -- Check collision with target
-        if PlayerHelper.checkHit(player, target) then
-            if not target.isHurt and not target.isInvincible then
-                target.isHurt = true
-                target.hurtTimer = 0.5
-                target.anim = target.animations.hurt
-                target.knockbackSpeed = player.knockbackSpeed / 2 -- Reduce knockback for downAir
-                target.x = target.x - target.knockbackSpeed * target.knockbackDirection * dt
-            end
-        end
+  if player.isDownAir then
+    -- Check collision with target
+    if PlayerHelper.checkHit(player, target, "downAir")
+      and not target.isHurt and not target.isInvincible then
+      print('hurt!')
+      target.isHurt = true
+      target.hurtTimer = 0.2
+      target.isInvincible = true
+      target.invincibleTimer = 0.5
+      target.idleTimer = 0
+      target.anim = target.animations.hurt
+      target.knockbackSpeed = target.defaultKnockbackSpeed / 2 -- Reduce knockback for downAir
 
-        -- End the move when the timer ends or landing
-        player.downAirTimer = player.downAirTimer - dt
-        if player.downAirTimer <= 0 then
-            player:endDownAir()
-        elseif player.y >= player.groundY then
-            player:land()
-        end
+      -- Calculate knockback direction based on overlap
+      local overlapLeft = (player.x + player.width) - target.x
+      local overlapRight = (target.x + target.width) - player.x
+
+      if overlapLeft < overlapRight then
+        target.knockbackDirection = 1 -- Push left
+        -- target.x = target.x - overlapLeft / 2 -- Resolve collision
+      else
+        target.knockbackDirection = -1 -- Push right
+        -- target.x = target.x + overlapRight / 2 -- Resolve collision
+      end
+
+      -- Apply knockback
+      target.x = target.x - target.knockbackSpeed * target.knockbackDirection * dt
     end
+
+    -- End the move when the timer ends or landing
+    player.downAirTimer = player.downAirTimer - dt
+    print(player.downAirTimer)
+    print(player.isDownAir)
+    if player.downAirTimer <= 0 then
+      player:endDownAir()
+    elseif player.y >= player.groundY then
+      player:land()
+    end
+  end
+
+  if target.isHurt then
+    print('hurt')
+    target.hurtTimer = target.hurtTimer - dt
+    target.anim = target.animations.hurt
+    target.canMove = false
+    target.x = target.x - target.knockbackSpeed * target.knockbackDirection * dt * -1
+    if target.hurtTimer <= 0 then
+      target.isHurt = false
+      target.anim = target.animations.idle
+    end
+  end
+
+  if target.isInvincible then
+    target.invincibleTimer = target.invincibleTimer - dt
+  end
+  if target.invincibleTimer <= 0 then
+    target.isInvincible = false
+  end
 end
 
 
@@ -137,7 +202,9 @@ function PlayerHelper.updatePlayer(dt, player, otherPlayer)
   -- ATTACKS
   -- Downair
   if downIsPressed and attackIsPressed and player:isAbleToDownAir() then
+    player.anim = player.animations.downAir
     player:triggerDownAir()
+    player.anim:gotoFrame(1)
   end
   -- Slash
   if attackIsPressed and not downIsPressed and player:isAbleToAttack() then
@@ -179,7 +246,7 @@ function PlayerHelper.updatePlayer(dt, player, otherPlayer)
     end
   end
 
-  -- DASH
+  -- MOVE
   if player:isAbleToMove() then
     if math.abs(moveX) > 0.5 then
       player.x = player.x + moveX * player.speed * 2
@@ -221,7 +288,7 @@ function PlayerHelper.updatePlayer(dt, player, otherPlayer)
         player.anim = player.animations.idle
       end
     end
-    if not player.isDashing and not player.isAttacking then
+    if not player.isDashing and not player.isAttacking and not player.isDownAir then
       player.anim = player.animations.jump
     end
   end
@@ -241,7 +308,7 @@ function PlayerHelper.updatePlayer(dt, player, otherPlayer)
   -- HANDLE ATTACK
   PlayerHelper.handleAttack(player, otherPlayer, dt)
 
-  -- Handle downAir logic
+  -- HANDLE DOWNAIR
   PlayerHelper.handleDownAir(player, otherPlayer, dt)
 
   -- ANIMATE
@@ -252,23 +319,23 @@ function PlayerHelper.updatePlayer(dt, player, otherPlayer)
 end
 
 function PlayerHelper.drawPlayer(player)
-    local scaleX = 8 * player.direction -- Flip horizontally if direction is -1
-    local offsetX = (player.direction == -1) and (8 * 8) or 0 -- Base offset for flipping
-    local offsetY = 0
+  local scaleX = 8 * player.direction -- Flip horizontally if direction is -1
+  local offsetX = (player.direction == -1) and (8 * 8) or 0 -- Base offset for flipping
+  local offsetY = 0
 
-    -- Adjust offsets for specific states, like attacking
-    if player.isAttacking then
-        -- Adjust horizontally and vertically
-        if player.direction == 1 then -- Facing right
-            offsetX = offsetX + 1 * 8 -- Add to the right
-        else -- Facing left
-            offsetX = offsetX - 1 * 8 -- Subtract to the left
-        end
-        offsetY = offsetY - 4 * 8 -- Move up
+  -- Adjust offsets for specific states, like attacking
+  if player.isAttacking then
+    -- Adjust horizontally and vertically
+    if player.direction == 1 then -- Facing right
+      offsetX = offsetX + 1 * 8 -- Add to the right
+    else -- Facing left
+      offsetX = offsetX - 1 * 8 -- Subtract to the left
     end
+    offsetY = offsetY - 4 * 8 -- Move up
+  end
 
-    -- Draw the sprite
-    player.anim:draw(player.spriteSheet, player.x + offsetX, player.y + offsetY, 0, scaleX, 8)
+  -- Draw the sprite
+  player.anim:draw(player.spriteSheet, player.x + offsetX, player.y + offsetY, 0, scaleX, 8)
 end
 
 return PlayerHelper
