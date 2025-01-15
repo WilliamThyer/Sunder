@@ -1,3 +1,57 @@
+--- BUGS ---
+DOWNAIR
 Downair animation won't play.
-Downair knockback is slow and weird.
-Downair does damage during windup frames.
+Downair knockback is slow and weird. 
+Knockback is based on direction of attack which doesn't make sense.
+Downair does damage during windup frames. Fix.
+Damage = 20
+
+
+--- FEATURES ---
+SHIELD
+Should still knockback some. 
+Still get 20% damage.
+
+COUNTER
+Implement counter
+Counter should temp stun attacker, with no knockback.
+Counterer has that opportunity to attack.
+Attack after counter does x2 damage.
+
+AERIAL
+Create dedicated aerial move for attacking.
+Heavy and light?
+Or directional?
+Damage = ground based damage.
+
+LIGHT ATTACK
+Create a light attack that comes out faster than heavy.
+Chains into 3 hit combo?
+Damage = [5, 10, 20]
+
+UPSHIELD
+Impelement upward shield to block aerial moves
+Still get 20% damage.
+
+GRAB
+Create grabbing mechanic.
+Can grab through shield/parry, grabee can't move.
+Lasts 2 seconds.
+Grabber can "punch" for 5 damage, or throw directionally?
+
+THROW
+Throw mechanic?
+
+MAGIC MISSILE
+Physics?
+Can be parried, or shielded. Parrying regens health. Shield blunts damage.
+
+UPPER SLASH
+Implement upward slash. Has shorter reach than downair.
+
+DASH
+Some kind of recharge time on dash?
+
+HEALTH
+Health bar, out of 100?
+Need to implement damage by all attacks.
