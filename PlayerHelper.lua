@@ -72,103 +72,79 @@ function PlayerHelper.checkHit(attacker, target, attackType)
   return hit
 end
 
-function PlayerHelper.handleAttack(attacker, target, dt)
-  if attacker.isAttacking and attacker.attackTimer <= attacker.attackNoDamageDuration then
-    if PlayerHelper.checkHit(attacker, target) then
-      if not target.isHurt and not target.isInvincible then
-        target.canMove = false
+function PlayerHelper.handleAttackEffects(attacker, target, dt, knockbackMultiplier)
+    if not target.isHurt and not target.isInvincible then
         target.isHurt = true
-        target.hurtTimer = .2
+        target.hurtTimer = 0.2
         target.isInvincible = true
-        target.invincibleTimer = .5
+        target.invincibleTimer = 0.5
         target.idleTimer = 0
         target.anim = target.animations.hurt
-        target.knockbackDirection = attacker.direction
+        target.knockbackSpeed = target.defaultKnockbackSpeed * (knockbackMultiplier or 1)
+
+        -- Calculate knockback direction based on overlap
+        local overlapLeft = (attacker.x + attacker.width) - target.x
+        local overlapRight = (target.x + target.width) - attacker.x
+
+        if overlapLeft < overlapRight then
+            target.knockbackDirection = 1 -- Push left
+        else
+            target.knockbackDirection = -1 -- Push right
+        end
+
+        -- Apply knockback
+        target.x = target.x - target.knockbackSpeed * target.knockbackDirection * dt
+    end
+end
+
+function PlayerHelper.updateHurtState(target, dt)
+    if target.isHurt then
+        target.hurtTimer = target.hurtTimer - dt
+        target.anim = target.animations.hurt
+        target.canMove = false
         target.x = target.x - target.knockbackSpeed * target.knockbackDirection * dt * -1
-      end
+        if target.hurtTimer <= 0 then
+            target.isHurt = false
+            target.anim = target.animations.idle
+        end
     end
-  end
 
-  if target.isHurt then
-    target.hurtTimer = target.hurtTimer - dt
-    target.anim = target.animations.hurt
-    target.canMove = false
-    target.x = target.x - target.knockbackSpeed * target.knockbackDirection * dt * -1
-    if target.hurtTimer <= 0 then
-      target.isHurt = false
-      target.anim = target.animations.idle
+    if target.isInvincible then
+        target.invincibleTimer = target.invincibleTimer - dt
+        if target.invincibleTimer <= 0 then
+            target.isInvincible = false
+        end
     end
-  end
+end
 
-  if target.isInvincible then
-    target.invincibleTimer = target.invincibleTimer - dt
-    if target.invincibleTimer <= 0 then
-      target.isInvincible = false
+function PlayerHelper.handleAttack(attacker, target, dt)
+    if attacker.isAttacking and attacker.attackTimer <= attacker.attackNoDamageDuration then
+        if PlayerHelper.checkHit(attacker, target) then
+            PlayerHelper.handleAttackEffects(attacker, target, dt, 1)
+        end
     end
-  end
+    PlayerHelper.updateHurtState(target, dt)
 end
 
 function PlayerHelper.handleDownAir(player, target, dt)
-  if player.isDownAir then
-    -- Check collision with target
-    if PlayerHelper.checkHit(player, target, "downAir")
-      and not target.isHurt and not target.isInvincible then
-      print('hurt!')
-      target.isHurt = true
-      target.hurtTimer = 0.2
-      target.isInvincible = true
-      target.invincibleTimer = 0.5
-      target.idleTimer = 0
-      target.anim = target.animations.hurt
-      target.knockbackSpeed = target.defaultKnockbackSpeed / 2 -- Reduce knockback for downAir
+    if player.isDownAir then
+        player.anim = player.animations.downAir
 
-      -- Calculate knockback direction based on overlap
-      local overlapLeft = (player.x + player.width) - target.x
-      local overlapRight = (target.x + target.width) - player.x
+        -- Check collision with target using downAir-specific hitbox
+        if PlayerHelper.checkHit(player, target, "downAir") then
+            PlayerHelper.handleAttackEffects(player, target, dt, 0.5) -- Reduce knockback for downAir
+        end
 
-      if overlapLeft < overlapRight then
-        target.knockbackDirection = 1 -- Push left
-        -- target.x = target.x - overlapLeft / 2 -- Resolve collision
-      else
-        target.knockbackDirection = -1 -- Push right
-        -- target.x = target.x + overlapRight / 2 -- Resolve collision
-      end
-
-      -- Apply knockback
-      target.x = target.x - target.knockbackSpeed * target.knockbackDirection * dt
+        -- End the move when the timer ends or landing
+        player.downAirTimer = player.downAirTimer - dt
+        if player.downAirTimer <= 0 then
+            player:endDownAir()
+        elseif player.y >= player.groundY then
+            player:land()
+        end
     end
-
-    -- End the move when the timer ends or landing
-    player.downAirTimer = player.downAirTimer - dt
-    print(player.downAirTimer)
-    print(player.isDownAir)
-    if player.downAirTimer <= 0 then
-      player:endDownAir()
-    elseif player.y >= player.groundY then
-      player:land()
-    end
-  end
-
-  if target.isHurt then
-    print('hurt')
-    target.hurtTimer = target.hurtTimer - dt
-    target.anim = target.animations.hurt
-    target.canMove = false
-    target.x = target.x - target.knockbackSpeed * target.knockbackDirection * dt * -1
-    if target.hurtTimer <= 0 then
-      target.isHurt = false
-      target.anim = target.animations.idle
-    end
-  end
-
-  if target.isInvincible then
-    target.invincibleTimer = target.invincibleTimer - dt
-  end
-  if target.invincibleTimer <= 0 then
-    target.isInvincible = false
-  end
+    PlayerHelper.updateHurtState(target, dt)
 end
-
 
 function PlayerHelper.updatePlayer(dt, player, otherPlayer)
   player.isIdle = true
