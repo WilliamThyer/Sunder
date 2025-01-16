@@ -1,5 +1,6 @@
 local PlayerHelper = {}
 
+-- Check if two players are colliding
 function PlayerHelper.checkCollision(p1, p2)
   return p1.x < p2.x + p2.width and
     p1.x + p1.width > p2.x and
@@ -7,6 +8,7 @@ function PlayerHelper.checkCollision(p1, p2)
     p1.y + p1.height > p2.y
 end
 
+-- Resolve collisions between players
 function PlayerHelper.resolveCollision(p1, p2)
   if PlayerHelper.checkCollision(p1, p2) then
     local overlapLeft = (p1.x + p1.width) - p2.x
@@ -22,49 +24,56 @@ function PlayerHelper.resolveCollision(p1, p2)
   end
 end
 
-function PlayerHelper.checkHit(attacker, target, attackType)
-  -- Define hitbox dimensions based on attack type
-  local hitboxWidth, hitboxHeight, hitboxX, hitboxY
-
+-- Get hitbox dimensions and position based on attack type
+local function getHitbox(attacker, attackType)
   if attackType == "downAir" then
-    -- Hitbox for downAir: positioned below the attacker
-    hitboxWidth = attacker.width * 0.8 -- Narrower than the player's width
-    hitboxHeight = attacker.height * 0.5 -- Half of the player's height
-    hitboxX = attacker.x + (attacker.width - hitboxWidth) / 2
-    hitboxY = attacker.y + attacker.height -- Below the player
+    return {
+      width = attacker.width * 0.8,
+      height = attacker.height * 0.5,
+      x = attacker.x + (attacker.width - attacker.width * 0.8) / 2,
+      y = attacker.y + attacker.height
+    }
   elseif attackType == "sideAttack" then
-    -- Hitbox for side attack: positioned to the side of the attacker
-    hitboxWidth = 8 * 5 -- Default width for standard side attack
-    hitboxHeight = attacker.height -- Match player's height
-    hitboxX = attacker.direction == 1 and (attacker.x + attacker.width) or (attacker.x - hitboxWidth)
-    hitboxY = attacker.y
+    local width = 40
+    return {
+      width = width,
+      height = attacker.height,
+      x = attacker.direction == 1 and (attacker.x + attacker.width) or (attacker.x - width),
+      y = attacker.y
+    }
   elseif attackType == "upAir" then
-    -- Hitbox for upAir: positioned above the attacker
-    hitboxWidth = attacker.width * 0.8 -- Narrower than the player's width
-    hitboxHeight = attacker.height * 0.5 -- Half of the player's height
-    hitboxX = attacker.x + (attacker.width - hitboxWidth) / 2
-    hitboxY = attacker.y - hitboxHeight -- Above the player
+    return {
+      width = attacker.width * 0.8,
+      height = attacker.height * 0.5,
+      x = attacker.x + (attacker.width - attacker.width * 0.8) / 2,
+      y = attacker.y - attacker.height * 0.5
+    }
   else
-    -- Default hitbox: for other or unspecified attacks
-    hitboxWidth = 8 * 5 -- Default width
-    hitboxHeight = attacker.height -- Match player's height
-    hitboxX = attacker.direction == 1 and (attacker.x + attacker.width) or (attacker.x - hitboxWidth)
-    hitboxY = attacker.y
+    local width = 40
+    return {
+      width = width,
+      height = attacker.height,
+      x = attacker.direction == 1 and (attacker.x + attacker.width) or (attacker.x - width),
+      y = attacker.y
+    }
   end
+end
 
-  -- Target's hurtbox
-  local hurtboxWidth = 7 * 8
-  local hurtboxHeight = 7 * 8
-  local hurtboxX = target.x + (target.width - hurtboxWidth) / 2
-  local hurtboxY = target.y + (target.height - hurtboxHeight) / 2
+-- Check if an attack hit the target
+function PlayerHelper.checkHit(attacker, target, attackType)
+  local hitbox = getHitbox(attacker, attackType)
+  local hurtbox = {
+    width = 56,
+    height = 56,
+    x = target.x + (target.width - 56) / 2,
+    y = target.y + (target.height - 56) / 2
+  }
 
-  -- Check for collision
-  local hit = hitboxX < hurtboxX + hurtboxWidth and
-    hitboxX + hitboxWidth > hurtboxX and
-    hitboxY < hurtboxY + hurtboxHeight and
-    hitboxY + hitboxHeight > hurtboxY
+  local hit = hitbox.x < hurtbox.x + hurtbox.width and
+    hitbox.x + hitbox.width > hurtbox.x and
+    hitbox.y < hurtbox.y + hurtbox.height and
+    hitbox.y + hitbox.height > hurtbox.y
 
-  -- Ignore hit if target is shielding and facing the attacker
   if target.isShielding and target.direction ~= attacker.direction then
     hit = false
   end
@@ -72,101 +81,117 @@ function PlayerHelper.checkHit(attacker, target, attackType)
   return hit
 end
 
+-- Handle the effects of an attack
 function PlayerHelper.handleAttackEffects(attacker, target, dt, knockbackMultiplier)
-    if not target.isHurt and not target.isInvincible then
-        target.isHurt = true
-        target.hurtTimer = 0.2
-        target.isInvincible = true
-        target.invincibleTimer = 0.5
-        target.idleTimer = 0
-        target.anim = target.animations.hurt
-        target.knockbackSpeed = target.defaultKnockbackSpeed * (knockbackMultiplier or 1)
+  if not target.isHurt and not target.isInvincible then
+    target.isHurt = true
+    target.hurtTimer = 0.2
+    target.isInvincible = true
+    target.invincibleTimer = 0.5
+    target.idleTimer = 0
+    target.anim = target.animations.hurt
+    target.knockbackSpeed = target.knockbackSpeed * (knockbackMultiplier or 1)
 
-        -- Calculate knockback direction based on overlap
-        local overlapLeft = (attacker.x + attacker.width) - target.x
-        local overlapRight = (target.x + target.width) - attacker.x
+    local overlapLeft = (attacker.x + attacker.width) - target.x
+    local overlapRight = (target.x + target.width) - attacker.x
+    target.knockbackDirection = overlapLeft < overlapRight and 1 or -1
 
-        if overlapLeft < overlapRight then
-            target.knockbackDirection = 1 -- Push left
-        else
-            target.knockbackDirection = -1 -- Push right
-        end
-
-        -- Apply knockback
-        target.x = target.x - target.knockbackSpeed * target.knockbackDirection * dt
-    end
+    target.x = target.x - target.knockbackSpeed * target.knockbackDirection * dt
+  end
 end
 
+-- Update the hurt state of a player
 function PlayerHelper.updateHurtState(target, dt)
-    if target.isHurt then
-        target.hurtTimer = target.hurtTimer - dt
-        target.anim = target.animations.hurt
-        target.canMove = false
-        target.x = target.x - target.knockbackSpeed * target.knockbackDirection * dt * -1
-        if target.hurtTimer <= 0 then
-            target.isHurt = false
-            target.anim = target.animations.idle
-        end
+  if target.isHurt then
+    target.hurtTimer = target.hurtTimer - dt
+    target.anim = target.animations.hurt
+    target.canMove = false
+    target.x = target.x - target.knockbackSpeed * target.knockbackDirection * dt * -1
+    if target.hurtTimer <= 0 then
+      target.isHurt = false
+      target.anim = target.animations.idle
     end
-
-    if target.isInvincible then
-        target.invincibleTimer = target.invincibleTimer - dt
-        if target.invincibleTimer <= 0 then
-            target.isInvincible = false
-        end
-    end
-end
-
-function PlayerHelper.handleAttack(attacker, target, dt)
-    if attacker.isAttacking and attacker.attackTimer <= attacker.attackNoDamageDuration then
-        if PlayerHelper.checkHit(attacker, target) then
-            PlayerHelper.handleAttackEffects(attacker, target, dt, 1)
-        end
-    end
-    PlayerHelper.updateHurtState(target, dt)
-end
-
-function PlayerHelper.handleDownAir(player, target, dt)
-    if player.isDownAir then
-        player.anim = player.animations.downAir
-
-        -- Check collision with target using downAir-specific hitbox
-        if PlayerHelper.checkHit(player, target, "downAir") then
-            PlayerHelper.handleAttackEffects(player, target, dt, 0.5) -- Reduce knockback for downAir
-        end
-
-        -- End the move when the timer ends or landing
-        player.downAirTimer = player.downAirTimer - dt
-        if player.downAirTimer <= 0 then
-            player:endDownAir()
-        elseif player.y >= player.groundY then
-            player:land()
-        end
-    end
-    PlayerHelper.updateHurtState(target, dt)
-end
-
-function PlayerHelper.updatePlayer(dt, player, otherPlayer)
-  player.isIdle = true
-  local attackIsPressed = false
-  local jumpIsDown = false
-  local dashIsPressed = false
-  local shieldIsPressed = false
-  local downIsPressed = false
-  local moveX = 0
-
-  -- Get joystick input
-  if player.joystick then
-    attackIsPressed = player.joystick:isGamepadDown("x")
-    jumpIsDown = player.joystick:isGamepadDown("a")
-    dashIsPressed = player.joystick:isGamepadDown("rightshoulder")
-    shieldIsPressed = player.joystick:isGamepadDown("leftshoulder")
-    moveX = player.joystick:getGamepadAxis("leftx")
-    downIsPressed = player.joystick:getGamepadAxis("lefty") > 0.5
   end
 
-  -- SHIELD
-  if shieldIsPressed and player:isAbleToShield() then
+  if target.isInvincible then
+    target.invincibleTimer = target.invincibleTimer - dt
+    if target.invincibleTimer <= 0 then
+      target.isInvincible = false
+    end
+  end
+end
+
+-- Handle player attacks
+function PlayerHelper.handleAttack(attacker, target, dt)
+  if attacker.isAttacking and attacker.attackTimer <= attacker.attackNoDamageDuration then
+    if PlayerHelper.checkHit(attacker, target) then
+      PlayerHelper.handleAttackEffects(attacker, target, dt, 1)
+    end
+  end
+  PlayerHelper.updateHurtState(target, dt)
+end
+
+-- Handle Down-Air attacks
+function PlayerHelper.handleDownAir(player, target, dt)
+  if player.isDownAir then
+    player.anim = player.animations.downAir
+
+    if PlayerHelper.checkHit(player, target, "downAir") then
+      PlayerHelper.handleAttackEffects(player, target, dt, 0.5)
+    end
+
+    player.downAirTimer = player.downAirTimer - dt
+    if player.downAirTimer <= 0 then
+      player:endDownAir()
+    elseif player.y >= player.groundY then
+      player:land()
+    end
+  end
+  PlayerHelper.updateHurtState(target, dt)
+end
+
+-- Update a player's state
+function PlayerHelper.updatePlayer(dt, player, otherPlayer)
+  local input = PlayerHelper.getPlayerInput(player.joystick)
+  PlayerHelper.processInput(input, player, dt)
+
+  PlayerHelper.handleAttack(player, otherPlayer, dt)
+  PlayerHelper.handleDownAir(player, otherPlayer, dt)
+
+  player.anim:update(dt)
+  PlayerHelper.resolveCollision(player, otherPlayer)
+end
+
+-- Process player input
+function PlayerHelper.getPlayerInput(joystick)
+  if not joystick then
+    return {
+      attack = false,
+      jump = false,
+      dash = false,
+      shield = false,
+      moveX = 0, -- Default to no movement
+      down = false
+    }
+  end
+
+  return {
+    attack = joystick:isGamepadDown("x"),
+    jump = joystick:isGamepadDown("a"),
+    dash = joystick:isGamepadDown("rightshoulder"),
+    shield = joystick:isGamepadDown("leftshoulder"),
+    moveX = joystick:getGamepadAxis("leftx") or 0, -- Default to 0 if nil
+    down = (joystick:getGamepadAxis("lefty") or 0) > 0.5
+  }
+end
+
+
+-- Process the input to update player state
+function PlayerHelper.processInput(input, player, dt)
+  player.isIdle = true
+
+  -- Handle shielding
+  if input.shield and player:canPerformAction("shield") then
     player.canMove = false
     player.isShielding = true
     player.anim = player.animations.shield
@@ -175,42 +200,83 @@ function PlayerHelper.updatePlayer(dt, player, otherPlayer)
     player.canMove = true
   end
 
-  -- ATTACKS
-  -- Downair
-  if downIsPressed and attackIsPressed and player:isAbleToDownAir() then
-    player.anim = player.animations.downAir
+  -- Handle attacks
+  if input.down and input.attack and player:canPerformAction("downAir") then
     player:triggerDownAir()
-    player.anim:gotoFrame(1)
-  end
-  -- Slash
-  if attackIsPressed and not downIsPressed and player:isAbleToAttack() then
-    player.canMove = false
+  elseif input.attack and player:canPerformAction("attack") then
     player.isAttacking = true
     player.attackTimer = player.attackDuration
     player.anim = player.animations.attack
     player.anim:gotoFrame(1)
   end
-  player.attackPressedLastFrame = attackIsPressed
+  player.attackPressedLastFrame = input.attack
 
   if player.isAttacking then
     player.attackTimer = player.attackTimer - dt
     if player.attackTimer <= 0 then
       player.isAttacking = false
-      player.canMove = true
+      player.anim = player.animations.idle
+    end
+  end
+
+  -- Handle movement
+  if player:canPerformAction("move") and math.abs(input.moveX) > 0.5 then
+    player.isMoving = true
+    player.x = player.x + input.moveX * player.speed * 2
+    player.direction = input.moveX > 0 and 1 or -1
+    if not player.isAttacking then
+        player.anim = player.animations.move
+    end
+  else
+    player.isMoving = false
+  end
+
+  -- Handle jumping
+  if input.jump and player:canPerformAction("jump") then
+    if not player.isJumping then
+      player.jumpVelocity = player.jumpHeight
+      player.isJumping = true
+      player.canDoubleJump = true
+      player.canDash = true
+      player.anim = player.animations.jump
+    elseif player.canDoubleJump then
+      player.isDownAir = false
+      player:resetGravity()
+      player.jumpVelocity = player.jumpHeight
+      player.canDoubleJump = false
+      player.anim = player.animations.jump
+    end
+  end
+  player.JumpPressedLastFrame = input.jump
+
+  -- Update vertical position
+  if player.isJumping then
+    player.y = player.y + player.jumpVelocity * dt
+    player.jumpVelocity = player.jumpVelocity + player.gravity * dt
+
+    if player.y >= player.groundY then
+      player.y = player.groundY
+      player:land()
+      if not player.isAttacking then
+        player.anim = player.animations.idle
+      end
+    end
+    if not player.isDashing and not player.isAttacking and not player.isDownAir then
+      player.anim = player.animations.jump
     end
   end
 
   -- DASH
-  if dashIsPressed and player:isAbleToDash() then
+  if input.dash and player:canPerformAction("dash") then
     player.isDashing = true
-    player.canDash = false
     player.dashTimer = player.dashDuration
     player.dashVelocity = player.dashSpeed * player.direction
     player.anim = player.animations.dash
   end
-  player.dashPressedLastFrame = dashIsPressed
+  player.DashPressedLastFrame = input.dash
 
   if player.isDashing then
+    player.canDash = false
     player.x = player.x + player.dashVelocity * dt
     player.dashTimer = player.dashTimer - dt
     if player.dashTimer <= 0 then
@@ -222,97 +288,31 @@ function PlayerHelper.updatePlayer(dt, player, otherPlayer)
     end
   end
 
-  -- MOVE
-  if player:isAbleToMove() then
-    if math.abs(moveX) > 0.5 then
-      player.x = player.x + moveX * player.speed * 2
-      player.direction = moveX > 0 and 1 or -1
-      player.isIdle = false
-      player.isMoving = true
-      if not player.isJumping and not player.isAttacking then
-        player.anim = player.animations.move
-      end
-    end
-  end
-
-  -- JUMP
-  if jumpIsDown and player:isAbleToJump() then
-    if not player.isJumping then
-      player.jumpVelocity = player.jumpHeight
-      player.isJumping = true
-      player.canDoubleJump = true
-      player.canDash = true
-      player.anim = player.animations.jump
-    elseif player.canDoubleJump then
-      player.jumpVelocity = player.jumpHeight
-      player.canDoubleJump = false
-      player.anim = player.animations.jump
-    end
-  end
-
-  if player.isJumping then
-    player.y = player.y + player.jumpVelocity * dt
-    player.jumpVelocity = player.jumpVelocity + player.gravity * dt
-
-    if player.y >= player.groundY then
-      player.y = player.groundY
-      player.isJumping = false
-      player.jumpVelocity = 0
-      player.canDoubleJump = false
-      player.canDash = true
-      if not player.isAttacking then
-        player.anim = player.animations.idle
-      end
-    end
-    if not player.isDashing and not player.isAttacking and not player.isDownAir then
-      player.anim = player.animations.jump
-    end
-  end
-  player.wasJumpPressedLastFrame = jumpIsDown
-
   -- IDLE
-  if player:isAbleToIdle() then
+  if player:canPerformAction("idle") then
+    player.isIdle = true
     player.idleTimer = player.idleTimer + dt
     player.anim = player.animations.idle
     if player.idleTimer < 1 then
-      player.anim:gotoFrame(2)
+      player.anim:gotoFrame(1)
     end
   else
     player.idleTimer = 0
   end
 
-  -- HANDLE ATTACK
-  PlayerHelper.handleAttack(player, otherPlayer, dt)
-
-  -- HANDLE DOWNAIR
-  PlayerHelper.handleDownAir(player, otherPlayer, dt)
-
-  -- ANIMATE
-  player.anim:update(dt)
-
-  -- RESOLVE COLLISIONS
-  PlayerHelper.resolveCollision(player, otherPlayer)
 end
 
 function PlayerHelper.drawPlayer(player)
-  local scaleX = 8 * player.direction -- Flip horizontally if direction is -1
-  local offsetX = (player.direction == -1) and (8 * 8) or 0 -- Base offset for flipping
+  local scaleX = 8 * player.direction
+  local offsetX = (player.direction == -1) and (8 * 8) or 0
   local offsetY = 0
 
-  -- Adjust offsets for specific states, like attacking
   if player.isAttacking then
-    -- Adjust horizontally and vertically
-    if player.direction == 1 then -- Facing right
-      offsetX = offsetX + 1 * 8 -- Add to the right
-    else -- Facing left
-      offsetX = offsetX - 1 * 8 -- Subtract to the left
-    end
-    offsetY = offsetY - 4 * 8 -- Move up
+    offsetX = offsetX + (player.direction == 1 and 8 or -8)
+    offsetY = -4 * 8 -- Add Y offset for attacking
   end
 
-  -- Draw the sprite
   player.anim:draw(player.spriteSheet, player.x + offsetX, player.y + offsetY, 0, scaleX, 8)
 end
 
 return PlayerHelper
-

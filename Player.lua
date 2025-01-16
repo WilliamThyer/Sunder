@@ -8,111 +8,95 @@ function Player.createPlayer(x, y, joystickIndex)
     self.x = x
     self.y = y
     self.groundY = y
-    self.width = 64 -- Scaled width of the sprite (8 * 8)
-    self.height = 64 -- Scaled height of the sprite
+    self.width = 64
+    self.height = 64
     self.speed = 3
-    if joystickIndex == 1 then
-        self.direction = 1 -- 1 = right, -1 = left
-    else
-        self.direction = -1 -- 1 = right, -1 = left
-    end
+    self.direction = joystickIndex == 1 and 1 or -1
     self.canMove = true
 
-    -- Load sprite sheet
+    self:initializeSprites()
+    self:initializeState(joystickIndex)
+
+    return self
+end
+
+-- Initialize sprites and animations
+function Player:initializeSprites()
     self.spriteSheet = love.graphics.newImage('sprites/Hero_update.png')
-    -- Player grid
-    self.grid = anim8.newGrid(8, 8,
-      self.spriteSheet:getWidth(),
-      self.spriteSheet:getHeight(),
-      0
-    )
-    -- Attack grid, to account for extra width of sword sprite
-    self.attackGrid = anim8.newGrid(12, 12,
-      self.spriteSheet:getWidth(),
-      self.spriteSheet:getHeight(),
-      8*6, 0
-    )
+    self.grid = anim8.newGrid(8, 8, self.spriteSheet:getWidth(), self.spriteSheet:getHeight(), 0)
+    self.attackGrid = anim8.newGrid(12, 12, self.spriteSheet:getWidth(), self.spriteSheet:getHeight(), 8 * 6, 0)
 
-    -- Animations
-    self.animations = {}
-    self.animations.move   = anim8.newAnimation(self.grid('3-4', 1), 0.2)
-    self.animations.jump   = anim8.newAnimation(self.grid(3, 2), 1)
-    self.animations.idle   = anim8.newAnimation(self.grid('4-3', 6), .7)
-    self.animations.dash = anim8.newAnimation(self.grid(1, 4), 1)
-    self.animations.attack = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.05, 0.2, 0.05, 0.1})
-    self.animations.downAir = anim8.newAnimation(self.attackGrid(2, '1-2'), {.2, .8})
-    self.animations.shield = anim8.newAnimation(self.grid(5, 1), 1)
-    self.animations.shieldUp = anim8.newAnimation(self.grid(6, 1), 1)
-    self.animations.hurt = anim8.newAnimation(self.grid(3, 7), 1)
+    self.animations = {
+        move = anim8.newAnimation(self.grid('3-4', 1), 0.2),
+        jump = anim8.newAnimation(self.grid(3, 2), 1),
+        idle = anim8.newAnimation(self.grid('3-4', 6), 0.7),
+        dash = anim8.newAnimation(self.grid(1, 4), 1),
+        attack = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.05, 0.2, 0.05, 0.1}),
+        downAir = anim8.newAnimation(self.attackGrid(2, '1-2'), {0.2, 0.8}),
+        shield = anim8.newAnimation(self.grid(5, 1), 1),
+        hurt = anim8.newAnimation(self.grid(3, 7), 1)
+    }
 
-    -- Set default animation
     self.anim = self.animations.idle
+end
+
+-- Initialize player state
+function Player:initializeState(joystickIndex)
     self.isIdle = true
     self.isMoving = false
     self.idleTimer = 0
 
-    -- Jump physics
-    self.jumpHeight    = -850
-    self.jumpVelocity  = 0
-    self.isJumping     = false
+    -- Physics and movement
+    self.jumpHeight = -850
+    self.jumpVelocity = 0
+    self.isJumping = false
     self.canDoubleJump = false
+    self.gravity = 2250
     self.wasJumpPressedLastFrame = false
-    self.defaultGravity = 2250
-    self.gravity = self.defaultGravity
+
+    -- Attack state
+    self.isAttacking = false
+    self.attackTimer = 0
+    self.attackDuration = 0.5
+    self.attackNoDamageDuration = 0.25
+    self.attackPressedLastFrame = false
 
     -- Downair
     self.isDownAir = false
     self.downAirDuration = 1
     self.downAirTimer = 0
 
-    -- Attack logic
-    self.isAttacking   = false
-    self.attackTimer   = 0     -- counts down when attacking
-    self.attackDuration = .5 -- how long the attack lasts in seconds
-    self.attackNoDamageDuration = .25 -- how long until the attack does damage
-    self.attackPressedLastFrame = false -- Prevent holding attack
-
-    -- Dash logic
+    -- Dash state
     self.isDashing = false
     self.dashTimer = 0
     self.dashDuration = 0.06
     self.canDash = true
     self.dashSpeed = self.speed * 750
-    self.dashPressedLastFrame = false -- Prevent holding dash
+    self.dashPressedLastFrame = false
 
-    -- Shield logic
+    -- Shield state
     self.isShielding = false
 
-    -- Hurt logic
+    -- Hurt state
     self.isHurt = false
     self.hurtTimer = 0
-    self.defaultKnockbackSpeed = 150 * self.speed
-    self.knockbackSpeed = 150 * self.speed
-    self.knockbackDirection = 1
-    self.isInvincible = false
-    self.invincibleTimer = 0
+    self.knockbackSpeed = self.speed * 150
 
-    -- Assign joystick
+    -- Joystick
     self.index = joystickIndex
     self.joystick = love.joystick.getJoysticks()[joystickIndex]
-
-    return self
 end
 
 function Player:triggerDownAir()
     self.isAttacking = true
     self.isDownAir = true
     self.downAirTimer = self.downAirDuration
-    self.gravity = self.gravity * 2 -- Double gravity
+    self.gravity = self.gravity * 1.2 -- speed up descent
     self.anim = self.animations.downAir
-end
-
-function Player:resetGravity()
-    self.gravity = self.defaultGravity
+    self.anim:gotoFrame(1)
 end
 
 function Player:endDownAir()
-    print('end downair')
     self.isDownAir = false
     self.isAttacking = false
     self.anim = self.animations.jump
@@ -123,45 +107,37 @@ function Player:endDownAir()
     end
 end
 
--- Reset gravity and state when landing
+
+-- Reset gravity to default
+function Player:resetGravity()
+    self.gravity = 2250
+end
+
+-- Land player on the ground
 function Player:land()
-    print('land')
     self:resetGravity()
     self.isJumping = false
     self.jumpVelocity = 0
     self.canDoubleJump = false
     self.canDash = true
     self.isDownAir = false
-    self.isAttacking = false
-    self.anim = self.animations.idle
+    if not self.isAttacking then
+        self.anim = self.animations.idle
+    end
 end
 
-function Player:isAbleToShield()
-    return not self.isJumping and not self.isHurt
-end
-
-function Player:isAbleToAttack()
-    return not self.attackPressedLastFrame and not self.isAttacking and not self.isShielding and not self.isHurt
-end
-
-function Player:isAbleToDash()
-    return not self.dashPressedLastFrame and not self.isDashing and self.canDash and not self.isShielding and not self.isHurt
-end
-
-function Player:isAbleToMove()
-    return self.canMove and not self.isDashing and not self.isShielding and not self.isHurt and not self.isAttacking or self.isJumping
-end
-
-function Player:isAbleToJump()
-    return not self.wasJumpPressedLastFrame and not self.isAttacking and not self.isShielding and not self.isHurt
-end
-
-function Player:isAbleToDownAir()
-    return not self.attackPressedLastFrame and not self.isAttacking and not self.isShielding and self.isJumping and not self.isHurt
-end
-
-function Player:isAbleToIdle()
-    return self.isIdle and not self.isJumping and not self.isAttacking and not self.isDashing and not self.isShielding and not self.isHurt
+-- Check if the player can perform certain actions
+function Player:canPerformAction(action)
+    local conditions = {
+        idle = self.isIdle and not self.isMoving and not self.isJumping and not self.isAttacking and not self.isDashing and not self.isShielding and not self.isHurt,
+        shield = not self.isJumping and not self.isHurt,
+        attack = not self.isAttacking and not self.isShielding and not self.isHurt and not self.attackPressedLastFrame,
+        dash = not self.isDashing and self.canDash and not self.isShielding and not self.isHurt and not self.dashPressedLastFrame,
+        move = self.canMove and not self.isDashing and not self.isShielding and not self.isHurt,
+        jump = not self.isAttacking and not self.isShielding and not self.isHurt and not self.JumpPressedLastFrame,
+        downAir = self.isJumping and not self.isAttacking and not self.isShielding and not self.isHurt
+    }
+    return conditions[action]
 end
 
 return Player
