@@ -1,8 +1,5 @@
 --- BUGS ---
 DOWNAIR
-Downair animation won't play.
-Downair knockback is slow and weird. 
-Knockback is based on direction of attack which doesn't make sense.
 Downair does damage during windup frames. Fix.
 Damage = 20
 
