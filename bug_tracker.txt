@@ -22,13 +22,7 @@ Or directional?
 Damage = ground based damage.
 
 LIGHT ATTACK
-Create a light attack that comes out faster than heavy.
-Chains into 3 hit combo?
-Damage = [5, 10, 20]
-
-UPSHIELD
-Impelement upward shield to block aerial moves
-Still get 20% damage.
+--done
 
 GRAB
 Create grabbing mechanic.
