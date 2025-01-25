@@ -21,12 +21,19 @@ function CharacterBase:new(x, y)
     instance.isJumping     = false
     instance.canDoubleJump = false
 
-    -- Attack / DownAir states
+    -- Attack states 
     instance.isAttacking        = false
+    -- Heavy attack
     instance.isHeavyAttacking = false
     instance.heavyAttackTimer        = 0
     instance.heavyAttackDuration     = 0.5
-    instance.heavyAttackNoDamageDuration = 0.25
+    instance.heavyAttackNoDamageDuration = 0.35
+    -- Light attack
+    instance.isLightAttacking = false
+    instance.lightAttackTimer        = 0
+    instance.lightAttackDuration     = .4
+    instance.lightAttackNoDamageDuration = 0.175
+    -- Downair attack
     instance.isDownAir          = false
     instance.downAirDuration    = 1
     instance.downAirTimer       = 0
@@ -47,9 +54,8 @@ function CharacterBase:new(x, y)
     instance.hurtTimer         = 0
     instance.isInvincible      = false
     instance.invincibleTimer   = 0
-    -- Store a "base" knockback so we can reset properly each hit
-    instance.knockbackBase     = instance.speed * 150  
-    instance.knockbackSpeed    = 0                     -- current knockback velocity
+    instance.knockbackBase     = instance.speed * 150
+    instance.knockbackSpeed    = 0
     instance.knockbackDirection= 1
 
     -- Idle / Movement states
@@ -97,6 +103,16 @@ local function getHitbox(character, attackType)
             y      = character.y + character.height
         }
     elseif attackType == "heavyAttack" then
+        local width = 40
+        return {
+            width  = width,
+            height = character.height,
+            x      = (character.direction == 1)
+                        and (character.x + character.width)
+                        or  (character.x - width),
+            y      = character.y
+        }
+    elseif attackType == "lightAttack" then
         local width = 40
         return {
             width  = width,

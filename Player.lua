@@ -39,7 +39,8 @@ function Player:initializeAnimations()
         jump    = anim8.newAnimation(self.grid(3, 2), 1),
         idle    = anim8.newAnimation(self.grid('3-4', 6), 0.7),
         dash    = anim8.newAnimation(self.grid(1, 4), 1),
-        heavyAttack  = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.05, 0.2, 0.05, 0.1}),
+        heavyAttack  = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.1, 0.25, 0.05, 0.1}),
+        lightAttack = anim8.newAnimation(self.attackGrid('1-2', 5), {0.175, .325}),
         downAir = anim8.newAnimation(self.attackGrid(2, '1-2'), {0.2, 0.8}),
         shield  = anim8.newAnimation(self.grid(5, 1), 1),
         hurt    = anim8.newAnimation(self.grid(3, 7), 1)
@@ -69,7 +70,7 @@ function Player:draw()
 
     -- You can keep this "offset if attacking" logic if you want
     if self.isAttacking then
-        offsetX = offsetX + ((self.direction == 1) and 8 or -8)
+        -- offsetX = offsetX + ((self.direction == 1) and 8 or -8)
         offsetY = -4 * 8
     end
 
@@ -90,6 +91,7 @@ function Player:getPlayerInput()
     if not self.joystick then
         return {
             heavyAttack = false,
+            lightAttack = false,
             jump   = false,
             dash   = false,
             shield = false,
@@ -99,8 +101,10 @@ function Player:getPlayerInput()
     end
 
     return {
-        heavyAttack = self.joystick:isGamepadDown("x"),
-        jump   = self.joystick:isGamepadDown("a"),
+        jump = self.joystick:isGamepadDown("x") or self.joystick:isGamepadDown("y"),
+        lightAttack = self.joystick:isGamepadDown("a"),
+        heavyAttack = self.joystick:isGamepadDown("b"),
+        attack = (self.joystick:isGamepadDown("a") or self.joystick:isGamepadDown("b")),
         dash   = self.joystick:isGamepadDown("rightshoulder"),
         shield = self.joystick:isGamepadDown("leftshoulder"),
         moveX  = self.joystick:getGamepadAxis("leftx") or 0,
@@ -125,23 +129,34 @@ function Player:processInput(dt, input)
     end
 
     -- Attacks
-    if input.down and input.heavyAttack and self:canPerformAction("downAir") then
+    if input.down and input.attack and self:canPerformAction("downAir") then
         self:triggerDownAir()
     elseif input.heavyAttack and self:canPerformAction("heavyAttack") then
         self.isAttacking = true
         self.isHeavyAttacking = true
         self.heavyAttackTimer = self.heavyAttackDuration
-
-        -- We do want the attack animation to start on frame 1
         self.animations.heavyAttack:gotoFrame(1)
+    elseif input.lightAttack and self:canPerformAction("lightAttack") then
+        self.isAttacking = true
+        self.isLightAttacking = true
+        self.lightAttackTimer = self.lightAttackDuration
+        self.animations.lightAttack:gotoFrame(1)
     end
-    self.attackPressedLastFrame = input.heavyAttack
+    self.attackPressedLastFrame = input.attack
 
     if self.isHeavyAttacking then
         self.heavyAttackTimer = self.heavyAttackTimer - dt
         if self.heavyAttackTimer <= 0 then
             self.isAttacking = false
             self.isHeavyAttacking = false
+        end
+    end
+
+    if self.isLightAttacking then
+        self.lightAttackTimer = self.lightAttackTimer - dt
+        if self.lightAttackTimer <= 0 then
+            self.isAttacking = false
+            self.isLightAttacking = false
         end
     end
 
@@ -224,8 +239,14 @@ end
 -- Attack Handling
 --------------------------------------------------------------------------
 function Player:handleAttacks(dt, otherPlayer)
-    if self.isHeavyAttacking and (self.heavyAttackTimer <= self.heavyAttackNoDamageDuration) then
+    print(self.heavyAttackTimer)
+    if self.isHeavyAttacking and (self.heavyAttackTimer <= self.heavyAttackDuration - self.heavyAttackNoDamageDuration) then
         if self:checkHit(otherPlayer, "heavyAttack") then
+            otherPlayer:handleAttackEffects(self, dt, 1)
+        end
+    end
+    if self.isLightAttacking and (self.lightAttackTimer <= self.lightAttackDuration - self.lightAttackNoDamageDuration) then
+        if self:checkHit(otherPlayer, "lightAttack") then
             otherPlayer:handleAttackEffects(self, dt, 1)
         end
     end
@@ -248,7 +269,6 @@ function Player:handleDownAir(dt, otherPlayer)
         end
 
         self.downAirTimer = self.downAirTimer - dt
-        print(self.y)
         if self.downAirTimer <= 0 then
             self:endDownAir()
         elseif self.y >= self.groundY then
@@ -284,20 +304,8 @@ end
 -- Unified Animation Update
 --------------------------------------------------------------------------
 function Player:updateAnimation(dt)
-    -------------------------------------------------------------------
-    --  Animation Priority:
-    --    1) isHurt        => self.animations.hurt
-    --    2) isShielding   => self.animations.shield
-    --    3) isAttacking   => if isDownAir => downAir, else => attack
-    --    4) isDashing     => dash
-    --    5) isJumping     => jump
-    --    6) isMoving      => move
-    --    7) otherwise     => idle
-    -------------------------------------------------------------------
+    
     if self.index == 1 then
-        print(self.isAttacking)
-        print(self.isDownAir)
-        print(self.isJumping)
     end
     if self.isHurt then
         self.currentAnim = self.animations.hurt
@@ -305,6 +313,8 @@ function Player:updateAnimation(dt)
         self.currentAnim = self.animations.shield
     elseif self.isHeavyAttacking then
         self.currentAnim = self.animations.heavyAttack
+    elseif self.isLightAttacking then
+        self.currentAnim = self.animations.lightAttack
     elseif self.isDownAir then
         self.currentAnim = self.animations.downAir
     elseif self.isDashing then
@@ -337,6 +347,11 @@ function Player:canPerformAction(action)
                   and not self.isHurt),
 
         heavyAttack = (not self.isAttacking
+                  and not self.isShielding
+                  and not self.isHurt
+                  and not self.attackPressedLastFrame),
+
+        lightAttack = (not self.isAttacking
                   and not self.isShielding
                   and not self.isHurt
                   and not self.attackPressedLastFrame),
