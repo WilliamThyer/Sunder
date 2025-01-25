@@ -1,19 +1,39 @@
---- BUGS ---
-DOWNAIR
-Downair does damage during windup frames. Fix.
-Damage = 20
-
-
 --- FEATURES ---
+
+DOWNAIR ATTACK
+Damage dealt = 2
+Costs = 2 stamina
+
+LIGHT ATTACK
+Damage dealt = 1
+Costs = 1 stamina
+
+HEAVY ATTACK
+Damage dealt 3
+Costs = 2 stamina
+Chargable? Each .25s charge increases damage by 1.
+
 SHIELD
+1 stamina per light attack blocked.
+3 stamina per heavy attack blocked.
 Should still knockback some. 
-Still get 20% damage.
 
 COUNTER
-Implement counter
-Counter should temp stun attacker, with no knockback.
-Counterer has that opportunity to attack.
+Costs = 0 stamina.
 Attack after counter does x2 damage.
+
+DASH
+Costs = 1 stamina
+
+HEALTH
+Health bar, out of 10?
+Need to implement damage by all attacks.
+
+STAMINA
+Stamina bar out of 10?
+Need to implement stamina cost to all attacks.
+
+--- EXPERIMENTAL FEATURES ---
 
 AERIAL
 Create dedicated aerial move for attacking.
@@ -21,28 +41,19 @@ Heavy and light?
 Or directional?
 Damage = ground based damage.
 
-LIGHT ATTACK
---done
+MAGIC MISSILE
+Costs 1 health, deals 2 damage.
+Physics?
+Can be parried, or shielded. Parrying regens health. Shield reduces to 1.
 
 GRAB
 Create grabbing mechanic.
 Can grab through shield/parry, grabee can't move.
 Lasts 2 seconds.
-Grabber can "punch" for 5 damage, or throw directionally?
+Grabber can "punch" for 2 damage, or throw directionally?
 
 THROW
+1 stamina.
 Throw mechanic?
+Does no damage but stuns them for a moment?
 
-MAGIC MISSILE
-Physics?
-Can be parried, or shielded. Parrying regens health. Shield blunts damage.
-
-UPPER SLASH
-Implement upward slash. Has shorter reach than downair.
-
-DASH
-Some kind of recharge time on dash?
-
-HEALTH
-Health bar, out of 100?
-Need to implement damage by all attacks.
