@@ -168,11 +168,6 @@ function CharacterBase:checkHit(other, attackType)
              and hitbox.y < hurtbox.y + hurtbox.height
              and hitbox.y + hitbox.height > hurtbox.y
 
-    -- Shield block
-    if other.isShielding and (other.direction ~= self.direction) then
-        hit = false
-    end
-
     -- Check if other is in an active counter window
     if hit and other.isCountering and other.counterActive then
         -- If the defender is in a counter window, the attacker gets countered
@@ -184,13 +179,23 @@ function CharacterBase:checkHit(other, attackType)
     return hit
 end
 
+function CharacterBase:checkShieldBlock(attacker)
+    -- Shield block
+    local block = self.isShielding and (self.direction ~= attacker.direction)
+    return block
+end
+
 function CharacterBase:handleAttackEffects(attacker, dt, knockbackMultiplier)
     if not self.isHurt and not self.isInvincible then
-        self.isHurt         = true
-        self.hurtTimer      = 0.2
-        self.isInvincible   = true
-        self.invincibleTimer= 0.5
-        self.idleTimer      = 0
+        if not self:checkShieldBlock(attacker) then
+            self.isHurt         = true
+            self.hurtTimer      = 0.2
+            self.isInvincible   = true
+            self.invincibleTimer= 0.5
+            self.idleTimer      = 0
+        else
+            knockbackMultiplier = -.5
+        end
 
         -- Reset knockback each time so it doesn't keep shrinking
         self.knockbackSpeed = self.knockbackBase * (knockbackMultiplier or 1)
