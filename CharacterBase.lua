@@ -22,46 +22,57 @@ function CharacterBase:new(x, y)
     instance.canDoubleJump = false
 
     -- Attack states 
-    instance.isAttacking        = false
+    instance.isAttacking              = false
     -- Heavy attack
-    instance.isHeavyAttacking = false
-    instance.heavyAttackTimer        = 0
-    instance.heavyAttackDuration     = 0.5
+    instance.isHeavyAttacking         = false
+    instance.heavyAttackTimer         = 0
+    instance.heavyAttackDuration      = 0.5
     instance.heavyAttackNoDamageDuration = 0.35
     -- Light attack
-    instance.isLightAttacking = false
-    instance.lightAttackTimer        = 0
-    instance.lightAttackDuration     = .4
+    instance.isLightAttacking         = false
+    instance.lightAttackTimer         = 0
+    instance.lightAttackDuration      = 0.4
     instance.lightAttackNoDamageDuration = 0.175
     -- Downair attack
-    instance.isDownAir          = false
-    instance.downAirDuration    = 1
-    instance.downAirTimer       = 0
+    instance.isDownAir                = false
+    instance.downAirDuration          = 1
+    instance.downAirTimer             = 0
 
     -- Dash
-    instance.isDashing   = false
-    instance.dashTimer   = 0
-    instance.dashDuration= 0.06
-    instance.canDash     = true
-    instance.dashSpeed   = instance.speed * 750
-    instance.dashVelocity= 0
+    instance.isDashing    = false
+    instance.dashTimer    = 0
+    instance.dashDuration = 0.06
+    instance.canDash      = true
+    instance.dashSpeed    = instance.speed * 750
+    instance.dashVelocity = 0
 
     -- Shield
     instance.isShielding = false
 
     -- Hurt / Knockback
-    instance.isHurt            = false
-    instance.hurtTimer         = 0
-    instance.isInvincible      = false
-    instance.invincibleTimer   = 0
-    instance.knockbackBase     = instance.speed * 150
-    instance.knockbackSpeed    = 0
-    instance.knockbackDirection= 1
+    instance.isHurt             = false
+    instance.hurtTimer          = 0
+    instance.isInvincible       = false
+    instance.invincibleTimer    = 0
+    instance.knockbackBase      = instance.speed * 150
+    instance.knockbackSpeed     = 0
+    instance.knockbackDirection = 1
 
     -- Idle / Movement states
-    instance.isIdle   = true
-    instance.isMoving = false
-    instance.idleTimer= 0
+    instance.isIdle    = true
+    instance.isMoving  = false
+    instance.idleTimer = 0
+
+    -- (Stun + Counter)
+    instance.isStunned       = false
+    instance.stunTimer       = 0
+    instance.isCountering    = false
+    instance.counterTimer    = 0
+    instance.counterDuration = 0.5
+    -- This defines how long the counter "window" is active.
+    -- If the attacker strikes within this time, the counter is successful.
+    instance.counterActiveWindow = 0.15
+    instance.counterActive       = false
 
     return instance
 end
@@ -161,6 +172,15 @@ function CharacterBase:checkHit(other, attackType)
     if other.isShielding and (other.direction ~= self.direction) then
         hit = false
     end
+
+    -- Check if other is in an active counter window
+    if hit and other.isCountering and other.counterActive then
+        -- If the defender is in a counter window, the attacker gets countered
+        other:triggerSuccessfulCounter(self)
+        -- Return false so that the normal handleAttackEffects won't apply
+        return false
+    end
+
     return hit
 end
 
@@ -186,7 +206,32 @@ function CharacterBase:handleAttackEffects(attacker, dt, knockbackMultiplier)
 end
 
 ----------------------------------------------------------------
--- Hurt State (knockback, invincibility)
+-- Counter & Stun
+----------------------------------------------------------------
+
+-- Called when you successfully counter an attacker:
+--   1) Defender takes no damage (no "isHurt" state triggered).
+--   2) The attacker is stunned for 0.5s and stops attacking.
+--   3) Defender’s counter state ends immediately.
+function CharacterBase:triggerSuccessfulCounter(attacker)
+    -- Stop defender’s counter state
+    self.isCountering = false
+    self.counterTimer = 0
+    self.counterActive= false
+
+    -- Attacker is stunned
+    attacker.isStunned = true
+    attacker.stunTimer = 1
+
+    -- Attacker's attack ends
+    attacker.isAttacking       = false
+    attacker.isHeavyAttacking  = false
+    attacker.isLightAttacking  = false
+    attacker.isDownAir         = false
+end
+
+----------------------------------------------------------------
+-- State Updates
 ----------------------------------------------------------------
 function CharacterBase:updateHurtState(dt)
     if self.isHurt then
@@ -205,6 +250,16 @@ function CharacterBase:updateHurtState(dt)
         self.invincibleTimer = self.invincibleTimer - dt
         if self.invincibleTimer <= 0 then
             self.isInvincible = false
+        end
+    end
+
+    -- NEW / MODIFIED: Stun logic
+    if self.isStunned then
+        self.stunTimer = self.stunTimer - dt
+        self.canMove   = false
+        if self.stunTimer <= 0 then
+            self.isStunned = false
+            self.canMove   = true
         end
     end
 end

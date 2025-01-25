@@ -15,6 +15,7 @@ function Player:new(x, y, joystickIndex)
     obj.attackPressedLastFrame = false
     obj.JumpPressedLastFrame   = false
     obj.dashPressedLastFrame   = false
+    obj.counterPressedLastFrame= false  -- NEW / MODIFIED
 
     obj:initializeAnimations()
     return obj
@@ -40,10 +41,11 @@ function Player:initializeAnimations()
         idle    = anim8.newAnimation(self.grid('3-4', 6), 0.7),
         dash    = anim8.newAnimation(self.grid(1, 4), 1),
         heavyAttack  = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.1, 0.25, 0.05, 0.1}),
-        lightAttack = anim8.newAnimation(self.attackGrid('1-2', 5), {0.175, .325}),
-        downAir = anim8.newAnimation(self.attackGrid(2, '1-2'), {0.2, 0.8}),
-        shield  = anim8.newAnimation(self.grid(5, 1), 1),
-        hurt    = anim8.newAnimation(self.grid(3, 7), 1)
+        lightAttack  = anim8.newAnimation(self.attackGrid('1-2', 5), {0.175, .325}),
+        downAir      = anim8.newAnimation(self.attackGrid(2, '1-2'), {0.2, 0.8}),
+        shield       = anim8.newAnimation(self.grid(5, 1), 1),
+        hurt         = anim8.newAnimation(self.grid(3, 7), 1),
+        counter         = anim8.newAnimation(self.grid(4, 2), .5),
     }
 
     self.currentAnim = self.animations.idle
@@ -60,6 +62,7 @@ function Player:update(dt, otherPlayer)
     self:handleDownAir(dt, otherPlayer)
     self:updateHurtState(dt)
     self:resolveCollision(otherPlayer)
+    self:updateCounter(dt)          
     self:updateAnimation(dt)
 end
 
@@ -68,9 +71,7 @@ function Player:draw()
     local offsetX = (self.direction == -1) and (8 * 8) or 0
     local offsetY = 0
 
-    -- You can keep this "offset if attacking" logic if you want
     if self.isAttacking then
-        -- offsetX = offsetX + ((self.direction == 1) and 8 or -8)
         offsetY = -4 * 8
     end
 
@@ -96,19 +97,21 @@ function Player:getPlayerInput()
             dash   = false,
             shield = false,
             moveX  = 0,
-            down   = false
+            down   = false,
+            counter= false,  
         }
     end
 
     return {
-        jump = self.joystick:isGamepadDown("x") or self.joystick:isGamepadDown("y"),
+        jump        = self.joystick:isGamepadDown("x"),  
         lightAttack = self.joystick:isGamepadDown("a"),
         heavyAttack = self.joystick:isGamepadDown("b"),
-        attack = (self.joystick:isGamepadDown("a") or self.joystick:isGamepadDown("b")),
-        dash   = self.joystick:isGamepadDown("rightshoulder"),
-        shield = self.joystick:isGamepadDown("leftshoulder"),
-        moveX  = self.joystick:getGamepadAxis("leftx") or 0,
-        down   = (self.joystick:getGamepadAxis("lefty") or 0) > 0.5
+        attack      = (self.joystick:isGamepadDown("a") or self.joystick:isGamepadDown("b")),
+        dash        = self.joystick:isGamepadDown("rightshoulder"),
+        shield      = self.joystick:isGamepadDown("leftshoulder"),
+        moveX       = self.joystick:getGamepadAxis("leftx") or 0,
+        down        = (self.joystick:getGamepadAxis("lefty") or 0) > 0.5,
+        counter     = self.joystick:isGamepadDown("y")
     }
 end
 
@@ -116,7 +119,6 @@ end
 -- Process Input
 --------------------------------------------------------------------------
 function Player:processInput(dt, input)
-    -- This sets the state flags; we won't set animations directly here
     self.isIdle = true
 
     -- Shield
@@ -128,18 +130,24 @@ function Player:processInput(dt, input)
         self.canMove     = true
     end
 
+    -- Counter
+    if input.counter and self:canPerformAction("counter") then
+        self:triggerCounter()
+    end
+    self.counterPressedLastFrame = input.counter
+
     -- Attacks
     if input.down and input.attack and self:canPerformAction("downAir") then
         self:triggerDownAir()
     elseif input.heavyAttack and self:canPerformAction("heavyAttack") then
-        self.isAttacking = true
-        self.isHeavyAttacking = true
-        self.heavyAttackTimer = self.heavyAttackDuration
+        self.isAttacking       = true
+        self.isHeavyAttacking  = true
+        self.heavyAttackTimer  = self.heavyAttackDuration
         self.animations.heavyAttack:gotoFrame(1)
     elseif input.lightAttack and self:canPerformAction("lightAttack") then
-        self.isAttacking = true
-        self.isLightAttacking = true
-        self.lightAttackTimer = self.lightAttackDuration
+        self.isAttacking       = true
+        self.isLightAttacking  = true
+        self.lightAttackTimer  = self.lightAttackDuration
         self.animations.lightAttack:gotoFrame(1)
     end
     self.attackPressedLastFrame = input.attack
@@ -176,7 +184,7 @@ function Player:processInput(dt, input)
             self.isJumping      = true
             self.canDoubleJump  = true
             self.canDash        = true
-            self.animations.jump:gotoFrame(1) -- Start jump anim from frame 1
+            self.animations.jump:gotoFrame(1)
         elseif self.canDoubleJump then
             self.isDownAir      = false
             self:resetGravity()
@@ -206,7 +214,7 @@ function Player:processInput(dt, input)
         self.isDashing    = true
         self.dashTimer    = self.dashDuration
         self.dashVelocity = self.dashSpeed * self.direction
-        self.animations.dash:gotoFrame(1)  -- Start dash anim from frame 1
+        self.animations.dash:gotoFrame(1)
     end
     self.dashPressedLastFrame = input.dash
 
@@ -239,7 +247,6 @@ end
 -- Attack Handling
 --------------------------------------------------------------------------
 function Player:handleAttacks(dt, otherPlayer)
-    print(self.heavyAttackTimer)
     if self.isHeavyAttacking and (self.heavyAttackTimer <= self.heavyAttackDuration - self.heavyAttackNoDamageDuration) then
         if self:checkHit(otherPlayer, "heavyAttack") then
             otherPlayer:handleAttackEffects(self, dt, 1)
@@ -253,12 +260,10 @@ function Player:handleAttacks(dt, otherPlayer)
 end
 
 function Player:triggerDownAir()
-    self.isAttacking = true
-    self.isDownAir   = true
-    self.downAirTimer= self.downAirDuration
-    self.gravity     = self.gravity * 1.2
-
-    -- Start downAir anim on frame 1
+    self.isAttacking  = true
+    self.isDownAir    = true
+    self.downAirTimer = self.downAirDuration
+    self.gravity      = self.gravity * 1.2
     self.animations.downAir:gotoFrame(1)
 end
 
@@ -301,16 +306,44 @@ function Player:land()
 end
 
 --------------------------------------------------------------------------
+-- Counter Logic
+--------------------------------------------------------------------------
+-- This function is called when the player first attempts a counter.
+function Player:triggerCounter()
+    self.isCountering  = true
+    self.counterTimer  = self.counterDuration
+    self.counterActive = true  -- The “active” window starts immediately
+end
+
+-- Called once per frame to decrement timers, exit counter state, etc.
+function Player:updateCounter(dt)
+    if self.isCountering then
+        self.counterTimer = self.counterTimer - dt
+
+        -- If we have passed the "active window", counter is no longer active
+        if self.counterTimer <= (self.counterDuration - self.counterActiveWindow) then
+            self.counterActive = false
+        end
+
+        -- Once the total counter duration is done, exit counter state
+        if self.counterTimer <= 0 then
+            self.isCountering  = false
+            self.counterTimer  = 0
+            self.counterActive = false
+        end
+    end
+end
+
+--------------------------------------------------------------------------
 -- Unified Animation Update
 --------------------------------------------------------------------------
 function Player:updateAnimation(dt)
-    
-    if self.index == 1 then
-    end
-    if self.isHurt then
+    if self.isHurt or self.isStunned then
         self.currentAnim = self.animations.hurt
     elseif self.isShielding then
         self.currentAnim = self.animations.shield
+    elseif self.isCountering then         
+        self.currentAnim = self.animations.counter
     elseif self.isHeavyAttacking then
         self.currentAnim = self.animations.heavyAttack
     elseif self.isLightAttacking then
@@ -327,7 +360,6 @@ function Player:updateAnimation(dt)
         self.currentAnim = self.animations.idle
     end
 
-    -- Finally, update the currently selected animation
     self.currentAnim:update(dt)
 end
 
@@ -336,48 +368,91 @@ end
 --------------------------------------------------------------------------
 function Player:canPerformAction(action)
     local conditions = {
-        idle = (not self.isMoving
-                and not self.isJumping
-                and not self.isAttacking
-                and not self.isDashing
-                and not self.isShielding
-                and not self.isHurt),
+        idle = (
+            not self.isMoving
+            and not self.isJumping
+            and not self.isAttacking
+            and not self.isDashing
+            and not self.isShielding
+            and not self.isHurt
+            and not self.isStunned            
+            and not self.isCountering
+        ),
 
-        shield = (not self.isJumping
-                  and not self.isHurt),
+        shield = (
+            not self.isJumping
+            and not self.isHurt
+            and not self.isStunned            
+            and not self.isCountering
+        ),
 
-        heavyAttack = (not self.isAttacking
-                  and not self.isShielding
-                  and not self.isHurt
-                  and not self.attackPressedLastFrame),
+        heavyAttack = (
+            not self.isAttacking
+            and not self.isShielding
+            and not self.isHurt
+            and not self.isStunned
+            and not self.isCountering
+            and not self.attackPressedLastFrame
+        ),
 
-        lightAttack = (not self.isAttacking
-                  and not self.isShielding
-                  and not self.isHurt
-                  and not self.attackPressedLastFrame),
+        lightAttack = (
+            not self.isAttacking
+            and not self.isShielding
+            and not self.isHurt
+            and not self.isStunned
+            and not self.isCountering
+            and not self.attackPressedLastFrame
+        ),
 
-        dash = (not self.isDashing
-                and self.canDash
-                and not self.isShielding
-                and not self.isHurt
-                and not self.dashPressedLastFrame),
+        dash = (
+            not self.isDashing
+            and self.canDash
+            and not self.isShielding
+            and not self.isHurt
+            and not self.isStunned
+            and not self.isCountering
+            and not self.dashPressedLastFrame
+        ),
 
-        move = (self.canMove
-                and not self.isDashing
-                and not self.isShielding
-                and not self.isHurt
-                and not self.isAttacking),
+        move = (
+            self.canMove
+            and not self.isDashing
+            and not self.isShielding
+            and not self.isHurt
+            and not self.isStunned
+            and not self.isAttacking
+            and not self.isCountering
+        ),
 
-        jump = (not self.isAttacking
-                and not self.isShielding
-                and not self.isHurt
-                and not self.JumpPressedLastFrame),
+        jump = (
+            not self.isAttacking
+            and not self.isShielding
+            and not self.isHurt
+            and not self.isStunned
+            and not self.isCountering
+            and not self.JumpPressedLastFrame
+        ),
 
-        downAir = (self.isJumping
-                   and not self.isAttacking
-                   and not self.isShielding
-                   and not self.isHurt)
+        downAir = (
+            self.isJumping
+            and not self.isAttacking
+            and not self.isShielding
+            and not self.isHurt
+            and not self.isStunned
+            and not self.isCountering
+        ),
+
+        counter = (
+            not self.isAttacking
+            and not self.isJumping
+            and not self.isShielding
+            and not self.isHurt
+            and not self.isStunned
+            and not self.isCountering
+            and not self.counterPressedLastFrame
+        ),
     }
+
     return conditions[action]
 end
 
