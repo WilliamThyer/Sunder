@@ -12,8 +12,8 @@ function love.load()
 
     -- Initialize players
     players = {
-        Player.createPlayer(250, 300, 1),
-        Player.createPlayer(550, 300, 2)
+        Player.createPlayer(250, 700, 1),
+        Player.createPlayer(550, 700, 2)
     }
 end
 
