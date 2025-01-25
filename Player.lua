@@ -254,7 +254,7 @@ function Player:handleAttacks(dt, otherPlayer)
     end
     if self.isLightAttacking and (self.lightAttackTimer <= self.lightAttackDuration - self.lightAttackNoDamageDuration) then
         if self:checkHit(otherPlayer, "lightAttack") then
-            otherPlayer:handleAttackEffects(self, dt, .75)
+            otherPlayer:handleAttackEffects(self, dt, .5)
         end
     end
 end
