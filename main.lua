@@ -25,8 +25,6 @@ function love.update(dt)
     local p1, p2 = players[1], players[2]
 
     p1:update(dt, p2)
-    print(p1.isAttacking)
-    print(p1.isDownAir)
     p2:update(dt, p1)
 end
 

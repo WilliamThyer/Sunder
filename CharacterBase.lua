@@ -23,9 +23,10 @@ function CharacterBase:new(x, y)
 
     -- Attack / DownAir states
     instance.isAttacking        = false
-    instance.attackTimer        = 0
-    instance.attackDuration     = 0.5
-    instance.attackNoDamageDuration = 0.25
+    instance.isHeavyAttacking = false
+    instance.heavyAttackTimer        = 0
+    instance.heavyAttackDuration     = 0.5
+    instance.heavyAttackNoDamageDuration = 0.25
     instance.isDownAir          = false
     instance.downAirDuration    = 1
     instance.downAirTimer       = 0
@@ -95,7 +96,7 @@ local function getHitbox(character, attackType)
             x      = character.x + (character.width - character.width * 0.8) / 2,
             y      = character.y + character.height
         }
-    elseif attackType == "sideAttack" then
+    elseif attackType == "heavyAttack" then
         local width = 40
         return {
             width  = width,

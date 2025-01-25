@@ -39,7 +39,7 @@ function Player:initializeAnimations()
         jump    = anim8.newAnimation(self.grid(3, 2), 1),
         idle    = anim8.newAnimation(self.grid('3-4', 6), 0.7),
         dash    = anim8.newAnimation(self.grid(1, 4), 1),
-        attack  = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.05, 0.2, 0.05, 0.1}),
+        heavyAttack  = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.05, 0.2, 0.05, 0.1}),
         downAir = anim8.newAnimation(self.attackGrid(2, '1-2'), {0.2, 0.8}),
         shield  = anim8.newAnimation(self.grid(5, 1), 1),
         hurt    = anim8.newAnimation(self.grid(3, 7), 1)
@@ -89,7 +89,7 @@ end
 function Player:getPlayerInput()
     if not self.joystick then
         return {
-            attack = false,
+            heavyAttack = false,
             jump   = false,
             dash   = false,
             shield = false,
@@ -99,7 +99,7 @@ function Player:getPlayerInput()
     end
 
     return {
-        attack = self.joystick:isGamepadDown("x"),
+        heavyAttack = self.joystick:isGamepadDown("x"),
         jump   = self.joystick:isGamepadDown("a"),
         dash   = self.joystick:isGamepadDown("rightshoulder"),
         shield = self.joystick:isGamepadDown("leftshoulder"),
@@ -125,21 +125,23 @@ function Player:processInput(dt, input)
     end
 
     -- Attacks
-    if input.down and input.attack and self:canPerformAction("downAir") then
+    if input.down and input.heavyAttack and self:canPerformAction("downAir") then
         self:triggerDownAir()
-    elseif input.attack and self:canPerformAction("attack") then
+    elseif input.heavyAttack and self:canPerformAction("heavyAttack") then
         self.isAttacking = true
-        self.attackTimer = self.attackDuration
+        self.isHeavyAttacking = true
+        self.heavyAttackTimer = self.heavyAttackDuration
 
         -- We do want the attack animation to start on frame 1
-        self.animations.attack:gotoFrame(1)
+        self.animations.heavyAttack:gotoFrame(1)
     end
-    self.attackPressedLastFrame = input.attack
+    self.attackPressedLastFrame = input.heavyAttack
 
-    if self.isAttacking then
-        self.attackTimer = self.attackTimer - dt
-        if self.attackTimer <= 0 then
+    if self.isHeavyAttacking then
+        self.heavyAttackTimer = self.heavyAttackTimer - dt
+        if self.heavyAttackTimer <= 0 then
             self.isAttacking = false
+            self.isHeavyAttacking = false
         end
     end
 
@@ -176,7 +178,11 @@ function Player:processInput(dt, input)
 
         if self.y >= self.groundY then
             self.y = self.groundY
-            self:land()
+            if self.isDownAir then
+                self:endDownAir()
+            else
+                self:land()
+            end
         end
     end
 
@@ -218,8 +224,8 @@ end
 -- Attack Handling
 --------------------------------------------------------------------------
 function Player:handleAttacks(dt, otherPlayer)
-    if self.isAttacking and (self.attackTimer <= self.attackNoDamageDuration) then
-        if self:checkHit(otherPlayer, "sideAttack") then
+    if self.isHeavyAttacking and (self.heavyAttackTimer <= self.heavyAttackNoDamageDuration) then
+        if self:checkHit(otherPlayer, "heavyAttack") then
             otherPlayer:handleAttackEffects(self, dt, 1)
         end
     end
@@ -242,10 +248,11 @@ function Player:handleDownAir(dt, otherPlayer)
         end
 
         self.downAirTimer = self.downAirTimer - dt
+        print(self.y)
         if self.downAirTimer <= 0 then
             self:endDownAir()
         elseif self.y >= self.groundY then
-            self:land()
+            self:endDownAir()
         end
     end
 end
@@ -287,16 +294,19 @@ function Player:updateAnimation(dt)
     --    6) isMoving      => move
     --    7) otherwise     => idle
     -------------------------------------------------------------------
+    if self.index == 1 then
+        print(self.isAttacking)
+        print(self.isDownAir)
+        print(self.isJumping)
+    end
     if self.isHurt then
         self.currentAnim = self.animations.hurt
     elseif self.isShielding then
         self.currentAnim = self.animations.shield
-    elseif self.isAttacking then
-        if self.isDownAir then
-            self.currentAnim = self.animations.downAir
-        else
-            self.currentAnim = self.animations.attack
-        end
+    elseif self.isHeavyAttacking then
+        self.currentAnim = self.animations.heavyAttack
+    elseif self.isDownAir then
+        self.currentAnim = self.animations.downAir
     elseif self.isDashing then
         self.currentAnim = self.animations.dash
     elseif self.isJumping then
@@ -326,7 +336,7 @@ function Player:canPerformAction(action)
         shield = (not self.isJumping
                   and not self.isHurt),
 
-        attack = (not self.isAttacking
+        heavyAttack = (not self.isAttacking
                   and not self.isShielding
                   and not self.isHurt
                   and not self.attackPressedLastFrame),
