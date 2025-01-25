@@ -252,6 +252,7 @@ function Player:processInput(dt, input)
     else
         self.idleTimer = 0
     end
+
 end
 
 function Player:handleAttacks(dt, otherPlayer)
@@ -350,7 +351,10 @@ function Player:canPerformAction(action)
                  and not self.isDashing
                  and not self.isShielding
                  and not self.isHurt
-                 and not self.isAttacking ),
+                 and (
+                    -- If on the ground and attacking, disallow movement
+                    not self.isAttacking or self.isJumping
+                )),
 
         jump = ( not self.isAttacking
                  and not self.isShielding

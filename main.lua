@@ -26,6 +26,8 @@ function love.update(dt)
 
     p1:update(dt, p2)
     p2:update(dt, p1)
+    -- print(p1.isMoving)
+    -- print(p1.currentAnim)
 end
 
 function love.draw()
