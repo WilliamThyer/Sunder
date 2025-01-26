@@ -14,8 +14,8 @@ function love.load()
 
     -- Initialize the two players
     players = {
-        Player:new(250, 700, 1),
-        Player:new(550, 700, 2)
+        Player:new(250, 300, 1),
+        Player:new(550, 300, 2)
     }
 end
 
