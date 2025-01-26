@@ -1,3 +1,4 @@
+--- player.lua ---
 local CharacterBase = require("CharacterBase")
 local anim8 = require("libraries.anim8")
 
@@ -15,7 +16,7 @@ function Player:new(x, y, joystickIndex)
     obj.attackPressedLastFrame = false
     obj.JumpPressedLastFrame   = false
     obj.dashPressedLastFrame   = false
-    obj.counterPressedLastFrame= false  -- NEW / MODIFIED
+    obj.counterPressedLastFrame= false
 
     obj:initializeAnimations()
     return obj
@@ -45,7 +46,7 @@ function Player:initializeAnimations()
         downAir      = anim8.newAnimation(self.attackGrid(2, '1-2'), {0.2, 0.8}),
         shield       = anim8.newAnimation(self.grid(5, 1), 1),
         hurt         = anim8.newAnimation(self.grid(3, 7), 1),
-        counter         = anim8.newAnimation(self.grid(4, 2), .5),
+        counter      = anim8.newAnimation(self.grid(4, 2), .5),
     }
 
     self.currentAnim = self.animations.idle
@@ -62,7 +63,8 @@ function Player:update(dt, otherPlayer)
     self:handleDownAir(dt, otherPlayer)
     self:updateHurtState(dt)
     self:resolveCollision(otherPlayer)
-    self:updateCounter(dt)          
+    self:updateCounter(dt)
+    self:updateStamina(dt)
     self:updateAnimation(dt)
 end
 
@@ -83,6 +85,12 @@ function Player:draw()
         scaleX,
         8
     )
+
+    -- Simple printing of health/stamina above each player
+    love.graphics.print("P" .. self.index .. " HP: " .. self.health .. " / " .. self.maxHealth,
+                        self.x, self.y - 30)
+    love.graphics.print("STM: " .. self.stamina .. " / " .. self.maxStamina,
+                        self.x, self.y - 15)
 end
 
 --------------------------------------------------------------------------
@@ -98,12 +106,12 @@ function Player:getPlayerInput()
             shield = false,
             moveX  = 0,
             down   = false,
-            counter= false,  
+            counter= false,
         }
     end
 
     return {
-        jump        = self.joystick:isGamepadDown("x"),  
+        jump        = self.joystick:isGamepadDown("x"),
         lightAttack = self.joystick:isGamepadDown("a"),
         heavyAttack = self.joystick:isGamepadDown("b"),
         attack      = (self.joystick:isGamepadDown("a") or self.joystick:isGamepadDown("b")),
@@ -122,12 +130,13 @@ function Player:processInput(dt, input)
     self.isIdle = true
 
     -- Shield
-    if input.shield and self:canPerformAction("shield") then
+    -- If stamina is at 0, we cannot stay shielding.
+    if input.shield and self:canPerformAction("shield") and self.stamina > 0 then
         self.canMove     = false
         self.isShielding = true
     else
-        self.isShielding = false
         self.canMove     = true
+        self.isShielding = false
     end
 
     -- Counter
@@ -140,15 +149,23 @@ function Player:processInput(dt, input)
     if input.down and input.attack and self:canPerformAction("downAir") then
         self:triggerDownAir()
     elseif input.heavyAttack and self:canPerformAction("heavyAttack") then
-        self.isAttacking       = true
-        self.isHeavyAttacking  = true
-        self.heavyAttackTimer  = self.heavyAttackDuration
-        self.animations.heavyAttack:gotoFrame(1)
+        if not self:useStamina(self.staminaMapping["heavyAttack"]) then
+            -- Not enough stamina => skip heavy attack
+        else
+            self.isAttacking       = true
+            self.isHeavyAttacking  = true
+            self.heavyAttackTimer  = self.heavyAttackDuration
+            self.animations.heavyAttack:gotoFrame(1)
+        end
     elseif input.lightAttack and self:canPerformAction("lightAttack") then
-        self.isAttacking       = true
-        self.isLightAttacking  = true
-        self.lightAttackTimer  = self.lightAttackDuration
-        self.animations.lightAttack:gotoFrame(1)
+        if not self:useStamina(self.staminaMapping["lightAttack"]) then
+            -- Not enough stamina => skip light attack
+        else
+            self.isAttacking       = true
+            self.isLightAttacking  = true
+            self.lightAttackTimer  = self.lightAttackDuration
+            self.animations.lightAttack:gotoFrame(1)
+        end
     end
     self.attackPressedLastFrame = input.attack
 
@@ -211,10 +228,13 @@ function Player:processInput(dt, input)
 
     -- Dash
     if input.dash and self:canPerformAction("dash") then
-        self.isDashing    = true
-        self.dashTimer    = self.dashDuration
-        self.dashVelocity = self.dashSpeed * self.direction
-        self.animations.dash:gotoFrame(1)
+        -- Spend stamina for dash (1)
+        if self:useStamina(1) then
+            self.isDashing    = true
+            self.dashTimer    = self.dashDuration
+            self.dashVelocity = self.dashSpeed * self.direction
+            self.animations.dash:gotoFrame(1)
+        end
     end
     self.dashPressedLastFrame = input.dash
 
@@ -247,19 +267,30 @@ end
 -- Attack Handling
 --------------------------------------------------------------------------
 function Player:handleAttacks(dt, otherPlayer)
-    if self.isHeavyAttacking and (self.heavyAttackTimer <= self.heavyAttackDuration - self.heavyAttackNoDamageDuration) then
+    -- If our heavy attack is in the damaging window
+    if self.isHeavyAttacking
+       and (self.heavyAttackTimer <= self.heavyAttackDuration - self.heavyAttackNoDamageDuration)
+    then
         if self:checkHit(otherPlayer, "heavyAttack") then
-            otherPlayer:handleAttackEffects(self, dt, 1)
+            otherPlayer:handleAttackEffects(self, dt, 1, "heavyAttack")
         end
     end
-    if self.isLightAttacking and (self.lightAttackTimer <= self.lightAttackDuration - self.lightAttackNoDamageDuration) then
+
+    -- If our light attack is in the damaging window
+    if self.isLightAttacking
+       and (self.lightAttackTimer <= self.lightAttackDuration - self.lightAttackNoDamageDuration)
+    then
         if self:checkHit(otherPlayer, "lightAttack") then
-            otherPlayer:handleAttackEffects(self, dt, .5)
+            otherPlayer:handleAttackEffects(self, dt, 0.5, "lightAttack")
         end
     end
 end
 
 function Player:triggerDownAir()
+    if not self:useStamina(self.staminaMapping['downAir']) then
+        return
+    end
+
     self.isAttacking  = true
     self.isDownAir    = true
     self.downAirTimer = self.downAirDuration
@@ -270,7 +301,7 @@ end
 function Player:handleDownAir(dt, otherPlayer)
     if self.isDownAir then
         if self:checkHit(otherPlayer, "downAir") then
-            otherPlayer:handleAttackEffects(self, dt, 0.5)
+            otherPlayer:handleAttackEffects(self, dt, 0.5, "downAir")
         end
 
         self.downAirTimer = self.downAirTimer - dt
@@ -308,24 +339,20 @@ end
 --------------------------------------------------------------------------
 -- Counter Logic
 --------------------------------------------------------------------------
--- This function is called when the player first attempts a counter.
 function Player:triggerCounter()
     self.isCountering  = true
     self.counterTimer  = self.counterDuration
-    self.counterActive = true  -- The “active” window starts immediately
+    self.counterActive = true
 end
 
--- Called once per frame to decrement timers, exit counter state, etc.
 function Player:updateCounter(dt)
     if self.isCountering then
         self.counterTimer = self.counterTimer - dt
 
-        -- If we have passed the "active window", counter is no longer active
         if self.counterTimer <= (self.counterDuration - self.counterActiveWindow) then
             self.counterActive = false
         end
 
-        -- Once the total counter duration is done, exit counter state
         if self.counterTimer <= 0 then
             self.isCountering  = false
             self.counterTimer  = 0
@@ -342,7 +369,7 @@ function Player:updateAnimation(dt)
         self.currentAnim = self.animations.hurt
     elseif self.isShielding then
         self.currentAnim = self.animations.shield
-    elseif self.isCountering then         
+    elseif self.isCountering then
         self.currentAnim = self.animations.counter
     elseif self.isHeavyAttacking then
         self.currentAnim = self.animations.heavyAttack
@@ -375,14 +402,14 @@ function Player:canPerformAction(action)
             and not self.isDashing
             and not self.isShielding
             and not self.isHurt
-            and not self.isStunned            
+            and not self.isStunned
             and not self.isCountering
         ),
 
         shield = (
             not self.isJumping
             and not self.isHurt
-            and not self.isStunned            
+            and not self.isStunned
             and not self.isCountering
         ),
 
@@ -393,6 +420,7 @@ function Player:canPerformAction(action)
             and not self.isStunned
             and not self.isCountering
             and not self.attackPressedLastFrame
+            and self.stamina >= 2
         ),
 
         lightAttack = (
@@ -402,6 +430,7 @@ function Player:canPerformAction(action)
             and not self.isStunned
             and not self.isCountering
             and not self.attackPressedLastFrame
+            and self.stamina >= 1
         ),
 
         dash = (
@@ -412,6 +441,7 @@ function Player:canPerformAction(action)
             and not self.isStunned
             and not self.isCountering
             and not self.dashPressedLastFrame
+            and self.stamina >= 1
         ),
 
         move = (
@@ -440,6 +470,7 @@ function Player:canPerformAction(action)
             and not self.isHurt
             and not self.isStunned
             and not self.isCountering
+            and self.stamina >= 2
         ),
 
         counter = (
