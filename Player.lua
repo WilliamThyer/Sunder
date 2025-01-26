@@ -383,8 +383,6 @@ end
 --------------------------------------------------------------------------
 function Player:updateAnimation(dt)
     if self.index == 1 then
-        print(self.isShieldKnockback)
-        print(self.isShielding)
     end
     if self.isHurt or self.isStunned then
         self.currentAnim = self.animations.hurt
