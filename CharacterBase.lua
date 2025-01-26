@@ -92,11 +92,11 @@ function CharacterBase:new(x, y)
     instance.maxStamina      = 10
     -- Timers to handle stamina regen
     instance.timeSinceStaminaUse     = 0
-    instance.staminaRegenDelay       = 0.5
+    instance.staminaRegenDelay       = .75
     instance.staminaRegenAccumulator = 0
-    instance.staminaRegenInterval    = 0.25
+    instance.staminaRegenInterval    = 0.3
 
-    -- [BLOCK-STUN ADDED]
+    -- Shield Knockback
     instance.isShieldKnockback  = false
     instance.shieldKnockTimer   = 0
     instance.shieldKnockDuration= .2

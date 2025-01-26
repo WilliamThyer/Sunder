@@ -3,38 +3,39 @@ if arg[#arg] == "vsc_debug" then require("lldebugger").start() end
 io.stdout:setvbuf("no")
 
 local push = require("libraries.push")
-love = require("love")  -- Global LOVE (optional)
-
+local love = require("love")
 local Player = require("Player")
 
--- Pick a 16:9 "virtual" resolution.
-local VIRTUAL_WIDTH  = 800
-local VIRTUAL_HEIGHT = 450
+-- Pick a 16:9 virtual resolution.
+local VIRTUAL_WIDTH  = 1280
+local VIRTUAL_HEIGHT = 720
 
 function love.load()
     -- Disable filtering for crisp pixels (still helps old-school look)
     love.graphics.setDefaultFilter("nearest", "nearest")
 
-    -- 1) Get user's desktop resolution
+    -- Get user's desktop resolution
     local displayWidth, displayHeight = love.window.getDesktopDimensions()
 
-    -- 2) Compute scale WITHOUT flooring, so it's not strictly integer
+    -- Compute scale WITHOUT flooring, so it's not strictly integer
     local scaleX = displayWidth  / VIRTUAL_WIDTH
     local scaleY = displayHeight / VIRTUAL_HEIGHT
     local finalScale = math.min(scaleX, scaleY)
 
-    -- 3) The actual window size is our virtual size multiplied by finalScale (rounded)
+    -- The actual window size is our virtual size multiplied by finalScale (rounded)
     local windowWidth  = math.floor(VIRTUAL_WIDTH  * finalScale + 0.5)
     local windowHeight = math.floor(VIRTUAL_HEIGHT * finalScale + 0.5)
+    -- windowWidth = 800
+    -- windowHeight = 450
 
-    -- 4) Push setup
+    -- Push setup
     push:setupScreen(
         VIRTUAL_WIDTH,
         VIRTUAL_HEIGHT,
         windowWidth,
         windowHeight,
         {
-            fullscreen   = true,
+            fullscreen   = false,
             resizable    = false,
             vsync        = true,
             pixelperfect = false, -- false => allow non-integer scale
@@ -42,10 +43,10 @@ function love.load()
         }
     )
 
-    -- Initialize your players
+    -- Initialize players
     players = {
-        Player:new(250, 300, 1),
-        Player:new(550, 300, 2)
+        Player:new(400, 600, 1),
+        Player:new(820, 600, 2)
     }
 end
 
