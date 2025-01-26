@@ -24,6 +24,12 @@ Can't walk off the edge.
 DEATH
 Player dies when they reach 0.
 
+MENU
+Players press button to get assigned 1P and 2P.
+
+AI
+Create functionality for a CPU to fight against.
+
 SOUND EFFECTS
 Dash X
 https://sfxr.me/#7dGFHBNpHZyArosfE1PakHY1mGNZdHoVohphorT2uatgSR4NiyNxxPLkheTV2vuVTbkLVyLgungHxvZAzQ9nJhEcQhzNMwu7S8KiarLsvN1UDJsMTsqcZCNo9

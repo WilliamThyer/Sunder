@@ -6,3 +6,4 @@ Local co-op and PvP 2d fighting game. Made in [LÖVE](http://love2d.org/). Work 
 
 # Assets
 [Chroma Noir](https://itch.io/s/119322/chroma-noir-bundle)
+[jsfxr](https://sfxr.me)
