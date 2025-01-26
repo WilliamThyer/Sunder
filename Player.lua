@@ -61,6 +61,30 @@ function Player:initializeAnimations()
     }
 
     self.currentAnim = self.animations.idle
+
+    self:initializeUIAnimations()
+
+end
+
+function Player:initializeUIAnimations()
+
+    self.iconSpriteSheet = love.graphics.newImage("assets/sprites/icons.png")
+
+    self.iconSprites = {
+        heart = love.graphics.newQuad(1, 1, 8, 8, self.iconSpriteSheet),
+        emptyHeart = love.graphics.newQuad(10, 1, 8, 8, self.iconSpriteSheet),
+        stamina = love.graphics.newQuad(1, 10, 8, 8, self.iconSpriteSheet),
+        emptyStamina = love.graphics.newQuad(10, 10, 8, 8, self.iconSpriteSheet)
+    }
+
+    if self.index == 2 then
+        self.iconXPos = 825
+    else 
+        self.iconXPos = 25
+    end
+    self.healthYPos = 8*2
+    self.staminaYPos = 8*8
+
 end
 
 --------------------------------------------------------------------------
@@ -97,11 +121,7 @@ function Player:draw()
         8
     )
 
-    -- Simple printing of health/stamina above each player
-    love.graphics.print("P" .. self.index .. " HP: " .. self.health .. " / " .. self.maxHealth,
-                        self.x, self.y - 30)
-    love.graphics.print("STM: " .. self.stamina .. " / " .. self.maxStamina,
-                        self.x, self.y - 15)
+    self:drawUI()
 end
 
 --------------------------------------------------------------------------
@@ -382,7 +402,7 @@ function Player:updateCounter(dt)
 end
 
 --------------------------------------------------------------------------
--- Unified Animation Update
+-- Animation Update
 --------------------------------------------------------------------------
 function Player:updateAnimation(dt)
     if self.index == 1 then
@@ -414,6 +434,34 @@ function Player:updateAnimation(dt)
     self.currentAnim:update(dt)
 end
 
+-- Draw UI Elements
+function Player:drawUI()
+    for h = 0, self.maxHealth - 1 do
+        local icon
+        if self.health > h then
+            icon = 'heart'
+        else
+            icon = 'emptyHeart'
+        end
+        local xPos = self.iconXPos + 5.5 * 8 * h
+        self:drawIcon(xPos, self.healthYPos, icon)
+    end
+
+    for s = 0, self.maxStamina - 1 do
+        local icon
+        if self.stamina > s then
+            icon = 'stamina'
+        else
+            icon = 'emptyStamina'
+        end
+        local xPos = self.iconXPos + 5.5 * 8 * s
+        self:drawIcon(xPos, self.staminaYPos, icon)
+    end
+end
+
+function Player:drawIcon(x, y, iconName)
+    love.graphics.draw(self.iconSpriteSheet, self.iconSprites[iconName], x, y, 0, 8, 8)
+end
 --------------------------------------------------------------------------
 -- Action Permissions
 --------------------------------------------------------------------------
