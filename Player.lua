@@ -13,6 +13,10 @@ function Player:new(x, y, joystickIndex)
     obj.index       = joystickIndex
     obj.joystick    = love.joystick.getJoysticks()[joystickIndex]
 
+    obj.hasHitHeavy      = false
+    obj.hasHitLight      = false
+    obj.hasHitDownAir    = false
+
     obj.attackPressedLastFrame = false
     obj.JumpPressedLastFrame   = false
     obj.dashPressedLastFrame   = false
@@ -25,16 +29,20 @@ end
 function Player:initializeAnimations()
     self.spriteSheet = love.graphics.newImage("sprites/Hero_update.png")
 
-    self.grid = anim8.newGrid(8, 8,
-                              self.spriteSheet:getWidth(),
-                              self.spriteSheet:getHeight(),
-                              0)
-    self.attackGrid = anim8.newGrid(12, 12,
-                                    self.spriteSheet:getWidth(),
-                                    self.spriteSheet:getHeight(),
-                                    8 * 6,
-                                    0
-                                )
+    self.grid = anim8.newGrid(
+        8, 8,
+        self.spriteSheet:getWidth(),
+        self.spriteSheet:getHeight(),
+        0
+    )
+
+    self.attackGrid = anim8.newGrid(
+        12, 12,
+        self.spriteSheet:getWidth(),
+        self.spriteSheet:getHeight(),
+        8 * 6,
+        0
+    )
 
     self.animations = {
         move    = anim8.newAnimation(self.grid('3-4', 1), 0.2),
@@ -61,7 +69,7 @@ function Player:update(dt, otherPlayer)
     self:processInput(dt, input)
     self:handleAttacks(dt, otherPlayer)
     self:handleDownAir(dt, otherPlayer)
-    self:updateHurtState(dt)
+    self:updateHurtState(dt)         -- includes shield-knockback update
     self:resolveCollision(otherPlayer)
     self:updateCounter(dt)
     self:updateStamina(dt)
@@ -174,6 +182,7 @@ function Player:processInput(dt, input)
         if self.heavyAttackTimer <= 0 then
             self.isAttacking = false
             self.isHeavyAttacking = false
+            self.hasHitHeavy        = false
         end
     end
 
@@ -182,6 +191,7 @@ function Player:processInput(dt, input)
         if self.lightAttackTimer <= 0 then
             self.isAttacking = false
             self.isLightAttacking = false
+            self.hasHitLight        = false
         end
     end
 
@@ -268,20 +278,22 @@ end
 --------------------------------------------------------------------------
 function Player:handleAttacks(dt, otherPlayer)
     -- If our heavy attack is in the damaging window
-    if self.isHeavyAttacking
+    if self.isHeavyAttacking and not self.hasHitHeavy
        and (self.heavyAttackTimer <= self.heavyAttackDuration - self.heavyAttackNoDamageDuration)
     then
         if self:checkHit(otherPlayer, "heavyAttack") then
             otherPlayer:handleAttackEffects(self, dt, 1, "heavyAttack")
+            self.hasHitHeavy = true
         end
     end
 
     -- If our light attack is in the damaging window
-    if self.isLightAttacking
+    if self.isLightAttacking and not self.hasHitLight
        and (self.lightAttackTimer <= self.lightAttackDuration - self.lightAttackNoDamageDuration)
     then
         if self:checkHit(otherPlayer, "lightAttack") then
             otherPlayer:handleAttackEffects(self, dt, 0.5, "lightAttack")
+            self.hasHitLight = true
         end
     end
 end
@@ -296,12 +308,16 @@ function Player:triggerDownAir()
     self.downAirTimer = self.downAirDuration
     self.gravity      = self.gravity * 1.2
     self.animations.downAir:gotoFrame(1)
+    self.hasHitDownAir = false
 end
 
 function Player:handleDownAir(dt, otherPlayer)
     if self.isDownAir then
-        if self:checkHit(otherPlayer, "downAir") then
-            otherPlayer:handleAttackEffects(self, dt, 0.5, "downAir")
+        if not self.hasHitDownAir then
+            if self:checkHit(otherPlayer, "downAir") then
+                otherPlayer:handleAttackEffects(self, dt, 0.5, "downAir")
+                self.hasHitDownAir = true
+            end
         end
 
         self.downAirTimer = self.downAirTimer - dt
@@ -316,6 +332,7 @@ end
 function Player:endDownAir()
     self.isDownAir   = false
     self.isAttacking = false
+    self.hasHitDownAir = false
     if self.isJumping then
         self:resetGravity()
     else
@@ -367,6 +384,8 @@ end
 function Player:updateAnimation(dt)
     if self.isHurt or self.isStunned then
         self.currentAnim = self.animations.hurt
+    elseif self.isShieldKnockback then  -- [BLOCK-STUN ADDED]: Show shield or similar anim?
+        self.currentAnim = self.animations.shield
     elseif self.isShielding then
         self.currentAnim = self.animations.shield
     elseif self.isCountering then
@@ -394,6 +413,11 @@ end
 -- Action Permissions
 --------------------------------------------------------------------------
 function Player:canPerformAction(action)
+    -- [BLOCK-STUN ADDED]: Disallow all actions if we are in shield knockback
+    if self.isShieldKnockback then
+        return false
+    end
+
     local conditions = {
         idle = (
             not self.isMoving

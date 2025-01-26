@@ -22,7 +22,7 @@ function CharacterBase:new(x, y)
     instance.isJumping     = false
     instance.canDoubleJump = false
 
-    -- Attack states 
+    -- Attack states
     instance.isAttacking              = false
     -- Heavy attack
     instance.isHeavyAttacking         = false
@@ -38,17 +38,18 @@ function CharacterBase:new(x, y)
     instance.isDownAir                = false
     instance.downAirDuration          = 1
     instance.downAirTimer             = 0
+
     instance.damageMapping = {
-            lightAttack = 1,
-            heavyAttack = 3,
-            downAir     = 2
-        }
+        lightAttack = 1,
+        heavyAttack = 3,
+        downAir     = 2
+    }
     instance.staminaMapping = {
-            lightAttack = 1,
-            heavyAttack = 2,
-            downAir     = 2,
-            dash = 1
-        }
+        lightAttack = 1,
+        heavyAttack = 2,
+        downAir     = 2,
+        dash        = 1
+    }
 
     -- Dash
     instance.isDashing    = false
@@ -70,12 +71,12 @@ function CharacterBase:new(x, y)
     instance.knockbackSpeed     = 0
     instance.knockbackDirection = 1
 
-    -- Idle / Movement states
+    -- Idle / Movement
     instance.isIdle    = true
     instance.isMoving  = false
     instance.idleTimer = 0
 
-    -- (Stun + Counter)
+    -- Stun + Counter
     instance.isStunned       = false
     instance.stunTimer       = 0
     instance.isCountering    = false
@@ -90,10 +91,18 @@ function CharacterBase:new(x, y)
     instance.stamina         = 10
     instance.maxStamina      = 10
     -- Timers to handle stamina regen
-    instance.timeSinceStaminaUse    = 0      -- how long since we last spent stamina
-    instance.staminaRegenDelay      = 0.5    -- wait 0.5s before regenerating
-    instance.staminaRegenAccumulator= 0      -- accumulates time after the delay
-    instance.staminaRegenInterval   = 0.25   -- gain 1 stamina every 0.25s once regen starts
+    instance.timeSinceStaminaUse     = 0
+    instance.staminaRegenDelay       = 0.5
+    instance.staminaRegenAccumulator = 0
+    instance.staminaRegenInterval    = 0.25
+
+    -- [BLOCK-STUN ADDED] Variables for shield block knockback ("block stun")
+    instance.isShieldKnockback  = false
+    instance.shieldKnockTimer   = 0
+    instance.shieldKnockDuration= 0.2
+    -- A small speed for "pushback" when successfully blocking
+    instance.shieldKnockSpeed   = instance.speed * 50
+    instance.shieldKnockDir     = 0
 
     return instance
 end
@@ -134,17 +143,7 @@ local function getHitbox(character, attackType)
             x      = character.x + (character.width - character.width * 0.8) / 2,
             y      = character.y + character.height
         }
-    elseif attackType == "heavyAttack" then
-        local width = 40
-        return {
-            width  = width,
-            height = character.height,
-            x      = (character.direction == 1)
-                        and (character.x + character.width)
-                        or  (character.x - width),
-            y      = character.y
-        }
-    elseif attackType == "lightAttack" then
+    elseif attackType == "heavyAttack" or attackType == "lightAttack" then
         local width = 40
         return {
             width  = width,
@@ -193,7 +192,7 @@ function CharacterBase:checkHit(other, attackType)
     if hit and other.isCountering and other.counterActive then
         -- If the defender is in a counter window, the attacker gets countered
         other:triggerSuccessfulCounter(self)
-        -- Return false so that the normal handleAttackEffects won't apply
+        -- Return false so that normal handleAttackEffects won't apply
         return false
     end
 
@@ -202,9 +201,18 @@ end
 
 function CharacterBase:checkShieldBlock(attacker)
     -- Shield block requires that the defender is shielding
-    -- and that the defender is facing the attacker (direction ~= attacker.direction).
+    -- AND that the defender is facing the attacker from the front 
+    -- (this example: direction is reversed from the attacker).
     local block = self.isShielding and (self.direction ~= attacker.direction)
     return block
+end
+
+local function getKnockbackDirection(defender, attacker)
+    if attacker.x < defender.x then
+        return 1   -- push defender to the right
+    else
+        return -1  -- push defender to the left
+    end
 end
 
 -- function to spend stamina
@@ -219,18 +227,13 @@ end
 
 -- function to handle stamina regeneration
 function CharacterBase:updateStamina(dt)
-    -- If we have done nothing that uses stamina for `timeSinceStaminaUse` seconds,
-    -- we start regenerating stamina.
     self.timeSinceStaminaUse = self.timeSinceStaminaUse + dt
 
     if self.timeSinceStaminaUse > self.staminaRegenDelay then
-        -- Start accumulating
         self.staminaRegenAccumulator = self.staminaRegenAccumulator + dt
-
-        -- Each time we exceed the regen interval, gain 1 stamina
         while self.staminaRegenAccumulator >= self.staminaRegenInterval do
             self.staminaRegenAccumulator = self.staminaRegenAccumulator - self.staminaRegenInterval
-            -- Only regain stamina if not at max
+            -- Only regain if not at max
             if self.stamina < self.maxStamina then
                 self.stamina = self.stamina + 1
             end
@@ -239,50 +242,49 @@ function CharacterBase:updateStamina(dt)
 end
 
 function CharacterBase:handleAttackEffects(attacker, dt, knockbackMultiplier, attackType)
-
-    
-    local damage = self.damageMapping[attackType] or 1  -- default fallback
+    local damage = self.damageMapping[attackType] or 1
 
     if not self.isHurt and not self.isInvincible then
-        -- If we are blocking
         if self:checkShieldBlock(attacker) then
-            -- Blocking costs stamina (varies by attack)
+            -- We are shielding and facing the attacker
             local shieldCostMapping = {
                 lightAttack = 1,
                 heavyAttack = 3
             }
             local blockCost = shieldCostMapping[attackType] or 1
 
-            -- If we have enough stamina to block, we reduce knockback
-            -- Otherwise, we don't block effectively (take full damage)
             if self:useStamina(blockCost) then
-                -- Partially negate knockback
+                -- [BLOCK-STUN ADDED] 
+                -- Enter shield knockback (block stun) state for a short time.
+                self.isShieldKnockback = true
+                self.shieldKnockTimer  = self.shieldKnockDuration
+                self.shieldKnockDir    = getKnockbackDirection(self, attacker)
+
+                -- Partially (or negatively) reduce direct knockback effect
+                -- so we don't do the normal "isHurt" code. 
+                -- (We do a minor push in updateHurtState instead.)
                 knockbackMultiplier = -0.5
-                -- No health lost on successful shield block
             else
-                -- Not enough stamina to keep blocking => take full damage
+                -- Not enough stamina to maintain shield => take full damage
                 self.health = math.max(0, self.health - damage)
+                self.isHurt         = true
+                self.hurtTimer      = 0.2
+                self.isInvincible   = true
+                self.invincibleTimer= 0.5
             end
         else
-            -- Not shielding => we take damage to health
+            -- Normal damage if no shield block
             self.health = math.max(0, self.health - damage)
-
             self.isHurt         = true
             self.hurtTimer      = 0.2
             self.isInvincible   = true
             self.invincibleTimer= 0.5
-            self.idleTimer      = 0
         end
 
-        -- Reset knockback each time so it doesn't keep shrinking
-        self.knockbackSpeed = self.knockbackBase * (knockbackMultiplier or 1)
+        -- Apply some initial knockback:
+        self.knockbackSpeed     = self.knockbackBase * (knockbackMultiplier or 1)
+        self.knockbackDirection = getKnockbackDirection(self, attacker)
 
-        -- Overlap-based direction to figure out push
-        local overlapLeft  = (attacker.x + attacker.width) - self.x
-        local overlapRight = (self.x + self.width) - attacker.x
-        self.knockbackDirection = (overlapLeft < overlapRight) and 1 or -1
-
-        -- Immediately apply some knockback
         self.x = self.x - self.knockbackSpeed * self.knockbackDirection * dt
     end
 end
@@ -308,9 +310,10 @@ function CharacterBase:triggerSuccessfulCounter(attacker)
 end
 
 ----------------------------------------------------------------
--- State Updates
+-- State Updates (Hurt, Invincible, Stun, ShieldKnockback)
 ----------------------------------------------------------------
 function CharacterBase:updateHurtState(dt)
+    -- Normal "hurt" state
     if self.isHurt then
         self.hurtTimer = self.hurtTimer - dt
         self.canMove   = false
@@ -323,6 +326,7 @@ function CharacterBase:updateHurtState(dt)
         end
     end
 
+    -- Invincibility timer
     if self.isInvincible then
         self.invincibleTimer = self.invincibleTimer - dt
         if self.invincibleTimer <= 0 then
@@ -330,12 +334,26 @@ function CharacterBase:updateHurtState(dt)
         end
     end
 
+    -- Stun
     if self.isStunned then
         self.stunTimer = self.stunTimer - dt
         self.canMove   = false
         if self.stunTimer <= 0 then
             self.isStunned = false
             self.canMove   = true
+        end
+    end
+
+    -- [BLOCK-STUN ADDED] Shield knockback (block stun)
+    if self.isShieldKnockback then
+        self.shieldKnockTimer = self.shieldKnockTimer - dt
+        self.canMove = false
+        -- Move slightly in the knockback direction
+        self.x = self.x - (self.shieldKnockSpeed * self.shieldKnockDir * dt)
+
+        if self.shieldKnockTimer <= 0 then
+            self.isShieldKnockback = false
+            self.canMove = true
         end
     end
 end
