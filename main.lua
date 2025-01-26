@@ -3,7 +3,7 @@ if arg[#arg] == "vsc_debug" then require("lldebugger").start() end
 io.stdout:setvbuf("no")
 
 local push = require("libraries.push")
-local love = require("love")
+love = require("love")
 local Player = require("Player")
 
 -- Pick a 16:9 virtual resolution.
