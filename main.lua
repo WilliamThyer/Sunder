@@ -10,6 +10,9 @@ local Player = require("Player")
 local VIRTUAL_WIDTH  = 1280
 local VIRTUAL_HEIGHT = 720
 
+local bigFont = love.graphics.newFont("assets/Minecraft.ttf", 32)
+love.graphics.setFont(bigFont)
+
 function love.load()
     -- Disable filtering for crisp pixels (still helps old-school look)
     love.graphics.setDefaultFilter("nearest", "nearest")

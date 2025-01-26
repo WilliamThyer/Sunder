@@ -243,6 +243,10 @@ end
 
 function CharacterBase:handleAttackEffects(attacker, dt, knockbackMultiplier, attackType)
     local damage = self.damageMapping[attackType] or 1
+    if self.isStunned then
+        damage = damage + 1
+    end
+    
     local shieldCostMapping = {
         lightAttack = 1,
         heavyAttack = 3

@@ -27,7 +27,7 @@ function Player:new(x, y, joystickIndex)
 end
 
 function Player:initializeAnimations()
-    self.spriteSheet = love.graphics.newImage("sprites/Hero_update.png")
+    self.spriteSheet = love.graphics.newImage("assets/sprites/Hero_update.png")
 
     self.grid = anim8.newGrid(
         8, 8,
