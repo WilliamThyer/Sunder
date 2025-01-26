@@ -1,37 +1,31 @@
 --- FEATURES ---
 
 DOWNAIR ATTACK
-Damage dealt = 2
-Costs = 2 stamina
 
 LIGHT ATTACK
-Damage dealt = 1
-Costs = 1 stamina
 
 HEAVY ATTACK
-Damage dealt 3
-Costs = 2 stamina
 Chargable? Each .25s charge increases damage by 1.
 
 SHIELD
-1 stamina per light attack blocked.
-3 stamina per heavy attack blocked.
-Should still knockback some. 
 
 COUNTER
-Costs = 0 stamina.
 Attack after counter does x2 damage.
 
 DASH
-Costs = 1 stamina
 
 HEALTH
-Health bar, out of 10?
-Need to implement damage by all attacks.
+Health bar.
 
 STAMINA
-Stamina bar out of 10?
-Need to implement stamina cost to all attacks.
+Stamina bar.
+
+STAGES
+Draw the floor, background, and platforms.
+Can't walk off the edge.
+
+DEATH
+Player dies when they reach 0.
 
 --- EXPERIMENTAL FEATURES ---
 
