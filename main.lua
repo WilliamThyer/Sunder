@@ -1,18 +1,48 @@
--- main.lua
--- This sets up the game environment, loads players, updates and draws them.
-
+--- main.lua ---
 if arg[#arg] == "vsc_debug" then require("lldebugger").start() end
 io.stdout:setvbuf("no")
 
--- We still need the Love2D modules
-love = require("love")  -- Globally, but you can localize if you prefer
+local push = require("libraries.push")
+love = require("love")  -- Global LOVE (optional)
 
-local Player = require("Player")  -- The new Player class (which inherits from CharacterBase)
+local Player = require("Player")
+
+-- Pick a 16:9 "virtual" resolution.
+local VIRTUAL_WIDTH  = 800
+local VIRTUAL_HEIGHT = 450
 
 function love.load()
+    -- Disable filtering for crisp pixels (still helps old-school look)
     love.graphics.setDefaultFilter("nearest", "nearest")
 
-    -- Initialize the two players
+    -- 1) Get user's desktop resolution
+    local displayWidth, displayHeight = love.window.getDesktopDimensions()
+
+    -- 2) Compute scale WITHOUT flooring, so it's not strictly integer
+    local scaleX = displayWidth  / VIRTUAL_WIDTH
+    local scaleY = displayHeight / VIRTUAL_HEIGHT
+    local finalScale = math.min(scaleX, scaleY)
+
+    -- 3) The actual window size is our virtual size multiplied by finalScale (rounded)
+    local windowWidth  = math.floor(VIRTUAL_WIDTH  * finalScale + 0.5)
+    local windowHeight = math.floor(VIRTUAL_HEIGHT * finalScale + 0.5)
+
+    -- 4) Push setup
+    push:setupScreen(
+        VIRTUAL_WIDTH,
+        VIRTUAL_HEIGHT,
+        windowWidth,
+        windowHeight,
+        {
+            fullscreen   = true,
+            resizable    = false,
+            vsync        = true,
+            pixelperfect = false, -- false => allow non-integer scale
+            stretched    = false  -- letterbox to preserve 16:9
+        }
+    )
+
+    -- Initialize your players
     players = {
         Player:new(250, 300, 1),
         Player:new(550, 300, 2)
@@ -20,17 +50,15 @@ function love.load()
 end
 
 function love.update(dt)
-    -- Update players
-    -- For a 2-player scenario:
     local p1, p2 = players[1], players[2]
-
     p1:update(dt, p2)
     p2:update(dt, p1)
 end
 
 function love.draw()
-    -- Draw players
+    push:apply("start")
     for _, player in ipairs(players) do
         player:draw()
     end
+    push:apply("end")
 end
