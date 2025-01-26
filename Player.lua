@@ -21,8 +21,10 @@ function Player:new(x, y, joystickIndex)
     obj.JumpPressedLastFrame   = false
     obj.dashPressedLastFrame   = false
     obj.counterPressedLastFrame= false
+    obj.shieldHeld = false
 
     obj:initializeAnimations()
+    obj:initializeSoundEffects()
     return obj
 end
 
@@ -85,6 +87,23 @@ function Player:initializeUIAnimations()
     self.healthYPos = 8*2
     self.staminaYPos = 8*8
 
+end
+
+function Player:initializeSoundEffects()
+    self.soundEffects = {
+        counter = love.audio.newSource("assets/soundEffects/counter.wav", "static"),
+        dash = love.audio.newSource("assets/soundEffects/dash.wav", "static"),
+        die = love.audio.newSource("assets/soundEffects/die.wav", "static"),
+        downAir = love.audio.newSource("assets/soundEffects/downAir.wav", "static"),
+        heavyAttack = love.audio.newSource("assets/soundEffects/heavyAttack.wav", "static"),
+        heavyAttackCharge = love.audio.newSource("assets/soundEffects/heavyAttackCharge.wav", "static"),
+        lightAttack = love.audio.newSource("assets/soundEffects/lightAttack.wav", "static"),
+        hitHurt = love.audio.newSource("assets/soundEffects/hitHurt.wav", "static"),
+        jump = love.audio.newSource("assets/soundEffects/jump.wav", "static"),
+        shield = love.audio.newSource("assets/soundEffects/shield.wav", "static"),
+        shieldHit = love.audio.newSource("assets/soundEffects/shieldHit.wav", "static"),
+        successfulCounter = love.audio.newSource("assets/soundEffects/successfulCounter.wav", "static")
+    }
 end
 
 --------------------------------------------------------------------------
@@ -163,11 +182,16 @@ function Player:processInput(dt, input)
     -- Shield
     -- If stamina is at 0, we cannot stay shielding.
     if input.shield and self:canPerformAction("shield") and self.stamina > 0 then
+        if self.shieldHeld == false then
+            self.soundEffects['shield']:play()
+        end
         self.canMove     = false
         self.isShielding = true
+        self.shieldHeld = true
     else
         self.canMove     = true
         self.isShielding = false
+        self.shieldHeld = false
     end
 
     -- Counter
@@ -183,6 +207,7 @@ function Player:processInput(dt, input)
         if not self:useStamina(self.staminaMapping["heavyAttack"]) then
             -- Not enough stamina => skip heavy attack
         else
+            self.soundEffects['heavyAttack']:play()
             self.isAttacking       = true
             self.isHeavyAttacking  = true
             self.heavyAttackTimer  = self.heavyAttackDuration
@@ -192,6 +217,7 @@ function Player:processInput(dt, input)
         if not self:useStamina(self.staminaMapping["lightAttack"]) then
             -- Not enough stamina => skip light attack
         else
+            self.soundEffects['lightAttack']:play()
             self.isAttacking       = true
             self.isLightAttacking  = true
             self.lightAttackTimer  = self.lightAttackDuration
@@ -230,12 +256,14 @@ function Player:processInput(dt, input)
     -- Jump
     if input.jump and self:canPerformAction("jump") then
         if not self.isJumping then
+            self.soundEffects['jump']:play()
             self.jumpVelocity   = self.jumpHeight
             self.isJumping      = true
             self.canDoubleJump  = true
             self.canDash        = true
             self.animations.jump:gotoFrame(1)
         elseif self.canDoubleJump then
+            self.soundEffects['jump']:play()
             self.isDownAir      = false
             self:resetGravity()
             self.jumpVelocity   = self.jumpHeight
@@ -263,6 +291,7 @@ function Player:processInput(dt, input)
     if input.dash and self:canPerformAction("dash") then
         -- Spend stamina for dash (1)
         if self:useStamina(1) then
+            self.soundEffects['dash']:play()
             self.isDashing    = true
             self.dashTimer    = self.dashDuration
             self.dashVelocity = self.dashSpeed * self.direction
@@ -325,7 +354,7 @@ function Player:triggerDownAir()
     if not self:useStamina(self.staminaMapping['downAir']) then
         return
     end
-
+    self.soundEffects['downAir']:play()
     self.isAttacking  = true
     self.isDownAir    = true
     self.downAirTimer = self.downAirDuration
@@ -380,6 +409,7 @@ end
 -- Counter Logic
 --------------------------------------------------------------------------
 function Player:triggerCounter()
+    self.soundEffects['counter']:play()
     self.isCountering  = true
     self.counterTimer  = self.counterDuration
     self.counterActive = true

@@ -10,15 +10,12 @@ Chargable? Each .25s charge increases damage by 1.
 SHIELD
 
 COUNTER
-Attack after counter does x2 damage.
 
 DASH
 
 HEALTH
-Health bar.
 
 STAMINA
-Stamina bar.
 
 STAGES
 Draw the floor, background, and platforms.
@@ -26,6 +23,31 @@ Can't walk off the edge.
 
 DEATH
 Player dies when they reach 0.
+
+SOUND EFFECTS
+Dash X
+https://sfxr.me/#7dGFHBNpHZyArosfE1PakHY1mGNZdHoVohphorT2uatgSR4NiyNxxPLkheTV2vuVTbkLVyLgungHxvZAzQ9nJhEcQhzNMwu7S8KiarLsvN1UDJsMTsqcZCNo9
+Jump X
+Shield X
+https://sfxr.me/#7BMHBGGk3BMHvXa2TiYm6kSzSHm6c7NnHm9xzxEG4ap7Ni1JMPvwtJBG4T4kBHxgprj3oB478rudWNfmnRVKVyP8EGeGcSYDPFvF5RcVRp95oHaxNAnGuvRcB
+Counter X
+https://sfxr.me/#7BMHBGKbHk7WAPSfGevRAZD1RRcp5sr9KTHQeVVuc1kUpZvZ8HrqGr7ZWRaRfHfobCVN1sbSXCig6G4PWpRfJmJAngrEvCCWZPjCGPahfwfqyRHBEWF2avnfR
+Successful counter X
+https://sfxr.me/#7BMHBGKbHk7WAPSfGqTDRJ2tNs5WZJMjDoXQxFdafE8b7oEkvhkjJSjbxFNBPFse4UME32dTjuqBVcZbx7PzijYBaneKDZVhJfdWKLoy9yywSZf9wsUnsfdXu
+https://sfxr.me/#111113BEDJMskm59YG3HHAbGJYYa9grne67uBJdcRDP3Wbwp6EqgQLUGnxNAwuTeB2jFJk5XW2eJ5C8gUUMeTxsLJ4EwS24pL8837YKNM2YXatAJrCqsMgEK
+Light attack X
+https://sfxr.me/#7BMHBGFmU49rWcbEuX39cvsB5QS5uqF7Kg6pbtDQ8h1guZiam8Vaqg9prDBRmh5H4hZsSBsWAdXcX7dcBZcoxAX4MBNUM3T5ah2V9KgDZ8RccczeRUfHaNdjM
+Heavy attack X
+ - Charge
+https://sfxr.me/#9Cn2L48wn78EcjD91UoDAGPjuyCVWHcq2UGwsrSTgMmTzxK9ohQdDC1xCSiK1Evu1JUXhCacJe19K5wmUZEGk821SQq7qZ1abCe2KL22P1dvrE5D5AmnWW1v7
+ - Attack
+https://sfxr.me/#8S9mNLqYzALCrNUWiSy5rQAmonvSak9AW7y6qigfjRwmSgUnKtVgk1cS5RdQwvtTNto16Uu7krkPz6Z6cnKE1jZMjV8Kms6TMpEeosUKjd9kb2tvw5MwjU599
+Down Air
+https://sfxr.me/#9Cn2L49VWR9BtHKf1ERzMcLfQYLMZY366MgAVRruG5qc4khJWyuKuja6GknxNSGhiyNJcPEmqfEdixupxeTR5rV7MUuWMoyPxU1G6Sc53pAvyyhkJLMPX7u3m
+shieldHit X
+hitHurt X
+Die X
+https://sfxr.me/#7BMHBGNhG8sMUEMg3Xa1UdWuSefiQAcWAjCP3PAxFZe7fds8nhRY7TzqG4AoZEStacoMyG1ZwaMUeZ3fNcDsBc6XM3LibdyFkD73AMuzEzMqnmpbhhbuoHLTH
 
 --- EXPERIMENTAL FEATURES ---
 

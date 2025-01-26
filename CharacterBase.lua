@@ -256,12 +256,13 @@ function CharacterBase:handleAttackEffects(attacker, dt, knockbackMultiplier, at
     if not self.isHurt and not self.isInvincible then
         if self:checkShieldBlock(attacker) and self:useStamina(blockCost) then
             -- Enter shield knockback (block stun) state for a short time.
+            self.soundEffects['shieldHit']:play()
             self.isShieldKnockback = true
             self.shieldKnockTimer  = self.shieldKnockDuration
             self.shieldKnockDir    = getKnockbackDirection(self, attacker)
             self.shieldKnockSpeed = self.shieldKnockBase * (knockbackMultiplier or 1)
         else
-            -- Not enough stamina to maintain shield => take full damage
+            self.soundEffects['hitHurt']:play()
             self.health = math.max(0, self.health - damage)
             self.isHurt         = true
             self.hurtTimer      = 0.2
@@ -281,6 +282,7 @@ end
 ----------------------------------------------------------------
 function CharacterBase:triggerSuccessfulCounter(attacker)
     -- Stop defender’s counter state
+    self.soundEffects['successfulCounter']:play()
     self.isCountering = false
     self.counterTimer = 0
     self.counterActive= false
