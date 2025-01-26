@@ -96,12 +96,12 @@ function CharacterBase:new(x, y)
     instance.staminaRegenAccumulator = 0
     instance.staminaRegenInterval    = 0.25
 
-    -- [BLOCK-STUN ADDED] Variables for shield block knockback ("block stun")
+    -- [BLOCK-STUN ADDED]
     instance.isShieldKnockback  = false
     instance.shieldKnockTimer   = 0
-    instance.shieldKnockDuration= 0.2
-    -- A small speed for "pushback" when successfully blocking
-    instance.shieldKnockSpeed   = instance.speed * 50
+    instance.shieldKnockDuration= .2
+    instance.shieldKnockBase   = instance.speed * 100
+    instance.shieldKnockSpeed   = 0
     instance.shieldKnockDir     = 0
 
     return instance
@@ -243,49 +243,32 @@ end
 
 function CharacterBase:handleAttackEffects(attacker, dt, knockbackMultiplier, attackType)
     local damage = self.damageMapping[attackType] or 1
+    local shieldCostMapping = {
+        lightAttack = 1,
+        heavyAttack = 3
+    }
+    local blockCost = shieldCostMapping[attackType] or 1
 
     if not self.isHurt and not self.isInvincible then
-        if self:checkShieldBlock(attacker) then
-            -- We are shielding and facing the attacker
-            local shieldCostMapping = {
-                lightAttack = 1,
-                heavyAttack = 3
-            }
-            local blockCost = shieldCostMapping[attackType] or 1
-
-            if self:useStamina(blockCost) then
-                -- [BLOCK-STUN ADDED] 
-                -- Enter shield knockback (block stun) state for a short time.
-                self.isShieldKnockback = true
-                self.shieldKnockTimer  = self.shieldKnockDuration
-                self.shieldKnockDir    = getKnockbackDirection(self, attacker)
-
-                -- Partially (or negatively) reduce direct knockback effect
-                -- so we don't do the normal "isHurt" code. 
-                -- (We do a minor push in updateHurtState instead.)
-                knockbackMultiplier = -0.5
-            else
-                -- Not enough stamina to maintain shield => take full damage
-                self.health = math.max(0, self.health - damage)
-                self.isHurt         = true
-                self.hurtTimer      = 0.2
-                self.isInvincible   = true
-                self.invincibleTimer= 0.5
-            end
+        if self:checkShieldBlock(attacker) and self:useStamina(blockCost) then
+            -- Enter shield knockback (block stun) state for a short time.
+            self.isShieldKnockback = true
+            self.shieldKnockTimer  = self.shieldKnockDuration
+            self.shieldKnockDir    = getKnockbackDirection(self, attacker)
+            self.shieldKnockSpeed = self.shieldKnockBase * (knockbackMultiplier or 1)
         else
-            -- Normal damage if no shield block
+            -- Not enough stamina to maintain shield => take full damage
             self.health = math.max(0, self.health - damage)
             self.isHurt         = true
             self.hurtTimer      = 0.2
             self.isInvincible   = true
             self.invincibleTimer= 0.5
+
+            -- Apply some initial knockback:
+            self.knockbackSpeed     = self.knockbackBase * (knockbackMultiplier or 1)
+            self.knockbackDirection = getKnockbackDirection(self, attacker)
+            self.x = self.x - self.knockbackSpeed * self.knockbackDirection * dt
         end
-
-        -- Apply some initial knockback:
-        self.knockbackSpeed     = self.knockbackBase * (knockbackMultiplier or 1)
-        self.knockbackDirection = getKnockbackDirection(self, attacker)
-
-        self.x = self.x - self.knockbackSpeed * self.knockbackDirection * dt
     end
 end
 
@@ -344,14 +327,15 @@ function CharacterBase:updateHurtState(dt)
         end
     end
 
-    -- [BLOCK-STUN ADDED] Shield knockback (block stun)
+    -- Shield knockback (block stun)
     if self.isShieldKnockback then
+        self.isShielding = true
         self.shieldKnockTimer = self.shieldKnockTimer - dt
         self.canMove = false
-        -- Move slightly in the knockback direction
-        self.x = self.x - (self.shieldKnockSpeed * self.shieldKnockDir * dt)
+        self.x = self.x - (self.shieldKnockSpeed * self.shieldKnockDir * dt * -1)
 
         if self.shieldKnockTimer <= 0 then
+            self.isShielding = true
             self.isShieldKnockback = false
             self.canMove = true
         end

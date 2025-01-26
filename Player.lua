@@ -69,7 +69,7 @@ function Player:update(dt, otherPlayer)
     self:processInput(dt, input)
     self:handleAttacks(dt, otherPlayer)
     self:handleDownAir(dt, otherPlayer)
-    self:updateHurtState(dt)         -- includes shield-knockback update
+    self:updateHurtState(dt)
     self:resolveCollision(otherPlayer)
     self:updateCounter(dt)
     self:updateStamina(dt)
@@ -382,9 +382,13 @@ end
 -- Unified Animation Update
 --------------------------------------------------------------------------
 function Player:updateAnimation(dt)
+    if self.index == 1 then
+        print(self.isShieldKnockback)
+        print(self.isShielding)
+    end
     if self.isHurt or self.isStunned then
         self.currentAnim = self.animations.hurt
-    elseif self.isShieldKnockback then  -- [BLOCK-STUN ADDED]: Show shield or similar anim?
+    elseif self.isShieldKnockback then
         self.currentAnim = self.animations.shield
     elseif self.isShielding then
         self.currentAnim = self.animations.shield
@@ -413,7 +417,7 @@ end
 -- Action Permissions
 --------------------------------------------------------------------------
 function Player:canPerformAction(action)
-    -- [BLOCK-STUN ADDED]: Disallow all actions if we are in shield knockback
+
     if self.isShieldKnockback then
         return false
     end
