@@ -27,34 +27,37 @@ function Player:new(x, y, joystickIndex)
 end
 
 function Player:initializeAnimations()
-    self.spriteSheet = love.graphics.newImage("assets/sprites/Hero_update.png")
+    self.spriteSheet = love.graphics.newImage("assets/sprites/hero.png")
 
     self.grid = anim8.newGrid(
         8, 8,
         self.spriteSheet:getWidth(),
         self.spriteSheet:getHeight(),
-        0
+        0, 0, 1
     )
 
+    local num_small_cols = 6
+    local col_width = 9
     self.attackGrid = anim8.newGrid(
         12, 12,
         self.spriteSheet:getWidth(),
         self.spriteSheet:getHeight(),
-        8 * 6,
-        0
+        (num_small_cols*col_width)+2,
+        0, 1
     )
 
     self.animations = {
-        move    = anim8.newAnimation(self.grid('3-4', 1), 0.2),
-        jump    = anim8.newAnimation(self.grid(3, 2), 1),
-        idle    = anim8.newAnimation(self.grid('3-4', 6), 0.7),
-        dash    = anim8.newAnimation(self.grid(1, 4), 1),
+        move    = anim8.newAnimation(self.grid(1, '1-2'), 0.2),
+        jump    = anim8.newAnimation(self.grid(1, 4), 1),
+        idle    = anim8.newAnimation(self.grid(4, '1-2'), 0.7),
+        dash    = anim8.newAnimation(self.grid(3, 1), 1),
         heavyAttack  = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.1, 0.25, 0.05, 0.1}),
-        lightAttack  = anim8.newAnimation(self.attackGrid('1-2', 5), {0.175, .325}),
-        downAir      = anim8.newAnimation(self.attackGrid(2, '1-2'), {0.2, 0.8}),
-        shield       = anim8.newAnimation(self.grid(5, 1), 1),
-        hurt         = anim8.newAnimation(self.grid(3, 7), 1),
-        counter      = anim8.newAnimation(self.grid(4, 2), .5),
+        lightAttack  = anim8.newAnimation(self.attackGrid(2, '1-2'), {0.175, .325}),
+        downAir      = anim8.newAnimation(self.attackGrid(3, '1-2'), {0.2, 0.8}),
+        shield       = anim8.newAnimation(self.grid(2, 1), 1),
+        shieldBlock       = anim8.newAnimation(self.grid(2, 2), 1),
+        hurt         = anim8.newAnimation(self.grid(5, 1), 1),
+        counter      = anim8.newAnimation(self.grid(2, 4), .5),
     }
 
     self.currentAnim = self.animations.idle
@@ -81,8 +84,8 @@ function Player:draw()
     local offsetX = (self.direction == -1) and (8 * 8) or 0
     local offsetY = 0
 
-    if self.isAttacking then
-        offsetY = -4 * 8
+    if self.isAttacking and not self.isDownAir then
+        offsetY = -3 * 8
     end
 
     self.currentAnim:draw(
@@ -387,7 +390,7 @@ function Player:updateAnimation(dt)
     if self.isHurt or self.isStunned then
         self.currentAnim = self.animations.hurt
     elseif self.isShieldKnockback then
-        self.currentAnim = self.animations.shield
+        self.currentAnim = self.animations.shieldBlock
     elseif self.isShielding then
         self.currentAnim = self.animations.shield
     elseif self.isCountering then

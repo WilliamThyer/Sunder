@@ -38,7 +38,7 @@ function love.load()
         windowWidth,
         windowHeight,
         {
-            fullscreen   = false,
+            fullscreen   = true,
             resizable    = false,
             vsync        = true,
             pixelperfect = false, -- false => allow non-integer scale
