@@ -1,4 +1,4 @@
---- CharacterBase.lua ---
+-- CharacterBase.lua
 local CharacterBase = {}
 CharacterBase.__index = CharacterBase
 
@@ -8,16 +8,16 @@ function CharacterBase:new(x, y)
     -- Position & Size
     instance.x = x or 0
     instance.y = y or 0
-    instance.width = 64
-    instance.height = 64
+    instance.width = 8 -- Base resolution units
+    instance.height = 8
     instance.groundY = instance.y
 
     instance.direction = 1
     instance.canMove   = true
-    instance.speed     = 3
-    instance.gravity   = 2250
+    instance.speed     = .75 -- Adjusted for base resolution
+    instance.gravity   = 400 -- Adjusted for base resolution
 
-    instance.jumpHeight    = -850
+    instance.jumpHeight    = -300 -- Adjusted for base resolution
     instance.jumpVelocity  = 0
     instance.isJumping     = false
     instance.canDoubleJump = false
@@ -56,7 +56,7 @@ function CharacterBase:new(x, y)
     instance.dashTimer    = 0
     instance.dashDuration = 0.06
     instance.canDash      = true
-    instance.dashSpeed    = instance.speed * 750
+    instance.dashSpeed    = instance.speed * 7.5 -- Adjusted for base resolution
     instance.dashVelocity = 0
 
     -- Shield
@@ -67,7 +67,7 @@ function CharacterBase:new(x, y)
     instance.hurtTimer          = 0
     instance.isInvincible       = false
     instance.invincibleTimer    = 0
-    instance.knockbackBase      = instance.speed * 150
+    instance.knockbackBase      = instance.speed * 1.5
     instance.knockbackSpeed     = 0
     instance.knockbackDirection = 1
 
@@ -100,7 +100,7 @@ function CharacterBase:new(x, y)
     instance.isShieldKnockback  = false
     instance.shieldKnockTimer   = 0
     instance.shieldKnockDuration= .2
-    instance.shieldKnockBase   = instance.speed * 100
+    instance.shieldKnockBase   = instance.speed * 1.0
     instance.shieldKnockSpeed   = 0
     instance.shieldKnockDir     = 0
 
@@ -144,7 +144,7 @@ local function getHitbox(character, attackType)
             y      = character.y + character.height
         }
     elseif attackType == "heavyAttack" or attackType == "lightAttack" then
-        local width = 40
+        local width = 40 / 8 -- Adjusted for base resolution
         return {
             width  = width,
             height = character.height,
@@ -162,7 +162,7 @@ local function getHitbox(character, attackType)
         }
     else
         -- Default to sideAttack
-        local width = 40
+        local width = 40 / 8 -- Adjusted for base resolution
         return {
             width  = width,
             height = character.height,
@@ -177,10 +177,10 @@ end
 function CharacterBase:checkHit(other, attackType)
     local hitbox  = getHitbox(self, attackType)
     local hurtbox = {
-        width  = 56,
-        height = 56,
-        x      = other.x + (other.width - 56) / 2,
-        y      = other.y + (other.height - 56) / 2
+        width  = 56 / 8, -- Adjusted for base resolution
+        height = 56 / 8, -- Adjusted for base resolution
+        x      = other.x + (other.width - (56 / 8)) / 2,
+        y      = other.y + (other.height - (56 / 8)) / 2
     }
 
     local hit = hitbox.x < hurtbox.x + hurtbox.width
@@ -215,17 +215,17 @@ local function getKnockbackDirection(defender, attacker)
     end
 end
 
--- function to spend stamina
+-- Function to spend stamina
 function CharacterBase:useStamina(amount)
     if self.stamina >= amount then
         self.stamina = self.stamina - amount
-        self.timeSinceStaminaUse = 0 -- reset timer so regen doesn't start immediately
+        self.timeSinceStaminaUse = 0 -- Reset timer so regen doesn't start immediately
         return true
     end
     return false
 end
 
--- function to handle stamina regeneration
+-- Function to handle stamina regeneration
 function CharacterBase:updateStamina(dt)
     self.timeSinceStaminaUse = self.timeSinceStaminaUse + dt
 

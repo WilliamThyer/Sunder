@@ -6,6 +6,7 @@ local Player = {}
 Player.__index = Player
 setmetatable(Player, { __index = CharacterBase })  -- Inherit from CharacterBase
 
+
 function Player:new(x, y, joystickIndex)
     local obj = CharacterBase:new(x, y)
     setmetatable(obj, Player)
@@ -30,23 +31,13 @@ end
 
 function Player:initializeAnimations()
     self.spriteSheet = love.graphics.newImage("assets/sprites/hero.png")
+    self.spriteSheet:setFilter("nearest", "nearest") -- Ensure no blurring
 
-    self.grid = anim8.newGrid(
-        8, 8,
-        self.spriteSheet:getWidth(),
-        self.spriteSheet:getHeight(),
-        0, 0, 1
-    )
+    -- Define grid based on sprite size at base resolution
+    self.grid = anim8.newGrid(8, 8, self.spriteSheet:getWidth(), self.spriteSheet:getHeight(), 0, 0, 1)
 
-    local num_small_cols = 6
-    local col_width = 9
-    self.attackGrid = anim8.newGrid(
-        12, 12,
-        self.spriteSheet:getWidth(),
-        self.spriteSheet:getHeight(),
-        (num_small_cols*col_width)+2,
-        0, 1
-    )
+    -- Define separate grids for different animations if necessary
+    self.attackGrid = anim8.newGrid(12, 12, self.spriteSheet:getWidth(), self.spriteSheet:getHeight())
 
     self.animations = {
         move    = anim8.newAnimation(self.grid(1, '1-2'), 0.2),
@@ -60,12 +51,11 @@ function Player:initializeAnimations()
         shieldBlock       = anim8.newAnimation(self.grid(2, 2), 1),
         hurt         = anim8.newAnimation(self.grid(5, 1), 1),
         counter      = anim8.newAnimation(self.grid(2, 4), .5),
-    }
+    } 
 
     self.currentAnim = self.animations.idle
 
     self:initializeUIAnimations()
-
 end
 
 function Player:initializeUIAnimations()
@@ -123,24 +113,31 @@ function Player:update(dt, otherPlayer)
 end
 
 function Player:draw()
-    local scaleX = 8 * self.direction
-    local offsetX = (self.direction == -1) and (8 * 8) or 0
+    -- Calculate integer positions to prevent blurriness
+    local drawX = math.floor(self.x)
+    local drawY = math.floor(self.y)
+
+    -- Flip sprite based on direction
+    local scaleX = self.direction
+    local scaleY = 1
+
+    -- Offset if necessary (e.g., for attack animations)
+    local offsetX = 0
     local offsetY = 0
 
     if self.isAttacking and not self.isDownAir then
-        offsetY = -3 * 8
+        offsetY = -3
     end
 
     self.currentAnim:draw(
         self.spriteSheet,
-        self.x + offsetX,
-        self.y + offsetY,
+        drawX + offsetX,
+        drawY + offsetY,
         0,
         scaleX,
-        8
+        scaleY
     )
 
-    self:drawUI()
 end
 
 --------------------------------------------------------------------------
