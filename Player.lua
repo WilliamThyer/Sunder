@@ -80,7 +80,7 @@ function Player:initializeUIAnimations()
     }
 
     if self.index == 2 then
-        self.iconXPos = 825
+        self.iconXPos = 975 
     else 
         self.iconXPos = 25
     end

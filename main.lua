@@ -49,21 +49,24 @@ function love.load()
 
     -- Initialize players
     players = {
-        Player:new(400, 600, 1),
-        Player:new(820, 600, 2)
+        Player:new(400, 712, 1),
+        Player:new(820, 712, 2)
     }
+
+    map = sti("assets/backgrounds/testNew.lua")
 end
 
 function love.update(dt)
     local p1, p2 = players[1], players[2]
     p1:update(dt, p2)
     p2:update(dt, p1)
+    map:update()
 end
 
 function love.draw()
-    push:apply("start")
+    map:draw(1*8,2*8+5,10,10)
     for _, player in ipairs(players) do
         player:draw()
     end
-    push:apply("end")
+
 end
