@@ -5,6 +5,7 @@ io.stdout:setvbuf("no")
 local push = require("libraries.push")
 love = require("love")
 local Player = require("Player")
+local sti = require("libraries.sti")
 
 -- Pick a 16:9 virtual resolution.
 local VIRTUAL_WIDTH  = 1280
