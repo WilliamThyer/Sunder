@@ -5,7 +5,7 @@ local anim8 = require("libraries.anim8")
 local Player = {}
 Player.__index = Player
 setmetatable(Player, { __index = CharacterBase })  -- Inherit from CharacterBase
-local CHARACTER_SCALE = 1   -- 1 => 8×8 in game space, 2 => 16×16, etc.
+local CHARACTER_SCALE = 1
 
 function Player:new(x, y, joystickIndex)
     local obj = CharacterBase:new(x, y)
@@ -61,6 +61,7 @@ function Player:initializeAnimations()
         shieldBlock       = anim8.newAnimation(self.grid(2, 2), 1),
         hurt         = anim8.newAnimation(self.grid(5, 1), 1),
         counter      = anim8.newAnimation(self.grid(2, 4), .5),
+        die = anim8.newAnimation(self.grid(6, 1), 1)
     }
 
     self.currentAnim = self.animations.idle
@@ -477,7 +478,9 @@ end
 function Player:updateAnimation(dt)
     if self.index == 1 then
     end
-    if self.isHurt or self.isStunned then
+    if self.isDead then
+        self.currentAnim = self.animations.die
+    elseif self.isHurt or self.isStunned then
         self.currentAnim = self.animations.hurt
     elseif self.isShieldKnockback then
         self.currentAnim = self.animations.shieldBlock

@@ -62,7 +62,7 @@ function love.draw()
     -- Start push
     push:start()
 
-    -- Draw Tiled map at (0,0) with NO extra scale now.
+    -- Draw Tiled map
     map:draw(0, 0)
 
     -- Draw players

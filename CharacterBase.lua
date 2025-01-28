@@ -86,6 +86,7 @@ function CharacterBase:new(x, y)
     instance.counterActive       = false
 
     -- Health & Stamina
+    instance.isDead = false
     instance.health          = 10
     instance.maxHealth       = 10
     instance.stamina         = 10
@@ -302,6 +303,17 @@ end
 -- State Updates (Hurt, Invincible, Stun, ShieldKnockback)
 ----------------------------------------------------------------
 function CharacterBase:updateHurtState(dt)
+    -- Check death
+    if self.health == 0 and not self.isDead then
+        self.isDead = true
+        self.canMove = false
+        self.soundEffects['die']:play()
+    elseif self.health == 0 then
+        self.isDead = true
+        self.canMove = false
+        self.y = -10
+    end
+
     -- Normal "hurt" state
     if self.isHurt then
         self.hurtTimer = self.hurtTimer - dt
