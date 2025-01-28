@@ -8,16 +8,16 @@ function CharacterBase:new(x, y)
     -- Position & Size
     instance.x = x or 0
     instance.y = y or 0
-    instance.width = 64
-    instance.height = 64
+    instance.width = 8
+    instance.height = 8
     instance.groundY = instance.y
 
     instance.direction = 1
     instance.canMove   = true
-    instance.speed     = 3
-    instance.gravity   = 2250
+    instance.speed     = 30
+    instance.gravity   = 400
 
-    instance.jumpHeight    = -850
+    instance.jumpHeight    = -120
     instance.jumpVelocity  = 0
     instance.isJumping     = false
     instance.canDoubleJump = false
@@ -56,7 +56,7 @@ function CharacterBase:new(x, y)
     instance.dashTimer    = 0
     instance.dashDuration = 0.06
     instance.canDash      = true
-    instance.dashSpeed    = instance.speed * 750
+    instance.dashSpeed    = 200  -- px/sec
     instance.dashVelocity = 0
 
     -- Shield
@@ -67,7 +67,7 @@ function CharacterBase:new(x, y)
     instance.hurtTimer          = 0
     instance.isInvincible       = false
     instance.invincibleTimer    = 0
-    instance.knockbackBase      = instance.speed * 150
+    instance.knockbackBase      = instance.speed * 1.5
     instance.knockbackSpeed     = 0
     instance.knockbackDirection = 1
 
@@ -144,7 +144,7 @@ local function getHitbox(character, attackType)
             y      = character.y + character.height
         }
     elseif attackType == "heavyAttack" or attackType == "lightAttack" then
-        local width = 40
+        local width = 4
         return {
             width  = width,
             height = character.height,
@@ -162,7 +162,7 @@ local function getHitbox(character, attackType)
         }
     else
         -- Default to sideAttack
-        local width = 40
+        local width = 3
         return {
             width  = width,
             height = character.height,
@@ -177,10 +177,10 @@ end
 function CharacterBase:checkHit(other, attackType)
     local hitbox  = getHitbox(self, attackType)
     local hurtbox = {
-        width  = 56,
-        height = 56,
-        x      = other.x + (other.width - 56) / 2,
-        y      = other.y + (other.height - 56) / 2
+        width  = 8,
+        height = 8,
+        x      = other.x + (other.width - 8) / 2,
+        y      = other.y + (other.height - 8) / 2
     }
 
     local hit = hitbox.x < hurtbox.x + hurtbox.width

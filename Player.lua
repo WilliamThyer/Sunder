@@ -5,6 +5,7 @@ local anim8 = require("libraries.anim8")
 local Player = {}
 Player.__index = Player
 setmetatable(Player, { __index = CharacterBase })  -- Inherit from CharacterBase
+local CHARACTER_SCALE = 1   -- 1 => 8×8 in game space, 2 => 16×16, etc.
 
 function Player:new(x, y, joystickIndex)
     local obj = CharacterBase:new(x, y)
@@ -79,13 +80,17 @@ function Player:initializeUIAnimations()
         emptyStamina = love.graphics.newQuad(10, 10, 8, 8, self.iconSpriteSheet)
     }
 
-    if self.index == 2 then
-        self.iconXPos = 975 
-    else 
-        self.iconXPos = 25
+    -- Decide positions for hearts/stamina in a 128×72 game space
+    if self.index == 1 then
+        -- top-left
+        self.iconXPos = 2
+    else
+        -- each heart is 4px wide, plus some spacing
+        -- If you have 10 hearts max, that's ~80 px total
+        self.iconXPos = 128 - (5 * self.maxHealth) - 10
     end
-    self.healthYPos = 8*2
-    self.staminaYPos = 8*8
+    self.healthYPos  = 72-6
+    self.staminaYPos = 72-11
 
 end
 
@@ -123,24 +128,61 @@ function Player:update(dt, otherPlayer)
 end
 
 function Player:draw()
-    local scaleX = 8 * self.direction
-    local offsetX = (self.direction == -1) and (8 * 8) or 0
-    local offsetY = 0
+    -- Flip horizontally if direction = -1
+    local scaleX = CHARACTER_SCALE * self.direction
+    local scaleY = CHARACTER_SCALE
 
-    if self.isAttacking and not self.isDownAir then
-        offsetY = -3 * 8
+    -- We can shift the sprite if facing left so it doesn't jump
+    -- Typically you offset the sprite by its width if flipping
+    local offsetX = 0
+    if self.direction == -1 then
+        offsetX = 8*CHARACTER_SCALE
     end
 
+    -- Some attacks you might shift up or forward a bit, but let's keep it minimal
+    local offsetY = 0
+    if self.isAttacking and not self.isDownAir then
+        offsetY = -3 * CHARACTER_SCALE  -- example
+    end
+
+    -- Draw current animation frame
     self.currentAnim:draw(
         self.spriteSheet,
         self.x + offsetX,
         self.y + offsetY,
         0,
         scaleX,
-        8
+        scaleY
     )
 
     self:drawUI()
+end
+
+-- Draw UI (Hearts/Stamina) in 128×72 space
+function Player:drawUI()
+    for h = 0, self.maxHealth - 1 do
+        local icon = (self.health > h) and 'heart' or 'emptyHeart'
+        local xPos = self.iconXPos + 6 * h
+        self:drawIcon(xPos, self.healthYPos, icon)
+    end
+
+    for s = 0, self.maxStamina - 1 do
+        local icon = (self.stamina > s) and 'stamina' or 'emptyStamina'
+        local xPos = self.iconXPos + 6 * s
+        self:drawIcon(xPos, self.staminaYPos, icon)
+    end
+end
+
+function Player:drawIcon(x, y, iconName)
+    -- You can decide how large these should be in game space
+    local UI_SCALE = 1
+    love.graphics.draw(
+        self.iconSpriteSheet,
+        self.iconSprites[iconName],
+        x, y,
+        0,
+        UI_SCALE, UI_SCALE
+    )
 end
 
 --------------------------------------------------------------------------
@@ -247,7 +289,7 @@ function Player:processInput(dt, input)
     -- Movement
     if self:canPerformAction("move") and math.abs(input.moveX) > 0.5 then
         self.isMoving  = true
-        self.x         = self.x + (input.moveX * self.speed * 2)
+        self.x         = self.x + (input.moveX * self.speed * 2 * dt)  -- note dt
         self.direction = (input.moveX > 0) and 1 or -1
     else
         self.isMoving = false
@@ -276,7 +318,7 @@ function Player:processInput(dt, input)
     if self.isJumping then
         self.y = self.y + (self.jumpVelocity * dt)
         self.jumpVelocity = self.jumpVelocity + (self.gravity * dt)
-
+        -- ground
         if self.y >= self.groundY then
             self.y = self.groundY
             if self.isDownAir then
@@ -393,7 +435,7 @@ function Player:endDownAir()
 end
 
 function Player:resetGravity()
-    self.gravity = 2250
+    self.gravity = 400
 end
 
 function Player:land()
@@ -418,11 +460,9 @@ end
 function Player:updateCounter(dt)
     if self.isCountering then
         self.counterTimer = self.counterTimer - dt
-
         if self.counterTimer <= (self.counterDuration - self.counterActiveWindow) then
             self.counterActive = false
         end
-
         if self.counterTimer <= 0 then
             self.isCountering  = false
             self.counterTimer  = 0
@@ -464,34 +504,8 @@ function Player:updateAnimation(dt)
     self.currentAnim:update(dt)
 end
 
--- Draw UI Elements
-function Player:drawUI()
-    for h = 0, self.maxHealth - 1 do
-        local icon
-        if self.health > h then
-            icon = 'heart'
-        else
-            icon = 'emptyHeart'
-        end
-        local xPos = self.iconXPos + 5.5 * 8 * h
-        self:drawIcon(xPos, self.healthYPos, icon)
-    end
 
-    for s = 0, self.maxStamina - 1 do
-        local icon
-        if self.stamina > s then
-            icon = 'stamina'
-        else
-            icon = 'emptyStamina'
-        end
-        local xPos = self.iconXPos + 5.5 * 8 * s
-        self:drawIcon(xPos, self.staminaYPos, icon)
-    end
-end
 
-function Player:drawIcon(x, y, iconName)
-    love.graphics.draw(self.iconSpriteSheet, self.iconSprites[iconName], x, y, 0, 8, 8)
-end
 --------------------------------------------------------------------------
 -- Action Permissions
 --------------------------------------------------------------------------
