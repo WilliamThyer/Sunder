@@ -7,13 +7,14 @@ setmetatable(Player, { __index = CharacterBase })
 
 local CHARACTER_SCALE = 1
 
-function Player:new(x, y, joystickIndex, world)
+function Player:new(x, y, joystickIndex, world, aiController)
     local obj = CharacterBase:new(x, y)
     setmetatable(obj, Player)
 
     obj.index     = joystickIndex
     obj.joystick  = love.joystick.getJoysticks()[joystickIndex]
     obj.world     = world  -- store reference to the bump world
+    obj.aiController = aiController
 
     obj.hasHitHeavy        = false
     obj.hasHitLight        = false
@@ -131,8 +132,7 @@ end
 -- Standard update sequence
 --------------------------------------------------------------------------
 function Player:update(dt, otherPlayer)
-    local input = self:getPlayerInput()
-
+    local input = self:getPlayerInput(dt, otherPlayer)
     self:processInput(dt, input)
     self:moveWithBump(dt)        -- <--- Bump-based environment collision
     self:handleAttacks(dt, otherPlayer)
@@ -271,7 +271,11 @@ end
 --------------------------------------------------------------------------
 -- Input
 --------------------------------------------------------------------------
-function Player:getPlayerInput()
+function Player:getPlayerInput(dt, otherPlayer)
+    -- If we have an AI controller, delegate to AI logic
+    if self.aiController then
+        return self.aiController:getInput(dt, self, otherPlayer)
+    end
     if not self.joystick then
         return {
             heavyAttack = false,
@@ -591,6 +595,7 @@ function Player:canPerformAction(action)
             and not self.isHurt
             and not self.isStunned
             and not self.isCountering
+            and not self.isAttacking
         ),
 
         heavyAttack = (

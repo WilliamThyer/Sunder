@@ -10,6 +10,7 @@ local push = require("libraries.push")
 local sti  = require("libraries.sti")
 local bump = require("libraries.bump")
 local Player = require("Player")
+local AIController = require("AIController")
 
 -- GAME RESOLUTION: small, pixel-art-friendly, 16:9 ratio
 local GAME_WIDTH  = 128
@@ -43,14 +44,16 @@ function love.load()
     map = sti("assets/backgrounds/testNew.lua", {"bump"})
     map:bump_init(world)
 
+    -- Create AI for player 2:
+    local ai = AIController:new()
+
     -- Initialize players
-    -- Place them near bottom of the map, e.g. (20, 64) and (100, 64)
     players = {
-        Player:new(20, 49, 1, world),
-        Player:new(100, 49, 2, world)
+        Player:new(20, 49, 1, world),             -- Human
+        Player:new(100, 49, 2, world, ai)        -- AI
     }
     for _, player in ipairs(players) do
-        world:add(player, player.x, player.y, player.width, player.height)
+        world:add(player, player.x+1, player.y, player.width-2, player.height-1)
     end
 end
 
