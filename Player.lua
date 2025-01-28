@@ -42,7 +42,7 @@ function Player:new(x, y, joystickIndex, world)
         -- But a simpler approach is: if other is a Player, return "cross",
         -- else "slide".
         if other.isPlayer then
-            return "touch"   -- let players overlap for combos, etc.
+            return "slide"   -- let players overlap for combos, etc.
         end
         return "slide"       -- environment collision is solid
     end
@@ -151,6 +151,7 @@ function Player:moveWithBump(dt)
     -- Compute intended (goal) positions
     local goalX = self.x
     local goalY = self.y
+    local tinyDown = 0
 
     -- Horizontal movement (walk or dash)
     if self.isDashing then
@@ -166,6 +167,10 @@ function Player:moveWithBump(dt)
         goalY = self.y + (self.jumpVelocity * dt)
         -- Update velocity by gravity
         self.jumpVelocity = self.jumpVelocity + (self.gravity * dt)
+    else
+        -- Check if we're still on solid ground
+        tinyDown = 1  -- 1 pixel
+        goalY = self.y + tinyDown
     end
 
     -- Use bump to attempt move:
@@ -179,21 +184,36 @@ function Player:moveWithBump(dt)
     -- Assign final positions
     self.x, self.y = actualX, actualY
 
-    -- Process each collision
+    -- We'll see if anything is below us
+    local foundFloor = false
+
+    -- 4) Process collisions
     for i=1, len do
         local col = cols[i]
-        local normalX, normalY = col.normal.x, col.normal.y
+        local nx, ny = col.normal.x, col.normal.y
 
-        -- normalY < 0 => the collision came from below (the tile is under the player).
-        if normalY < 0 then
-            -- LAND
-            self:land()
+        if ny < 0 then
+            -- Something is below us (tile, or another player)
+            foundFloor = true
+            if self.isDownAir then
+                self:endDownAir()
+            elseif self.isJumping then
+                self:land()
+            end
 
-        -- normalY > 0 => the collision came from above (the tile is over the player's head).
-        elseif normalY > 0 then
+        elseif ny > 0 then
+            -- Something above us => we hit our head
             self.jumpVelocity = 0
         end
+    end
 
+    -- 5) If we didn't find a floor, we're in the air
+    if not foundFloor then
+        -- Only set isJumping = true if we actually want to be in midair
+        -- (i.e., we are not on a tile or another player’s head).
+        if not self.isJumping then
+            self.isJumping = true
+        end
     end
 end
 
