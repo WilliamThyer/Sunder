@@ -7,7 +7,6 @@ setmetatable(Player, { __index = CharacterBase })
 
 local CHARACTER_SCALE = 1
 
--- Constructor updated to accept `world`
 function Player:new(x, y, joystickIndex, world)
     local obj = CharacterBase:new(x, y)
     setmetatable(obj, Player)
