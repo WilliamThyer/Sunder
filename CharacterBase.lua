@@ -101,7 +101,7 @@ function CharacterBase:new(x, y)
     instance.isShieldKnockback  = false
     instance.shieldKnockTimer   = 0
     instance.shieldKnockDuration= .2
-    instance.shieldKnockBase   = instance.speed * 100
+    instance.shieldKnockBase   = instance.speed * .8
     instance.shieldKnockSpeed   = 0
     instance.shieldKnockDir     = 0
 

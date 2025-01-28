@@ -8,7 +8,7 @@ love = require("love")
 
 local push = require("libraries.push")
 local sti  = require("libraries.sti")
-
+local bump = require("libraries.bump")
 local Player = require("Player")
 
 -- GAME RESOLUTION: small, pixel-art-friendly, 16:9 ratio
@@ -39,14 +39,19 @@ function love.load()
     )
 
     -- Load the Tiled map
-    map = sti("assets/backgrounds/testNew.lua")
+    world = bump.newWorld(8)
+    map = sti("assets/backgrounds/testNew.lua", {"bump"})
+    map:bump_init(world)
 
     -- Initialize players
     -- Place them near bottom of the map, e.g. (20, 64) and (100, 64)
     players = {
-        Player:new(20, 49, 1),
-        Player:new(100, 49, 2)
+        Player:new(20, 49, 1, world),
+        Player:new(100, 49, 2, world)
     }
+    for _, player in ipairs(players) do
+        world:add(player, player.x, player.y, player.width, player.height)
+    end
 end
 
 function love.update(dt)
@@ -63,7 +68,7 @@ function love.draw()
     push:start()
 
     -- Draw Tiled map
-    map:draw(0, 0)
+    map:draw(0, 0, 1, 1)
 
     -- Draw players
     for _, player in ipairs(players) do

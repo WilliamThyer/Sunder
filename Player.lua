@@ -1,31 +1,55 @@
---- player.lua ---
 local CharacterBase = require("CharacterBase")
-local anim8 = require("libraries.anim8")
+local anim8         = require("libraries.anim8")
 
 local Player = {}
 Player.__index = Player
-setmetatable(Player, { __index = CharacterBase })  -- Inherit from CharacterBase
+setmetatable(Player, { __index = CharacterBase })
+
 local CHARACTER_SCALE = 1
 
-function Player:new(x, y, joystickIndex)
+-- Constructor updated to accept `world`
+function Player:new(x, y, joystickIndex, world)
     local obj = CharacterBase:new(x, y)
     setmetatable(obj, Player)
 
-    obj.index       = joystickIndex
-    obj.joystick    = love.joystick.getJoysticks()[joystickIndex]
+    obj.index     = joystickIndex
+    obj.joystick  = love.joystick.getJoysticks()[joystickIndex]
+    obj.world     = world  -- store reference to the bump world
 
-    obj.hasHitHeavy      = false
-    obj.hasHitLight      = false
-    obj.hasHitDownAir    = false
+    obj.hasHitHeavy        = false
+    obj.hasHitLight        = false
+    obj.hasHitDownAir      = false
 
-    obj.attackPressedLastFrame = false
-    obj.JumpPressedLastFrame   = false
-    obj.dashPressedLastFrame   = false
-    obj.counterPressedLastFrame= false
-    obj.shieldHeld = false
+    obj.attackPressedLastFrame  = false
+    obj.JumpPressedLastFrame    = false
+    obj.dashPressedLastFrame    = false
+    obj.counterPressedLastFrame = false
+    obj.shieldHeld             = false
 
     obj:initializeAnimations()
     obj:initializeSoundEffects()
+
+    -- Bump collision filter to handle player vs. map and player vs. player
+    obj.collisionFilter = function(item, other)
+        -- If "other" is a tile or a player, decide if we "slide" or "cross."
+        -- Typically you'd check if `other` is a tile -> "slide"
+        -- and if it's another player -> "cross". 
+        --
+        -- Because STI lumps tile collision boxes into objects with .properties,
+        -- we can check something like: 
+        --    if other.properties and other.properties.collidable then ...
+        --
+        -- But a simpler approach is: if other is a Player, return "cross",
+        -- else "slide".
+        if other.isPlayer then
+            return "touch"   -- let players overlap for combos, etc.
+        end
+        return "slide"       -- environment collision is solid
+    end
+
+    -- Mark ourselves as a player for quick collision filtering
+    obj.isPlayer = true
+
     return obj
 end
 
@@ -50,65 +74,57 @@ function Player:initializeAnimations()
     )
 
     self.animations = {
-        move    = anim8.newAnimation(self.grid(1, '1-2'), 0.2),
-        jump    = anim8.newAnimation(self.grid(1, 4), 1),
-        idle    = anim8.newAnimation(self.grid(4, '1-2'), 0.7),
-        dash    = anim8.newAnimation(self.grid(3, 1), 1),
+        move         = anim8.newAnimation(self.grid(1, '1-2'), 0.2),
+        jump         = anim8.newAnimation(self.grid(1, 4), 1),
+        idle         = anim8.newAnimation(self.grid(4, '1-2'), 0.7),
+        dash         = anim8.newAnimation(self.grid(3, 1), 1),
         heavyAttack  = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.1, 0.25, 0.05, 0.1}),
         lightAttack  = anim8.newAnimation(self.attackGrid(2, '1-2'), {0.175, .325}),
         downAir      = anim8.newAnimation(self.attackGrid(3, '1-2'), {0.2, 0.8}),
         shield       = anim8.newAnimation(self.grid(2, 1), 1),
-        shieldBlock       = anim8.newAnimation(self.grid(2, 2), 1),
+        shieldBlock  = anim8.newAnimation(self.grid(2, 2), 1),
         hurt         = anim8.newAnimation(self.grid(5, 1), 1),
         counter      = anim8.newAnimation(self.grid(2, 4), .5),
-        die = anim8.newAnimation(self.grid(6, 1), 1)
+        die          = anim8.newAnimation(self.grid(6, 1), 1)
     }
 
     self.currentAnim = self.animations.idle
-
     self:initializeUIAnimations()
-
 end
 
 function Player:initializeUIAnimations()
-
     self.iconSpriteSheet = love.graphics.newImage("assets/sprites/icons.png")
 
     self.iconSprites = {
-        heart = love.graphics.newQuad(1, 1, 8, 8, self.iconSpriteSheet),
-        emptyHeart = love.graphics.newQuad(10, 1, 8, 8, self.iconSpriteSheet),
-        stamina = love.graphics.newQuad(1, 10, 8, 8, self.iconSpriteSheet),
+        heart        = love.graphics.newQuad(1, 1, 8, 8, self.iconSpriteSheet),
+        emptyHeart   = love.graphics.newQuad(10, 1, 8, 8, self.iconSpriteSheet),
+        stamina      = love.graphics.newQuad(1, 10, 8, 8, self.iconSpriteSheet),
         emptyStamina = love.graphics.newQuad(10, 10, 8, 8, self.iconSpriteSheet)
     }
 
-    -- Decide positions for hearts/stamina in a 128×72 game space
     if self.index == 1 then
-        -- top-left
         self.iconXPos = 2
     else
-        -- each heart is 4px wide, plus some spacing
-        -- If you have 10 hearts max, that's ~80 px total
         self.iconXPos = 128 - (5 * self.maxHealth) - 10
     end
-    self.healthYPos  = 72-6
-    self.staminaYPos = 72-11
-
+    self.healthYPos  = 72 - 6
+    self.staminaYPos = 72 - 11
 end
 
 function Player:initializeSoundEffects()
     self.soundEffects = {
-        counter = love.audio.newSource("assets/soundEffects/counter.wav", "static"),
-        dash = love.audio.newSource("assets/soundEffects/dash.wav", "static"),
-        die = love.audio.newSource("assets/soundEffects/die.wav", "static"),
-        downAir = love.audio.newSource("assets/soundEffects/downAir.wav", "static"),
-        heavyAttack = love.audio.newSource("assets/soundEffects/heavyAttack.wav", "static"),
-        heavyAttackCharge = love.audio.newSource("assets/soundEffects/heavyAttackCharge.wav", "static"),
-        lightAttack = love.audio.newSource("assets/soundEffects/lightAttack.wav", "static"),
-        hitHurt = love.audio.newSource("assets/soundEffects/hitHurt.wav", "static"),
-        jump = love.audio.newSource("assets/soundEffects/jump.wav", "static"),
-        shield = love.audio.newSource("assets/soundEffects/shield.wav", "static"),
-        shieldHit = love.audio.newSource("assets/soundEffects/shieldHit.wav", "static"),
-        successfulCounter = love.audio.newSource("assets/soundEffects/successfulCounter.wav", "static")
+        counter             = love.audio.newSource("assets/soundEffects/counter.wav", "static"),
+        dash                = love.audio.newSource("assets/soundEffects/dash.wav", "static"),
+        die                 = love.audio.newSource("assets/soundEffects/die.wav", "static"),
+        downAir             = love.audio.newSource("assets/soundEffects/downAir.wav", "static"),
+        heavyAttack         = love.audio.newSource("assets/soundEffects/heavyAttack.wav", "static"),
+        heavyAttackCharge   = love.audio.newSource("assets/soundEffects/heavyAttackCharge.wav", "static"),
+        lightAttack         = love.audio.newSource("assets/soundEffects/lightAttack.wav", "static"),
+        hitHurt             = love.audio.newSource("assets/soundEffects/hitHurt.wav", "static"),
+        jump                = love.audio.newSource("assets/soundEffects/jump.wav", "static"),
+        shield              = love.audio.newSource("assets/soundEffects/shield.wav", "static"),
+        shieldHit           = love.audio.newSource("assets/soundEffects/shieldHit.wav", "static"),
+        successfulCounter   = love.audio.newSource("assets/soundEffects/successfulCounter.wav", "static")
     }
 end
 
@@ -119,13 +135,66 @@ function Player:update(dt, otherPlayer)
     local input = self:getPlayerInput()
 
     self:processInput(dt, input)
+    self:moveWithBump(dt)        -- <--- Bump-based environment collision
     self:handleAttacks(dt, otherPlayer)
     self:handleDownAir(dt, otherPlayer)
     self:updateHurtState(dt)
-    self:resolveCollision(otherPlayer)
     self:updateCounter(dt)
     self:updateStamina(dt)
     self:updateAnimation(dt)
+end
+
+--------------------------------------------------------------------------
+-- The new function that moves the player using Bump
+--------------------------------------------------------------------------
+function Player:moveWithBump(dt)
+    -- Compute intended (goal) positions
+    local goalX = self.x
+    local goalY = self.y
+
+    -- Horizontal movement (walk or dash)
+    if self.isDashing then
+        goalX = self.x + (self.dashVelocity * dt)
+    elseif self.isMoving and self.canMove then
+        local inputX = self.direction -- already set in processInput
+        goalX = self.x + (inputX * self.speed * 2 * dt)
+    end
+
+    -- Vertical movement (jumping, gravity, downAir, etc.)
+    if self.isJumping then
+        -- Apply velocity
+        goalY = self.y + (self.jumpVelocity * dt)
+        -- Update velocity by gravity
+        self.jumpVelocity = self.jumpVelocity + (self.gravity * dt)
+    end
+
+    -- Use bump to attempt move:
+    local actualX, actualY, cols, len = self.world:move(
+        self,         -- item
+        goalX,
+        goalY,
+        self.collisionFilter
+    )
+
+    -- Assign final positions
+    self.x, self.y = actualX, actualY
+
+    -- Process each collision
+    for i=1, len do
+        local col = cols[i]
+        local normalX, normalY = col.normal.x, col.normal.y
+
+        -- normalY < 0 => the collision came from below (the tile is under the player).
+        if normalY < 0 then
+            -- LAND
+            self:land()
+
+        -- normalY > 0 => the collision came from above (the tile is over the player's head).
+        elseif normalY > 0 then
+            self.jumpVelocity = 0
+        end
+
+    end
 end
 
 function Player:draw()
@@ -133,20 +202,17 @@ function Player:draw()
     local scaleX = CHARACTER_SCALE * self.direction
     local scaleY = CHARACTER_SCALE
 
-    -- We can shift the sprite if facing left so it doesn't jump
-    -- Typically you offset the sprite by its width if flipping
     local offsetX = 0
     if self.direction == -1 then
-        offsetX = 8*CHARACTER_SCALE
+        offsetX = 8 * CHARACTER_SCALE
     end
 
-    -- Some attacks you might shift up or forward a bit, but let's keep it minimal
+    -- Slight offset for attacks
     local offsetY = 0
     if self.isAttacking and not self.isDownAir then
-        offsetY = -3 * CHARACTER_SCALE  -- example
+        offsetY = -3 * CHARACTER_SCALE
     end
 
-    -- Draw current animation frame
     self.currentAnim:draw(
         self.spriteSheet,
         self.x + offsetX,
@@ -159,7 +225,6 @@ function Player:draw()
     self:drawUI()
 end
 
--- Draw UI (Hearts/Stamina) in 128×72 space
 function Player:drawUI()
     for h = 0, self.maxHealth - 1 do
         local icon = (self.health > h) and 'heart' or 'emptyHeart'
@@ -175,13 +240,11 @@ function Player:drawUI()
 end
 
 function Player:drawIcon(x, y, iconName)
-    -- You can decide how large these should be in game space
     local UI_SCALE = 1
     love.graphics.draw(
         self.iconSpriteSheet,
         self.iconSprites[iconName],
-        x, y,
-        0,
+        x, y, 0,
         UI_SCALE, UI_SCALE
     )
 end
@@ -194,12 +257,12 @@ function Player:getPlayerInput()
         return {
             heavyAttack = false,
             lightAttack = false,
-            jump   = false,
-            dash   = false,
-            shield = false,
-            moveX  = 0,
-            down   = false,
-            counter= false,
+            jump        = false,
+            dash        = false,
+            shield      = false,
+            moveX       = 0,
+            down        = false,
+            counter     = false,
         }
     end
 
@@ -223,18 +286,17 @@ function Player:processInput(dt, input)
     self.isIdle = true
 
     -- Shield
-    -- If stamina is at 0, we cannot stay shielding.
     if input.shield and self:canPerformAction("shield") and self.stamina > 0 then
-        if self.shieldHeld == false then
+        if not self.shieldHeld then
             self.soundEffects['shield']:play()
         end
         self.canMove     = false
         self.isShielding = true
-        self.shieldHeld = true
+        self.shieldHeld  = true
     else
         self.canMove     = true
         self.isShielding = false
-        self.shieldHeld = false
+        self.shieldHeld  = false
     end
 
     -- Counter
@@ -247,19 +309,15 @@ function Player:processInput(dt, input)
     if input.down and input.attack and self:canPerformAction("downAir") then
         self:triggerDownAir()
     elseif input.heavyAttack and self:canPerformAction("heavyAttack") then
-        if not self:useStamina(self.staminaMapping["heavyAttack"]) then
-            -- Not enough stamina => skip heavy attack
-        else
+        if self:useStamina(self.staminaMapping["heavyAttack"]) then
             self.soundEffects['heavyAttack']:play()
-            self.isAttacking       = true
-            self.isHeavyAttacking  = true
-            self.heavyAttackTimer  = self.heavyAttackDuration
+            self.isAttacking      = true
+            self.isHeavyAttacking = true
+            self.heavyAttackTimer = self.heavyAttackDuration
             self.animations.heavyAttack:gotoFrame(1)
         end
     elseif input.lightAttack and self:canPerformAction("lightAttack") then
-        if not self:useStamina(self.staminaMapping["lightAttack"]) then
-            -- Not enough stamina => skip light attack
-        else
+        if self:useStamina(self.staminaMapping["lightAttack"]) then
             self.soundEffects['lightAttack']:play()
             self.isAttacking       = true
             self.isLightAttacking  = true
@@ -272,25 +330,25 @@ function Player:processInput(dt, input)
     if self.isHeavyAttacking then
         self.heavyAttackTimer = self.heavyAttackTimer - dt
         if self.heavyAttackTimer <= 0 then
-            self.isAttacking = false
+            self.isAttacking      = false
             self.isHeavyAttacking = false
-            self.hasHitHeavy        = false
+            self.hasHitHeavy      = false
         end
     end
 
     if self.isLightAttacking then
         self.lightAttackTimer = self.lightAttackTimer - dt
         if self.lightAttackTimer <= 0 then
-            self.isAttacking = false
-            self.isLightAttacking = false
-            self.hasHitLight        = false
+            self.isAttacking       = false
+            self.isLightAttacking  = false
+            self.hasHitLight       = false
         end
     end
 
-    -- Movement
+    -- Movement (left/right):
     if self:canPerformAction("move") and math.abs(input.moveX) > 0.5 then
         self.isMoving  = true
-        self.x         = self.x + (input.moveX * self.speed * 2 * dt)  -- note dt
+        -- set direction for flipping the sprite
         self.direction = (input.moveX > 0) and 1 or -1
     else
         self.isMoving = false
@@ -307,32 +365,17 @@ function Player:processInput(dt, input)
             self.animations.jump:gotoFrame(1)
         elseif self.canDoubleJump then
             self.soundEffects['jump']:play()
-            self.isDownAir      = false
+            self.isDownAir     = false
             self:resetGravity()
-            self.jumpVelocity   = self.jumpHeight
-            self.canDoubleJump  = false
+            self.jumpVelocity  = self.jumpHeight
+            self.canDoubleJump = false
             self.animations.jump:gotoFrame(1)
         end
     end
     self.JumpPressedLastFrame = input.jump
 
-    if self.isJumping then
-        self.y = self.y + (self.jumpVelocity * dt)
-        self.jumpVelocity = self.jumpVelocity + (self.gravity * dt)
-        -- ground
-        if self.y >= self.groundY then
-            self.y = self.groundY
-            if self.isDownAir then
-                self:endDownAir()
-            else
-                self:land()
-            end
-        end
-    end
-
     -- Dash
     if input.dash and self:canPerformAction("dash") then
-        -- Spend stamina for dash (1)
         if self:useStamina(1) then
             self.soundEffects['dash']:play()
             self.isDashing    = true
@@ -345,7 +388,6 @@ function Player:processInput(dt, input)
 
     if self.isDashing then
         self.canDash = false
-        self.x       = self.x + self.dashVelocity * dt
         self.dashTimer = self.dashTimer - dt
         if self.dashTimer <= 0 then
             if not self.isJumping then
@@ -372,7 +414,9 @@ end
 -- Attack Handling
 --------------------------------------------------------------------------
 function Player:handleAttacks(dt, otherPlayer)
-    -- If our heavy attack is in the damaging window
+    if not otherPlayer then return end
+
+    -- Heavy attack
     if self.isHeavyAttacking and not self.hasHitHeavy
        and (self.heavyAttackTimer <= self.heavyAttackDuration - self.heavyAttackNoDamageDuration)
     then
@@ -382,7 +426,7 @@ function Player:handleAttacks(dt, otherPlayer)
         end
     end
 
-    -- If our light attack is in the damaging window
+    -- Light attack
     if self.isLightAttacking and not self.hasHitLight
        and (self.lightAttackTimer <= self.lightAttackDuration - self.lightAttackNoDamageDuration)
     then
@@ -409,7 +453,7 @@ end
 function Player:handleDownAir(dt, otherPlayer)
     if self.isDownAir then
         if not self.hasHitDownAir then
-            if self:checkHit(otherPlayer, "downAir") then
+            if otherPlayer and self:checkHit(otherPlayer, "downAir") then
                 otherPlayer:handleAttackEffects(self, dt, 0.5, "downAir")
                 self.hasHitDownAir = true
             end
@@ -418,15 +462,13 @@ function Player:handleDownAir(dt, otherPlayer)
         self.downAirTimer = self.downAirTimer - dt
         if self.downAirTimer <= 0 then
             self:endDownAir()
-        elseif self.y >= self.groundY then
-            self:endDownAir()
         end
     end
 end
 
 function Player:endDownAir()
-    self.isDownAir   = false
-    self.isAttacking = false
+    self.isDownAir     = false
+    self.isAttacking   = false
     self.hasHitDownAir = false
     if self.isJumping then
         self:resetGravity()
@@ -476,8 +518,6 @@ end
 -- Animation Update
 --------------------------------------------------------------------------
 function Player:updateAnimation(dt)
-    if self.index == 1 then
-    end
     if self.isDead then
         self.currentAnim = self.animations.die
     elseif self.isHurt or self.isStunned then
@@ -507,13 +547,10 @@ function Player:updateAnimation(dt)
     self.currentAnim:update(dt)
 end
 
-
-
 --------------------------------------------------------------------------
 -- Action Permissions
 --------------------------------------------------------------------------
 function Player:canPerformAction(action)
-
     if self.isShieldKnockback then
         return false
     end
