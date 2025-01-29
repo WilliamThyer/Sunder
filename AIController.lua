@@ -2,40 +2,42 @@
 local AIController = {}
 AIController.__index = AIController
 
-local STATE_APPROACH   = "approach"
-local STATE_ATTACK     = "attack"
-local STATE_RETREAT    = "retreat"
-local STATE_DEFEND     = "defend"
-local STATE_RECOVER    = "recover"
-local STATE_JUMP_ATTACK= "jump_attack"
+-- States
+local STATE_APPROACH    = "approach"
+local STATE_ATTACK      = "attack"
+local STATE_RETREAT     = "retreat"
+local STATE_DEFEND      = "defend"
+local STATE_RECOVER     = "recover"
+local STATE_JUMP_ATTACK = "jump_attack"
 
 function AIController:new()
     local ai = {
-        currentState    = STATE_APPROACH,
-        stateTimer      = 0,   -- how long we've been in the current state
-        decisionTimer   = 1.5, -- the AI re-checks conditions every 1.5s by default
+        currentState      = STATE_APPROACH,
+        stateTimer        = 0,    -- how long we've been in the current state
+        nextDecisionChange= 1,
 
-        -- For more human-like behavior, we'll keep track of “urgency” or “aggression”
-        aggression      = 2,   -- can scale from 0 (very passive) to ~2 (very aggressive)
-        defense         = 1,   -- can scale from 0..2 as well
+        -- Behavior tuning
+        aggression        = 1, -- unused
+        defense           = 1, -- unused
 
-        -- We can store random intervals to re-check or forcibly break from states
-        nextDecisionChange = 1.5,
+        -- Stage boundaries (example: 128x72). Adjust as needed.
+        stageLeft         = 0,
+        stageRight        = 128
     }
     setmetatable(ai, AIController)
     return ai
 end
 
 --------------------------------------------------------------------------------
--- Main AI function
+-- MAIN INPUT FUNCTION
 --------------------------------------------------------------------------------
 function AIController:getInput(dt, player, opponent)
-    -- Return a table shaped like your normal joystick input
+    -- Build an input table with the same shape as your normal joystick logic
     local input = {
         jump        = false,
         lightAttack = false,
         heavyAttack = false,
-        attack      = false,
+        attack      = false, -- convenience flag
         dash        = false,
         shield      = false,
         moveX       = 0,
@@ -43,51 +45,70 @@ function AIController:getInput(dt, player, opponent)
         counter     = false
     }
 
-    -- If there's no valid opponent or if the AI is dead, do nothing
+    -- If there's no valid opponent or the AI is dead, do nothing
     if not opponent or player.isDead then
         return input
     end
 
-    -- The distance between AI and opponent
-    local distX = opponent.x - player.x
+    -- Calculate distances
+    local distX    = opponent.x - player.x
     local absDistX = math.abs(distX)
-    local distY = opponent.y - player.y
+    local distY    = opponent.y - player.y
 
-    -- The AI’s own health/stamina
     local myHealth  = player.health
     local myStamina = player.stamina
-    local maxStamina= player.maxStamina
+    local oppHealth = opponent.health
 
-    -- Opponent’s health/stamina (could be used to make strategic calls)
-    local oppHealth  = opponent.health
-    local oppStamina = opponent.stamina
-
-    -- Update how long we've been in the current state
+    -- Update time in the current state
     self.stateTimer = self.stateTimer + dt
 
-    -- Periodically re-check if we should switch states
+    -- Periodically decide if we should switch states
     self.nextDecisionChange = self.nextDecisionChange - dt
     if self.nextDecisionChange <= 0 then
         self:decideState(player, opponent)
-        -- Randomize next state check a bit for unpredictability
-        self.nextDecisionChange = 1.0 + math.random() * 1.0
+        -- Randomize the next interval
+        self.nextDecisionChange = 1.0 + math.random()
     end
 
-    -- If stamina is extremely low, switch to recover, unless we are in trouble
-    if myStamina <= 2 and not (self.currentState == STATE_DEFEND) then
+    -- If stamina is critically low, switch to recover (unless we’re already defending)
+    if myStamina <= 2 and self.currentState ~= STATE_DEFEND then
         self.currentState = STATE_RECOVER
     end
 
-    -- Execute logic based on currentState
-    if self.currentState == STATE_APPROACH then
+    ----------------------------------------------------------------------------
+    -- OVERRIDE LOGIC: if opponent stands on AI's head
+    ----------------------------------------------------------------------------
+    -- If the opponent is basically on top (within 12 px above, 8 px horizontally),
+    -- try to jump or move out.
+    if distY < 0 and math.abs(distY) < 12 and math.abs(distX) < 8 then
+        -- If not already jumping, jump
+        if not player.isJumping then
+            input.jump = true
+        else
+            -- Maybe double jump if available
+            if player.canDoubleJump and math.random() < 0.5 then
+                input.jump = true
+            else
+                -- Move away horizontally
+                input.moveX = (distX > 0) and -1 or 1
+            end
+        end
+        -- Return early since this is a special override
+        return input
+    end
+
+    ----------------------------------------------------------------------------
+    -- STATE-SPECIFIC LOGIC
+    ----------------------------------------------------------------------------
+    if     self.currentState == STATE_APPROACH    then
         self:runApproachLogic(input, distX, absDistX, player, opponent)
-    elseif self.currentState == STATE_ATTACK then
-        self:runAttackLogic(input, player, opponent, absDistX, distY)
-    elseif self.currentState == STATE_DEFEND then
-        self:runDefendLogic(input, player, opponent, absDistX)
-    elseif self.currentState == STATE_RETREAT then
-        self:runRetreatLogic(input, distX, absDistX, player)
-    elseif self.currentState == STATE_RECOVER then
+    elseif self.currentState == STATE_ATTACK      then
+        self:runAttackLogic(input, player, opponent, distX, distY)
+    elseif self.currentState == STATE_DEFEND      then
+        self:runDefendLogic(input, player, opponent, absDistX, distY)
+    elseif self.currentState == STATE_RETREAT     then
+        self:runRetreatLogic(input, distX, absDistX, player, opponent)
+    elseif self.currentState == STATE_RECOVER     then
         self:runRecoverLogic(input, player, opponent, distX, absDistX)
     elseif self.currentState == STATE_JUMP_ATTACK then
         self:runJumpAttackLogic(input, distX, distY, player, opponent)
@@ -97,32 +118,29 @@ function AIController:getInput(dt, player, opponent)
 end
 
 --------------------------------------------------------------------------------
--- State Decision
--- Called periodically to see if we should switch states.
+-- DECIDE STATE: Called periodically to see if we should switch states
 --------------------------------------------------------------------------------
 function AIController:decideState(player, opponent)
-    local distX = opponent.x - player.x
-    local absDistX = math.abs(distX)
-
-    local myHealth  = player.health
-    local myStamina = player.stamina
-    local oppHealth = opponent.health
+    local distX      = opponent.x - player.x
+    local absDistX   = math.abs(distX)
+    local myHealth   = player.health
+    local myStamina  = player.stamina
+    local oppHealth  = opponent.health
 
     local newState = self.currentState
 
-    -- If we’re dangerously low on health, maybe be more defensive
-    if myHealth < 3 then
-        -- 50% chance to defend if we are too close or if random triggers
+    -- If we’re dangerously low on health, be more defensive, but not always cornered
+    if myHealth <= 2 then
         if absDistX < 20 and math.random() < 0.5 then
             newState = STATE_DEFEND
         else
-            newState = STATE_RETREAT
+            newState = STATE_ATTACK
         end
     end
 
-    -- If we have good health & stamina, be more aggressive
-    if myHealth > 5 and myStamina >= 5 then
-        if absDistX > 30 then
+    -- If we have good health & stamina, be aggressive
+    if myHealth > 2 and myStamina >= 3 then
+        if absDistX > math.random(10,25) then
             newState = STATE_APPROACH
         else
             if math.random() < 0.5 then
@@ -133,12 +151,6 @@ function AIController:decideState(player, opponent)
         end
     end
 
-    -- If the opponent has very low health, press the advantage
-    if oppHealth <= 2 and absDistX < 40 then
-        newState = STATE_ATTACK
-    end
-
-    -- Switch states if different from current
     if newState ~= self.currentState then
         self.currentState = newState
         self.stateTimer   = 0
@@ -146,46 +158,58 @@ function AIController:decideState(player, opponent)
 end
 
 --------------------------------------------------------------------------------
--- State Logic Implementations
+-- APPROACH: Move toward the opponent
 --------------------------------------------------------------------------------
-
--- Approach: Move toward the opponent
 function AIController:runApproachLogic(input, distX, absDistX, player, opponent)
     local myStamina = player.stamina
 
     -- Move closer
     input.moveX = (distX > 0) and 1 or -1
-
-    -- Maybe dash if we have enough stamina
-    if absDistX > 40 and myStamina > 3 and math.random() < 0.02 then
-        input.dash = true
+    if math.random() < 0.2 then
+        input.jump = true
     end
 
-    -- If we’re within attack range
-    if absDistX < 20 then
-        -- 30% chance to do a light attack
-        if math.random() < 0.3 then
+    -- Possibly dash if far enough away and have stamina
+    if absDistX > 40 and myStamina > 3 then
+        local num = math.random()
+        if num < 0.5 then
+            input.dash = true
+        elseif num > 0.7 then
+            input.jump = true
+        end
+    end
+
+    -- If in close range, attempt an attack
+    if absDistX < 12 then
+        local num = math.random()
+        if num > 0.7 and myStamina >= 1 then
             input.lightAttack = true
-            input.attack = true
-        else
-            -- or a heavy
+            input.attack      = true
+        elseif num > 0.7 and myStamina >= 2 then
             input.heavyAttack = true
-            input.attack = true
+            input.attack      = true
+        elseif num > 0.5 then
+            input.shield = true
+        elseif num < 0.5 then
+            input.counter = true
         end
     end
 end
 
--- Attack: We’re in an aggressive posture. Possibly chain attacks or jump attacks.
-function AIController:runAttackLogic(input, player, opponent, absDistX, distY)
+--------------------------------------------------------------------------------
+-- ATTACK: Aggressive posture
+--------------------------------------------------------------------------------
+function AIController:runAttackLogic(input, player, opponent, distX, distY)
     local myStamina = player.stamina
+    local absDistX = math.abs(distX)
 
-    -- If we’re too far from the opponent, move in
-    if absDistX > 10 then
+    -- Move in if not close enough
+    if absDistX > 8 then
         input.moveX = (opponent.x > player.x) and 1 or -1
     end
 
-    -- If close and have stamina, choose attacks
-    if absDistX < 16 then
+    -- If very close, attempt a variety of attacks
+    if absDistX < 10 then
         local r = math.random()
         if r < 0.4 and myStamina >= 1 then
             input.lightAttack = true
@@ -194,110 +218,123 @@ function AIController:runAttackLogic(input, player, opponent, absDistX, distY)
             input.heavyAttack = true
             input.attack      = true
         else
-            -- Maybe shield to “bait” the opponent
+            -- Maybe shield briefly
             input.shield = true
+            -- Face the opponent while shielding
+            if distX > 0 then
+                input.moveX =  0.1
+            else
+                input.moveX = -0.1
+            end
         end
     end
 
-    -- Sometimes jump to confuse the player
-    if math.random() < 0.01 and not player.isJumping then
+    -- Small chance to jump to throw off the opponent
+    if math.random() < 0.2 and player.canDoubleJump then
         input.jump = true
     end
 
-    -- If we’re in the air and above them, do a down-air
+    -- If in the air and the opponent is below, do a down-air
     if player.isJumping and distY > 0 and math.random() < 0.1 then
         input.down   = true
         input.attack = true
     end
 end
 
--- Defend: We’re either low on health or expecting an incoming attack
-function AIController:runDefendLogic(input, player, opponent, absDistX)
+--------------------------------------------------------------------------------
+-- DEFEND: Low health or expect an incoming attack
+--------------------------------------------------------------------------------
+function AIController:runDefendLogic(input, player, opponent, distX, distY)
     local myStamina = player.stamina
+    local absDistX = math.abs(distX)
 
     -- If the opponent is close, shield or attempt a counter
-    if absDistX < 16 then
-        -- If we have enough stamina, hold shield
+    if absDistX < 10 then
+        -- Shield if we have stamina
         if myStamina > 0 then
             input.shield = true
+            -- Face the opponent
+            if opponent.x > player.x then
+                input.moveX =  0.1
+            else
+                input.moveX = -0.1
+            end
         end
 
         -- Occasionally attempt a counter
-        if math.random() < 0.08 then
+        if math.random() < 0.2 and not player.isJumping then
             input.counter = true
         end
 
-        -- Possibly retreat a bit
-        input.moveX = (opponent.x > player.x) and -1 or 1
+        -- Possibly move away
+        if math.random() < 0.3 then
+            input.moveX = (distX > 0) and -1 or 1
+        end
     else
-        -- If the opponent is far, maybe we can break defense
-        -- and approach or recover
-        if math.random() < 0.02 then
-            input.moveX = (opponent.x > player.x) and 1 or -1
+        -- If the opponent is far, we can relax or move slightly
+        if math.random() < 0.2 then
+            input.moveX = (distX > 0) and 1 or -1
         end
     end
 end
 
--- Retreat: Move away from the opponent
-function AIController:runRetreatLogic(input, distX, absDistX, player)
-    input.moveX = (distX > 0) and -1 or 1
-
-    -- If we have enough stamina, maybe dash away
-    if math.random() < 0.02 and player.stamina > 1 then
-        input.dash = true
-    end
-
-    -- Occasionally shield while retreating
-    if math.random() < 0.01 then
-        input.shield = true
-    end
-end
-
--- Recover: Low stamina, we do minimal actions to build it back up
+--------------------------------------------------------------------------------
+-- RECOVER: Low stamina, do minimal to regain
+--------------------------------------------------------------------------------
 function AIController:runRecoverLogic(input, player, opponent, distX, absDistX)
-    -- Try to keep distance while stamina recharges
+    -- Keep some distance so stamina can recover
     if absDistX < 25 then
         input.moveX = (distX > 0) and -1 or 1
     end
 
-    -- Possibly shield if the opponent is quite close
+    -- Possibly shield if the opponent is closing in
     if absDistX < 15 then
         input.shield = true
+        -- Face the opponent
+        if distX > 0 then
+            input.moveX =  0.1
+        else
+            input.moveX = -0.1
+        end
     end
-
-    -- Use the time to do nothing else so stamina can recover
 end
 
--- Jump Attack: A state specifically for leaping then attacking from above
+--------------------------------------------------------------------------------
+-- JUMP ATTACK: Specifically for leaping attacks
+--------------------------------------------------------------------------------
 function AIController:runJumpAttackLogic(input, distX, distY, player, opponent)
-    local absDistX = math.abs(distX)
+    local absDistX   = math.abs(distX)
+    local myStamina  = player.stamina
 
-    -- If not currently jumping, jump
-    if not player.isJumping and absDistX < 40 then
+    -- If not currently jumping, jump if in range
+    if player.canDoubleJump and absDistX < 30 then
         input.jump = true
     end
 
-    -- If we’re already in the air
+    -- Once in the air, move horizontally toward the opponent
     if player.isJumping then
-        -- Move horizontally toward the opponent to line up
         input.moveX = (distX > 0) and 1 or -1
 
-        -- If slightly above the opponent, attempt a down-air
-        if distY > 0 and math.random() < 0.2 then
+        -- If above them, do a down-air
+        local r = math.random()
+        if distY > 0 and r < 0.2 then
             input.down   = true
             input.attack = true
+        elseif r > 0.7 then
+            input.lightAttack = true
+        else
+            input.heavyAttack = true
         end
     else
-        -- If we didn’t manage to jump (maybe out of stamina),
-        -- just do a fallback approach
+        -- If we're not in the air (couldn't jump), fallback to approach or basic attack
         if absDistX > 15 then
             input.moveX = (distX > 0) and 1 or -1
         else
             -- Attack if close
-            if math.random() < 0.5 then
+            if math.random() < 0.5 and myStamina >= 1 then
                 input.lightAttack = true
                 input.attack      = true
-            else
+            elseif myStamina >= 2 then
                 input.heavyAttack = true
                 input.attack      = true
             end

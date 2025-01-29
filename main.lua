@@ -22,6 +22,8 @@ function love.load()
 
     -- Get user's desktop resolution
     local displayWidth, displayHeight = love.window.getDesktopDimensions()
+    displayWidth = 512
+    displayHeight = 288
 
     -- Decide on either fullscreen or windowed, your choice.
     -- We'll do windowed in this example:
@@ -31,7 +33,7 @@ function love.load()
         displayWidth,        -- actual window width
         displayHeight,       -- actual window height
         {
-        fullscreen   = true,
+        fullscreen   = false,
         resizable    = false,
         vsync        = true,
         pixelperfect = true,  -- ensures integer scaling

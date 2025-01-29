@@ -288,7 +288,6 @@ function Player:getPlayerInput(dt, otherPlayer)
             counter     = false,
         }
     end
-
     return {
         jump        = self.joystick:isGamepadDown("x"),
         lightAttack = self.joystick:isGamepadDown("a"),
@@ -300,6 +299,7 @@ function Player:getPlayerInput(dt, otherPlayer)
         down        = (self.joystick:getGamepadAxis("lefty") or 0) > 0.5,
         counter     = self.joystick:isGamepadDown("y")
     }
+    
 end
 
 --------------------------------------------------------------------------
