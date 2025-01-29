@@ -10,11 +10,52 @@ local STATE_DEFEND      = "defend"
 local STATE_RECOVER     = "recover"
 local STATE_JUMP_ATTACK = "jump_attack"
 
+-- Example combos
+local COMBOS = {
+    {
+        name = "Double Jump Dash DownAir",
+        steps = {
+            { duration = 0.2, input = { jump = true } },
+            { duration = 0.3, input = { jump = true } },
+            { duration = 0.2, input = { dash = true } },
+            { duration = 0.4, input = { down = true, attack = true } }
+        }
+    },
+    {
+        name = "Dash Light Attack",
+        steps = {
+            { duration = 0.3, input = { dash = true } },
+            { duration = 0.2, input = { lightAttack = true, attack = true } }
+        }
+    },
+    {
+        name = "Shield Counter Heavy",
+        steps = {
+            { duration = 0.4, input = { shield = true } },
+            { duration = 0.2, input = { counter = true } },
+            { duration = 0.3, input = { heavyAttack = true, attack = true } }
+        }
+    },
+    {
+        name = "Jump Dash Jump Heavy",
+        steps = {
+            { duration = 0.2, input = { jump = true } },
+            { duration = 0.3, input = { dash = true } },
+            { duration = 0.2, input = { jump = true } },
+            { duration = 0.4, input = { heavyAttack = true, attack = true } }
+        }
+    }
+}
+
 function AIController:new()
     local ai = {
         currentState      = STATE_APPROACH,
         stateTimer        = 0,    -- how long we've been in the current state
         nextDecisionChange= 1,
+
+        activeCombo       = nil,
+        comboStepIndex    = 1,
+        comboStepTime     = 0,
 
         -- Behavior tuning
         aggression        = 1, -- unused
@@ -81,17 +122,11 @@ function AIController:getInput(dt, player, opponent)
     -- If the opponent is basically on top (within 12 px above, 8 px horizontally),
     -- try to jump or move out.
     if distY < 0 and math.abs(distY) < 12 and math.abs(distX) < 8 then
-        -- If not already jumping, jump
-        if not player.isJumping then
-            input.jump = true
+        -- Move away horizontally
+        if myStamina > 2 and math.random() < .2 then
+            input.dash = true
         else
-            -- Maybe double jump if available
-            if player.canDoubleJump and math.random() < 0.5 then
-                input.jump = true
-            else
-                -- Move away horizontally
-                input.moveX = (distX > 0) and -1 or 1
-            end
+            input.moveX = (distX > 0) and -1 or 1
         end
         -- Return early since this is a special override
         return input
