@@ -495,11 +495,7 @@ function Player:endDownAir()
     self.isDownAir     = false
     self.isAttacking   = false
     self.hasHitDownAir = false
-    if self.isJumping then
-        self:resetGravity()
-    else
-        self:land()
-    end
+    self:land()
 end
 
 function Player:resetGravity()
@@ -641,7 +637,7 @@ function Player:canPerformAction(action)
             and not self.isDashing
             and not self.isHurt
             and not self.isStunned
-            and not self.isAttacking
+            and (not self.isAttacking or self.isJumping)
             and not self.isCountering
         ),
 
