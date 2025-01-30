@@ -200,10 +200,10 @@ function AIController:getInput(dt, player, opponent)
     if not self.activeSequence then
         self:decideAction(player, opponent)
 
-        if player.index == 2 then
-            print(self.activeSequence.name)
+        -- if player.index == 2 then
+        --     print(self.activeSequence.name)
             -- self:startSequence("Jump HeavyAttack")
-        end
+        -- end
     end
 
     self:runSequenceLogic(dt, input, player, opponent)
