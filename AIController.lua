@@ -1,84 +1,144 @@
--- AIController.lua
 local AIController = {}
 AIController.__index = AIController
 
--- States
-local STATE_APPROACH    = "approach"
-local STATE_ATTACK      = "attack"
-local STATE_RETREAT     = "retreat"
-local STATE_DEFEND      = "defend"
-local STATE_RECOVER     = "recover"
-local STATE_JUMP_ATTACK = "jump_attack"
+-- A library of “sequences” (aka combos).
+-- Each sequence has a `name` and a list of `steps`.
+-- Each step has:
+--   duration = how long (in seconds) to hold these inputs
+--   input    = table of input flags to apply
+-- 
+-- To allow simple “faceOpponent” or “awayFromOpponent,”
+-- we’ll use special strings in `moveX` that we interpret in code.
 
--- Example combos
-local COMBOS = {
+local SEQUENCES = {
+    -- 1) Single-step “Retreat”
     {
-        name = "Double Jump Dash DownAir",
-        steps = {
-            { duration = 0.2, input = { jump = true } },
-            { duration = 0.3, input = { jump = true } },
-            { duration = 0.2, input = { dash = true } },
-            { duration = 0.4, input = { down = true, attack = true } }
-        }
+      name = "Retreat",
+      steps = {
+        -- Move away from opponent for 0.8s
+        { duration = 0.3, input = { moveX = "awayFromOpponent" } }
+      }
     },
+    -- 2) Single-step “Approach”
     {
-        name = "Dash Light Attack",
-        steps = {
-            { duration = 0.3, input = { dash = true } },
-            { duration = 0.2, input = { lightAttack = true, attack = true } }
-        }
+      name = "Approach",
+      steps = {
+        -- Move toward opponent for 0.8s
+        { duration = 0.3, input = { moveX = "faceOpponent" } }
+      }
     },
+
+    ----------------------------------------------------------------------------
+    -- Mid-range sequences (distX < 40 and distX > 10)
+    ----------------------------------------------------------------------------
+
+    -- 3) Dash + Light Attack
     {
-        name = "Shield Counter Heavy",
-        steps = {
-            { duration = 0.4, input = { shield = true } },
-            { duration = 0.2, input = { counter = true } },
-            { duration = 0.3, input = { heavyAttack = true, attack = true } }
-        }
+      name = "Dash Light Attack",
+      steps = {
+        { duration = 0.3, input = { dash = true } },
+        { duration = 0.2, input = { lightAttack = true, attack = true } }
+      }
     },
+    -- 4) Jump + Dash + Heavy Attack
     {
-        name = "Jump Dash Jump Heavy",
-        steps = {
-            { duration = 0.2, input = { jump = true } },
-            { duration = 0.3, input = { dash = true } },
-            { duration = 0.2, input = { jump = true } },
-            { duration = 0.4, input = { heavyAttack = true, attack = true } }
-        }
-    }
+      name = "Jump Dash Heavy Attack",
+      steps = {
+        { duration = 0.2, input = { jump = true, moveX = "faceOpponent" } },
+        { duration = 0.3, input = { dash = true } },
+        { duration = 0.3, input = { heavyAttack = true, attack = true } }
+      }
+    },
+    -- 5) Double Jump + Dash + Down-Air
+    {
+      name = "Double Jump Dash DownAir",
+      steps = {
+        { duration = 0.2, input = { jump = true, moveX = "faceOpponent"} },
+        { duration = 0.3, input = { jump = true} },
+        { duration = 0.06, input = { dash = true } },
+        { duration = 0.4, input = { down = true, attack = true } }
+      }
+    },
+
+    ----------------------------------------------------------------------------
+    -- Close-range sequences (distX < 10)
+    ----------------------------------------------------------------------------
+
+    -- 6) Shield only (simulate “30% chance” by picking it randomly among others)
+    {
+      name = "ShieldOnly",
+      steps = {
+        { duration = 0.01, input = { moveX = "faceOpponent" } },
+        { duration = 0.1, input = { shield = true } }
+      }
+    },
+    -- 7) Shield + Counter + Heavy Attack
+    {
+      name = "Shield Counter Heavy",
+      steps = {
+        { duration = 0.01, input = { moveX = "faceOpponent" } },
+        { duration = 0.1, input = { shield = true } },
+        { duration = 0.6, input = { counter = true } },
+        { duration = 0.4, input = { heavyAttack = true, attack = true } }
+      }
+    },
+    -- 8) Double Jump + Down Air
+    {
+      name = "DoubleJump DownAir",
+      steps = {
+        { duration = 0.2, input = { jump = true } },
+        { duration = 0.05, input = { moveX = "faceOpponent" } },
+        { duration = 0.2, input = { jump = true } },
+        { duration = 0.4, input = { down = true, attack = true } },
+      }
+    },
+    -- 9) Light Attack + Dash Away
+    {
+      name = "LightAttack DashAway",
+      steps = {
+        { duration = 0.4, input = { lightAttack = true, attack = true } },
+        { duration = 0.01, input = { moveX = "awayFromOpponent" } },
+        { duration = 0.06, input = { dash = true } }
+      }
+    },
+    -- 10) Light Attack + Shield + Heavy Attack
+    {
+      name = "LightAttack Shield Heavy",
+      steps = {
+        { duration = 0.01, input = { moveX = "faceOpponent" } },
+        { duration = 0.4, input = { lightAttack = true, attack = true } },
+        { duration = 0.2, input = { shield = true } },
+        { duration = 0.5, input = { heavyAttack = true, attack = true } }
+      }
+    },
 }
 
+--------------------------------------------------------------------------------
+-- AIController
+--------------------------------------------------------------------------------
 function AIController:new()
     local ai = {
-        currentState      = STATE_APPROACH,
-        stateTimer        = 0,    -- how long we've been in the current state
-        nextDecisionChange= 1,
+        -- Sequence-related tracking
+        activeSequence = nil,  -- The currently executing sequence (table)
+        stepIndex      = 1,    -- Which step in the sequence we’re on
+        stepTime       = 0,    -- How long we’ve been in the current step
+        nextDecisionTime = 0,  -- When to pick a new action if idle
 
-        activeCombo       = nil,
-        comboStepIndex    = 1,
-        comboStepTime     = 0,
-
-        -- Behavior tuning
-        aggression        = 1, -- unused
-        defense           = 1, -- unused
-
-        -- Stage boundaries (example: 128x72). Adjust as needed.
-        stageLeft         = 0,
-        stageRight        = 128
+        -- Stage boundaries, etc.
+        stageLeft  = 0,
+        stageRight = 128
     }
     setmetatable(ai, AIController)
     return ai
 end
 
---------------------------------------------------------------------------------
--- MAIN INPUT FUNCTION
---------------------------------------------------------------------------------
 function AIController:getInput(dt, player, opponent)
-    -- Build an input table with the same shape as your normal joystick logic
+    -- Blank input each frame
     local input = {
         jump        = false,
         lightAttack = false,
         heavyAttack = false,
-        attack      = false, -- convenience flag
+        attack      = false,
         dash        = false,
         shield      = false,
         moveX       = 0,
@@ -86,294 +146,153 @@ function AIController:getInput(dt, player, opponent)
         counter     = false
     }
 
-    -- If there's no valid opponent or the AI is dead, do nothing
-    if not opponent or player.isDead then
+    -- If there's no valid opponent or AI is dead, do nothing
+    if (not opponent) or player.isDead then
         return input
     end
 
-    -- Calculate distances
-    local distX    = opponent.x - player.x
-    local absDistX = math.abs(distX)
-    local distY    = opponent.y - player.y
-
-    local myHealth  = player.health
-    local myStamina = player.stamina
-    local oppHealth = opponent.health
-
-    -- Update time in the current state
-    self.stateTimer = self.stateTimer + dt
-
-    -- Periodically decide if we should switch states
-    self.nextDecisionChange = self.nextDecisionChange - dt
-    if self.nextDecisionChange <= 0 then
-        self:decideState(player, opponent)
-        -- Randomize the next interval
-        self.nextDecisionChange = 1.0 + math.random()
-    end
-
-    -- If stamina is critically low, switch to recover (unless we’re already defending)
-    if myStamina <= 2 and self.currentState ~= STATE_DEFEND then
-        self.currentState = STATE_RECOVER
-    end
-
-    ----------------------------------------------------------------------------
-    -- OVERRIDE LOGIC: if opponent stands on AI's head
-    ----------------------------------------------------------------------------
-    -- If the opponent is basically on top (within 12 px above, 8 px horizontally),
-    -- try to jump or move out.
-    if distY < 0 and math.abs(distY) < 12 and math.abs(distX) < 8 then
-        -- Move away horizontally
-        if myStamina > 2 and math.random() < .2 then
-            input.dash = true
-        else
-            input.moveX = (distX > 0) and -1 or 1
-        end
-        -- Return early since this is a special override
+    -- If we are currently running a sequence, continue that
+    if self.activeSequence then
+        self:runSequenceLogic(dt, input, player, opponent)
         return input
     end
 
-    ----------------------------------------------------------------------------
-    -- STATE-SPECIFIC LOGIC
-    ----------------------------------------------------------------------------
-    if     self.currentState == STATE_APPROACH    then
-        self:runApproachLogic(input, distX, absDistX, player, opponent)
-    elseif self.currentState == STATE_ATTACK      then
-        self:runAttackLogic(input, player, opponent, distX, distY)
-    elseif self.currentState == STATE_DEFEND      then
-        self:runDefendLogic(input, player, opponent, absDistX, distY)
-    elseif self.currentState == STATE_RETREAT     then
-        self:runRetreatLogic(input, distX, absDistX, player, opponent)
-    elseif self.currentState == STATE_RECOVER     then
-        self:runRecoverLogic(input, player, opponent, distX, absDistX)
-    elseif self.currentState == STATE_JUMP_ATTACK then
-        self:runJumpAttackLogic(input, distX, distY, player, opponent)
+    -- Otherwise, if enough time has passed to pick a new action, decide now
+    self.nextDecisionTime = self.nextDecisionTime - dt
+    if self.nextDecisionTime <= 0 then
+        self:decideAction(player, opponent)
+        -- If we *did* pick a sequence, the next frame runSequenceLogic will apply
     end
 
+    -- For safety, return input (still blank if we’re between sequences)
     return input
 end
 
 --------------------------------------------------------------------------------
--- DECIDE STATE: Called periodically to see if we should switch states
+-- DECIDE ACTION: A simpler approach using your conditions and picking sequences
 --------------------------------------------------------------------------------
-function AIController:decideState(player, opponent)
-    local distX      = opponent.x - player.x
-    local absDistX   = math.abs(distX)
-    local myHealth   = player.health
-    local myStamina  = player.stamina
-    local oppHealth  = opponent.health
-
-    local newState = self.currentState
-
-    -- If we’re dangerously low on health, be more defensive, but not always cornered
-    if myHealth <= 2 then
-        if absDistX < 20 and math.random() < 0.5 then
-            newState = STATE_DEFEND
-        else
-            newState = STATE_ATTACK
-        end
-    end
-
-    -- If we have good health & stamina, be aggressive
-    if myHealth > 2 and myStamina >= 3 then
-        if absDistX > math.random(10,25) then
-            newState = STATE_APPROACH
-        else
-            if math.random() < 0.5 then
-                newState = STATE_ATTACK
-            else
-                newState = STATE_JUMP_ATTACK
-            end
-        end
-    end
-
-    if newState ~= self.currentState then
-        self.currentState = newState
-        self.stateTimer   = 0
-    end
-end
-
---------------------------------------------------------------------------------
--- APPROACH: Move toward the opponent
---------------------------------------------------------------------------------
-function AIController:runApproachLogic(input, distX, absDistX, player, opponent)
+function AIController:decideAction(player, opponent)
+    local distX     = opponent.x - player.x
+    local absDistX  = math.abs(distX)
     local myStamina = player.stamina
 
-    -- Move closer
-    input.moveX = (distX > 0) and 1 or -1
-    if math.random() < 0.2 then
-        input.jump = true
-    end
+    if myStamina < 2 then
+        -- 1) “Retreat”
+        self:startSequence("Retreat")
 
-    -- Possibly dash if far enough away and have stamina
-    if absDistX > 40 and myStamina > 3 then
-        local num = math.random()
-        if num < 0.5 then
-            input.dash = true
-        elseif num > 0.7 then
-            input.jump = true
-        end
-    end
+    elseif absDistX > 40 then
+        -- 2) “Approach”
+        self:startSequence("Approach")
 
-    -- If in close range, attempt an attack
-    if absDistX < 12 then
-        local num = math.random()
-        if num > 0.7 and myStamina >= 1 then
-            input.lightAttack = true
-            input.attack      = true
-        elseif num > 0.7 and myStamina >= 2 then
-            input.heavyAttack = true
-            input.attack      = true
-        elseif num > 0.5 then
-            input.shield = true
-        elseif num < 0.5 then
-            input.counter = true
-        end
-    end
-end
+    elseif absDistX > 10 then
+        -- 3) Mid-range: pick one from
+        --    - Dash Light Attack
+        --    - Jump Dash Heavy Attack
+        --    - Double Jump Dash DownAir
+        --    - Approach
+        local options = {
+          "Dash Light Attack",
+          "Jump Dash Heavy Attack",
+          "Double Jump Dash DownAir",
+          "Approach"
+        }
+        local choice = options[math.random(#options)]
+        self:startSequence(choice)
 
---------------------------------------------------------------------------------
--- ATTACK: Aggressive posture
---------------------------------------------------------------------------------
-function AIController:runAttackLogic(input, player, opponent, distX, distY)
-    local myStamina = player.stamina
-    local absDistX = math.abs(distX)
-
-    -- Move in if not close enough
-    if absDistX > 8 then
-        input.moveX = (opponent.x > player.x) and 1 or -1
-    end
-
-    -- If very close, attempt a variety of attacks
-    if absDistX < 10 then
-        local r = math.random()
-        if r < 0.4 and myStamina >= 1 then
-            input.lightAttack = true
-            input.attack      = true
-        elseif r < 0.7 and myStamina >= 2 then
-            input.heavyAttack = true
-            input.attack      = true
-        else
-            -- Maybe shield briefly
-            input.shield = true
-            -- Face the opponent while shielding
-            if distX > 0 then
-                input.moveX =  0.1
-            else
-                input.moveX = -0.1
-            end
-        end
-    end
-
-    -- Small chance to jump to throw off the opponent
-    if math.random() < 0.2 and player.canDoubleJump then
-        input.jump = true
-    end
-
-    -- If in the air and the opponent is below, do a down-air
-    if player.isJumping and distY > 0 and math.random() < 0.1 then
-        input.down   = true
-        input.attack = true
-    end
-end
-
---------------------------------------------------------------------------------
--- DEFEND: Low health or expect an incoming attack
---------------------------------------------------------------------------------
-function AIController:runDefendLogic(input, player, opponent, distX, distY)
-    local myStamina = player.stamina
-    local absDistX = math.abs(distX)
-
-    -- If the opponent is close, shield or attempt a counter
-    if absDistX < 10 then
-        -- Shield if we have stamina
-        if myStamina > 0 then
-            input.shield = true
-            -- Face the opponent
-            if opponent.x > player.x then
-                input.moveX =  0.1
-            else
-                input.moveX = -0.1
-            end
-        end
-
-        -- Occasionally attempt a counter
-        if math.random() < 0.2 and not player.isJumping then
-            input.counter = true
-        end
-
-        -- Possibly move away
-        if math.random() < 0.3 then
-            input.moveX = (distX > 0) and -1 or 1
-        end
     else
-        -- If the opponent is far, we can relax or move slightly
-        if math.random() < 0.2 then
-            input.moveX = (distX > 0) and 1 or -1
-        end
+        -- 4) Very close (absDistX < 10): pick from
+        --    - ShieldOnly
+        --    - Shield Counter Heavy
+        --    - DoubleJump DownAir
+        --    - LightAttack DashAway
+        --    - LightAttack Shield Heavy
+        local options = {
+          "ShieldOnly",
+          "Shield Counter Heavy",
+          "DoubleJump DownAir",
+          "LightAttack DashAway",
+          "LightAttack Shield Heavy"
+        }
+        local choice = options[math.random(#options)]
+        self:startSequence(choice)
     end
+
+    -- To avoid spamming new decisions every single frame,
+    -- set nextDecisionTime to e.g. 0.2~0.5s
+    self.nextDecisionTime = 0.2 + math.random() * 0.3
 end
 
 --------------------------------------------------------------------------------
--- RECOVER: Low stamina, do minimal to regain
+-- Start a particular sequence by name
 --------------------------------------------------------------------------------
-function AIController:runRecoverLogic(input, player, opponent, distX, absDistX)
-    -- Keep some distance so stamina can recover
-    if absDistX < 25 then
-        input.moveX = (distX > 0) and -1 or 1
+function AIController:startSequence(name)
+    -- Find the sequence in SEQUENCES
+    for _, seq in ipairs(SEQUENCES) do
+        if seq.name == name then
+            self.activeSequence = seq
+            self.stepIndex      = 1
+            self.stepTime       = 0
+            return
+        end
+    end
+    -- If not found, do nothing (or default to Approach)
+    print("Sequence not found:", name)
+end
+
+--------------------------------------------------------------------------------
+-- Advance the current sequence step by step
+--------------------------------------------------------------------------------
+function AIController:runSequenceLogic(dt, input, player, opponent)
+    local seq  = self.activeSequence
+    local step = seq.steps[self.stepIndex]
+    if not step then
+        -- No step? We’re done.
+        self:stopSequence()
+        return
     end
 
-    -- Possibly shield if the opponent is closing in
-    if absDistX < 15 then
-        input.shield = true
-        -- Face the opponent
-        if distX > 0 then
-            input.moveX =  0.1
+    -- Apply the step inputs into `input`
+    for k, v in pairs(step.input) do
+        if k == "moveX" then
+            -- Handle special strings like "faceOpponent" or "awayFromOpponent"
+            self:handleMoveX(v, input, player, opponent)
         else
-            input.moveX = -0.1
+            input[k] = v
+        end
+    end
+
+    -- Update time in this step
+    self.stepTime = self.stepTime + dt
+    if self.stepTime >= step.duration then
+        -- Move to next step
+        self.stepIndex = self.stepIndex + 1
+        self.stepTime  = 0
+
+        -- If we finished all steps, stop the sequence
+        if self.stepIndex > #seq.steps then
+            self:stopSequence()
         end
     end
 end
 
---------------------------------------------------------------------------------
--- JUMP ATTACK: Specifically for leaping attacks
---------------------------------------------------------------------------------
-function AIController:runJumpAttackLogic(input, distX, distY, player, opponent)
-    local absDistX   = math.abs(distX)
-    local myStamina  = player.stamina
+function AIController:stopSequence()
+    self.activeSequence = nil
+    self.stepIndex      = 1
+    self.stepTime       = 0
+end
 
-    -- If not currently jumping, jump if in range
-    if player.canDoubleJump and absDistX < 30 then
-        input.jump = true
-    end
-
-    -- Once in the air, move horizontally toward the opponent
-    if player.isJumping then
+--------------------------------------------------------------------------------
+-- Helper to interpret "moveX" = "faceOpponent" or "awayFromOpponent"
+--------------------------------------------------------------------------------
+function AIController:handleMoveX(mode, input, player, opponent)
+    local distX = (opponent.x - player.x)
+    if mode == "faceOpponent" then
         input.moveX = (distX > 0) and 1 or -1
-
-        -- If above them, do a down-air
-        local r = math.random()
-        if distY > 0 and r < 0.2 then
-            input.down   = true
-            input.attack = true
-        elseif r > 0.7 then
-            input.lightAttack = true
-        else
-            input.heavyAttack = true
-        end
+    elseif mode == "awayFromOpponent" then
+        input.moveX = (distX > 0) and -1 or 1
     else
-        -- If we're not in the air (couldn't jump), fallback to approach or basic attack
-        if absDistX > 15 then
-            input.moveX = (distX > 0) and 1 or -1
-        else
-            -- Attack if close
-            if math.random() < 0.5 and myStamina >= 1 then
-                input.lightAttack = true
-                input.attack      = true
-            elseif myStamina >= 2 then
-                input.heavyAttack = true
-                input.attack      = true
-            end
-        end
+        -- Or if mode was a number, you could just do input.moveX = mode
+        input.moveX = 0
     end
 end
 
