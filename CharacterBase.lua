@@ -54,9 +54,9 @@ function CharacterBase:new(x, y)
     -- Dash
     instance.isDashing    = false
     instance.dashTimer    = 0
-    instance.dashDuration = 0.06
+    instance.dashDuration = .25
     instance.canDash      = true
-    instance.dashSpeed    = 200  -- px/sec
+    instance.dashSpeed    = 125  -- px/sec
     instance.dashVelocity = 0
 
     -- Shield

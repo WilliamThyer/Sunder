@@ -77,7 +77,7 @@ function Player:initializeAnimations()
         move         = anim8.newAnimation(self.grid(1, '1-2'), 0.2),
         jump         = anim8.newAnimation(self.grid(1, 4), 1),
         idle         = anim8.newAnimation(self.grid(4, '1-2'), 0.7),
-        dash         = anim8.newAnimation(self.grid(3, 1), 1),
+        dash         = anim8.newAnimation(self.grid(3, 1), .2),
         heavyAttack  = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.1, 0.25, 0.05, 0.1}),
         lightAttack  = anim8.newAnimation(self.attackGrid(2, '1-2'), {0.175, .325}),
         downAir      = anim8.newAnimation(self.attackGrid(3, '1-2'), {0.2, 0.8}),
@@ -404,13 +404,15 @@ function Player:processInput(dt, input)
             self.isDashing    = true
             self.dashTimer    = self.dashDuration
             self.dashVelocity = self.dashSpeed * self.direction
+            if self.isJumping then
+                self.canDash = false
+            end
             self.animations.dash:gotoFrame(1)
         end
     end
     self.dashPressedLastFrame = input.dash
 
     if self.isDashing then
-        self.canDash = false
         self.dashTimer = self.dashTimer - dt
         if self.dashTimer <= 0 then
             if not self.isJumping then
@@ -596,11 +598,13 @@ function Player:canPerformAction(action)
             and not self.isStunned
             and not self.isCountering
             and not self.isAttacking
+            and not self.isDashing
         ),
 
         heavyAttack = (
             not self.isAttacking
             and not self.isShielding
+            and not self.isDashing
             and not self.isHurt
             and not self.isStunned
             and not self.isCountering
@@ -611,6 +615,7 @@ function Player:canPerformAction(action)
         lightAttack = (
             not self.isAttacking
             and not self.isShielding
+            and not self.isDashing
             and not self.isHurt
             and not self.isStunned
             and not self.isCountering
@@ -633,6 +638,7 @@ function Player:canPerformAction(action)
             self.canMove
             and not self.isDashing
             and not self.isShielding
+            and not self.isDashing
             and not self.isHurt
             and not self.isStunned
             and not self.isAttacking
@@ -642,6 +648,7 @@ function Player:canPerformAction(action)
         jump = (
             not self.isAttacking
             and not self.isShielding
+            and not self.isDashing
             and not self.isHurt
             and not self.isStunned
             and not self.isCountering
@@ -652,6 +659,7 @@ function Player:canPerformAction(action)
             self.isJumping
             and not self.isAttacking
             and not self.isShielding
+            and not self.isDashing
             and not self.isHurt
             and not self.isStunned
             and not self.isCountering
@@ -662,6 +670,7 @@ function Player:canPerformAction(action)
             not self.isAttacking
             and not self.isJumping
             and not self.isShielding
+            and not self.isDashing
             and not self.isHurt
             and not self.isStunned
             and not self.isCountering

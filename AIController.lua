@@ -11,20 +11,28 @@ AIController.__index = AIController
 -- we’ll use special strings in `moveX` that we interpret in code.
 
 local SEQUENCES = {
-    -- 1) Single-step “Retreat”
+    -- Single-step “Retreat”
     {
       name = "Retreat",
       steps = {
-        -- Move away from opponent for 0.8s
-        { duration = 0.3, input = { moveX = "awayFromOpponent" } }
+        -- Move away from opponent
+        { duration = 0.2, input = { moveX = "awayFromOpponent" } }
       }
     },
-    -- 2) Single-step “Approach”
+    -- Single-step “Approach”
     {
       name = "Approach",
       steps = {
+        -- Move toward opponent
+        { duration = 0.2, input = { moveX = "faceOpponent" } }
+      }
+    },
+    {
+    -- Single-step "Wait"
+      name = "Wait",
+      steps = {
         -- Move toward opponent for 0.8s
-        { duration = 0.3, input = { moveX = "faceOpponent" } }
+        { duration = 0.1, input = {} }
       }
     },
 
@@ -32,30 +40,29 @@ local SEQUENCES = {
     -- Mid-range sequences (distX < 40 and distX > 10)
     ----------------------------------------------------------------------------
 
-    -- 3) Dash + Light Attack
+    -- Jump Approach 
+    {
+      name = "Jump Approach",
+      steps = {
+        { duration = 0.1, input = { moveX = "faceOpponent" , jump = true } },
+      }
+    },
+    -- Dash + Light Attack
     {
       name = "Dash Light Attack",
       steps = {
-        { duration = 0.3, input = { dash = true } },
+        { duration = 0.01, input = { moveX = "faceOpponent" } },
+        { duration = 0.09, input = { dash = true } },
         { duration = 0.2, input = { lightAttack = true, attack = true } }
       }
     },
-    -- 4) Jump + Dash + Heavy Attack
-    {
-      name = "Jump Dash Heavy Attack",
-      steps = {
-        { duration = 0.2, input = { jump = true, moveX = "faceOpponent" } },
-        { duration = 0.3, input = { dash = true } },
-        { duration = 0.3, input = { heavyAttack = true, attack = true } }
-      }
-    },
-    -- 5) Double Jump + Dash + Down-Air
+    -- Double Jump + Dash + Down-Air
     {
       name = "Double Jump Dash DownAir",
       steps = {
         { duration = 0.2, input = { jump = true, moveX = "faceOpponent"} },
         { duration = 0.3, input = { jump = true} },
-        { duration = 0.06, input = { dash = true } },
+        { duration = 0.09, input = { dash = true } },
         { duration = 0.4, input = { down = true, attack = true } }
       }
     },
@@ -64,7 +71,7 @@ local SEQUENCES = {
     -- Close-range sequences (distX < 10)
     ----------------------------------------------------------------------------
 
-    -- 6) Shield only (simulate “30% chance” by picking it randomly among others)
+    -- 6) Shield only
     {
       name = "ShieldOnly",
       steps = {
@@ -72,13 +79,22 @@ local SEQUENCES = {
         { duration = 0.1, input = { shield = true } }
       }
     },
-    -- 7) Shield + Counter + Heavy Attack
+    -- Counter + Heavy Attack
+    {
+      name = "Counter Heavy",
+      steps = {
+        { duration = 0.01, input = { moveX = "faceOpponent" } },
+        { duration = 0.4, input = { counter = true } },
+        { duration = 0.5, input = { heavyAttack = true, attack = true } }
+      }
+    },
+    -- Shield + Counter + Heavy Attack
     {
       name = "Shield Counter Heavy",
       steps = {
         { duration = 0.01, input = { moveX = "faceOpponent" } },
         { duration = 0.1, input = { shield = true } },
-        { duration = 0.6, input = { counter = true } },
+        { duration = 0.4, input = { counter = true } },
         { duration = 0.4, input = { heavyAttack = true, attack = true } }
       }
     },
@@ -92,13 +108,12 @@ local SEQUENCES = {
         { duration = 0.4, input = { down = true, attack = true } },
       }
     },
-    -- 9) Light Attack + Dash Away
+    -- 9) Light Attack + Move Away
     {
-      name = "LightAttack DashAway",
+      name = "LightAttack MoveAway",
       steps = {
         { duration = 0.4, input = { lightAttack = true, attack = true } },
-        { duration = 0.01, input = { moveX = "awayFromOpponent" } },
-        { duration = 0.06, input = { dash = true } }
+        { duration = 0.1, input = { moveX = "awayFromOpponent" } },
       }
     },
     -- 10) Light Attack + Shield + Heavy Attack
@@ -109,6 +124,14 @@ local SEQUENCES = {
         { duration = 0.4, input = { lightAttack = true, attack = true } },
         { duration = 0.2, input = { shield = true } },
         { duration = 0.5, input = { heavyAttack = true, attack = true } }
+      }
+    },
+    -- Jump + Light Attack
+    {
+      name = "Jump LightAttack",
+      steps = {
+        { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
+        { duration = 0.4, input = { lightAttack = true, attack = true } },
       }
     },
 }
@@ -122,7 +145,6 @@ function AIController:new()
         activeSequence = nil,  -- The currently executing sequence (table)
         stepIndex      = 1,    -- Which step in the sequence we’re on
         stepTime       = 0,    -- How long we’ve been in the current step
-        nextDecisionTime = 0,  -- When to pick a new action if idle
 
         -- Stage boundaries, etc.
         stageLeft  = 0,
@@ -151,20 +173,16 @@ function AIController:getInput(dt, player, opponent)
         return input
     end
 
-    -- If we are currently running a sequence, continue that
-    if self.activeSequence then
-        self:runSequenceLogic(dt, input, player, opponent)
-        return input
-    end
-
-    -- Otherwise, if enough time has passed to pick a new action, decide now
-    self.nextDecisionTime = self.nextDecisionTime - dt
-    if self.nextDecisionTime <= 0 then
+    -- If we are not currently running a sequence, decide 
+    if not self.activeSequence then
         self:decideAction(player, opponent)
-        -- If we *did* pick a sequence, the next frame runSequenceLogic will apply
+        if player.index == 1 then
+            print(self.activeSequence.name)
+        end
     end
 
-    -- For safety, return input (still blank if we’re between sequences)
+    self:runSequenceLogic(dt, input, player, opponent)
+
     return input
 end
 
@@ -175,51 +193,50 @@ function AIController:decideAction(player, opponent)
     local distX     = opponent.x - player.x
     local absDistX  = math.abs(distX)
     local myStamina = player.stamina
+    local r = math.random()
 
+    -- 1) “Retreat”
     if myStamina < 2 then
-        -- 1) “Retreat”
-        self:startSequence("Retreat")
+        if r < .5 then
+            self:startSequence("Retreat")
+        else
+            self:startSequence("ShieldOnly")
+        end
 
+    -- 2) “Approach”
     elseif absDistX > 40 then
-        -- 2) “Approach”
-        self:startSequence("Approach")
+        if r < .8 then -- 80%
+            self:startSequence("Approach")
+        else -- 20%
+            self:startSequence("Wait")
+        end
 
+    -- 3) Mid-range: pick one from
     elseif absDistX > 10 then
-        -- 3) Mid-range: pick one from
-        --    - Dash Light Attack
-        --    - Jump Dash Heavy Attack
-        --    - Double Jump Dash DownAir
-        --    - Approach
         local options = {
+          "Jump Approach",
           "Dash Light Attack",
-          "Jump Dash Heavy Attack",
           "Double Jump Dash DownAir",
           "Approach"
         }
         local choice = options[math.random(#options)]
         self:startSequence(choice)
 
+    -- 4) Very close (absDistX < 10): pick from
     else
-        -- 4) Very close (absDistX < 10): pick from
-        --    - ShieldOnly
-        --    - Shield Counter Heavy
-        --    - DoubleJump DownAir
-        --    - LightAttack DashAway
-        --    - LightAttack Shield Heavy
         local options = {
           "ShieldOnly",
+          "Counter Heavy",
           "Shield Counter Heavy",
           "DoubleJump DownAir",
-          "LightAttack DashAway",
-          "LightAttack Shield Heavy"
+          "LightAttack MoveAway",
+          "LightAttack Shield Heavy",
+          "Jump LightAttack"
         }
         local choice = options[math.random(#options)]
         self:startSequence(choice)
     end
 
-    -- To avoid spamming new decisions every single frame,
-    -- set nextDecisionTime to e.g. 0.2~0.5s
-    self.nextDecisionTime = 0.2 + math.random() * 0.3
 end
 
 --------------------------------------------------------------------------------

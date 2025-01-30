@@ -48,10 +48,12 @@ function love.load()
 
     -- Create AI for player 2:
     local ai = AIController:new()
+    local ai2 = AIController:new()
+    -- ai = nil
 
     -- Initialize players
     players = {
-        Player:new(20, 49, 1, world),             -- Human
+        Player:new(20, 49, 1, world, ai2),             -- Human
         Player:new(100, 49, 2, world, ai)        -- AI
     }
     for _, player in ipairs(players) do
