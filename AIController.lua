@@ -52,18 +52,18 @@ local SEQUENCES = {
       name = "Dash Light Attack",
       steps = {
         { duration = 0.01, input = { moveX = "faceOpponent" } },
-        { duration = 0.09, input = { dash = true } },
-        { duration = 0.2, input = { lightAttack = true, attack = true } }
+        { duration = 0.25, input = { dash = true } },
+        { duration = 0.01, input = { moveX = "faceOpponent" } },
+        { duration = 0.4, input = { lightAttack = true, attack = true } }
       }
     },
-    -- Double Jump + Dash + Down-Air
+    -- Jump + Down-Air
     {
-      name = "Double Jump Dash DownAir",
+      name = "Jump DownAir",
       steps = {
-        { duration = 0.2, input = { jump = true, moveX = "faceOpponent"} },
-        { duration = 0.3, input = { jump = true} },
-        { duration = 0.09, input = { dash = true } },
-        { duration = 0.4, input = { down = true, attack = true } }
+        { duration = 0.01, input = { jump = true, moveX = "faceOpponent"} },
+        { duration = 0.2, input = { moveX = "onOpponent"} },
+        { duration = 0.4, input = { down = true, attack = true , moveX = "onOpponent"} }
       }
     },
 
@@ -76,7 +76,7 @@ local SEQUENCES = {
       name = "ShieldOnly",
       steps = {
         { duration = 0.01, input = { moveX = "faceOpponent" } },
-        { duration = 0.1, input = { shield = true } }
+        { duration = 0.2, input = { shield = true } }
       }
     },
     -- Counter + Heavy Attack
@@ -84,7 +84,8 @@ local SEQUENCES = {
       name = "Counter Heavy",
       steps = {
         { duration = 0.01, input = { moveX = "faceOpponent" } },
-        { duration = 0.4, input = { counter = true } },
+        { duration = 0.6, input = { counter = true } },
+        { duration = 0.01, input = { moveX = "faceOpponent" } },
         { duration = 0.5, input = { heavyAttack = true, attack = true } }
       }
     },
@@ -93,36 +94,31 @@ local SEQUENCES = {
       name = "Shield Counter Heavy",
       steps = {
         { duration = 0.01, input = { moveX = "faceOpponent" } },
-        { duration = 0.1, input = { shield = true } },
-        { duration = 0.4, input = { counter = true } },
-        { duration = 0.4, input = { heavyAttack = true, attack = true } }
+        { duration = 0.3, input = { shield = true } },
+        { duration = 0.01, input = { moveX = "faceOpponent" } },
+        { duration = 0.6, input = { counter = true } },
+        { duration = 0.01, input = { moveX = "faceOpponent" } },
+        { duration = 0.5, input = { heavyAttack = true, attack = true } }
       }
     },
-    -- 8) Double Jump + Down Air
-    {
-      name = "DoubleJump DownAir",
-      steps = {
-        { duration = 0.2, input = { jump = true } },
-        { duration = 0.05, input = { moveX = "faceOpponent" } },
-        { duration = 0.2, input = { jump = true } },
-        { duration = 0.4, input = { down = true, attack = true } },
-      }
-    },
-    -- 9) Light Attack + Move Away
+    -- Light Attack + Move Away
     {
       name = "LightAttack MoveAway",
       steps = {
+        { duration = 0.01, input = { moveX = "faceOpponent" } },
         { duration = 0.4, input = { lightAttack = true, attack = true } },
-        { duration = 0.1, input = { moveX = "awayFromOpponent" } },
+        { duration = 0.2, input = { moveX = "awayFromOpponent" } },
       }
     },
-    -- 10) Light Attack + Shield + Heavy Attack
+    -- Light Attack + Shield + Heavy Attack
     {
       name = "LightAttack Shield Heavy",
       steps = {
         { duration = 0.01, input = { moveX = "faceOpponent" } },
         { duration = 0.4, input = { lightAttack = true, attack = true } },
+        { duration = 0.01, input = { moveX = "faceOpponent" } },
         { duration = 0.2, input = { shield = true } },
+        { duration = 0.01, input = { moveX = "faceOpponent" } },
         { duration = 0.5, input = { heavyAttack = true, attack = true } }
       }
     },
@@ -131,9 +127,36 @@ local SEQUENCES = {
       name = "Jump LightAttack",
       steps = {
         { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
-        { duration = 0.4, input = { lightAttack = true, attack = true } },
+        { duration = 0.15, input = { moveX = "awayFromOpponent" } },
+        { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
+        { duration = 0.3, input = { moveX = "faceOpponent" } },
+        { duration = 0.6, input = { lightAttack = true, attack = true , moveX = "faceOpponent"} },
       }
     },
+    -- Jump + Heavy Attack
+    {
+      name = "Jump HeavyAttack",
+      steps = {
+        { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
+        { duration = 0.4, input = { moveX = "awayFromOpponent" } },
+        { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
+        { duration = 0.25, input = { moveX = "faceOpponent" } },
+        { duration = 0.6, input = { heavyAttack = true, attack = true , moveX = "faceOpponent"} },
+      }
+    },
+    -- Jump Away + Down Air
+    {
+      name = "Jump Away DownAir",
+      steps = {
+        { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
+        { duration = 0.4, input = { moveX = "awayFromOpponent" } },
+        { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
+        { duration = 0.25, input = { moveX = "faceOpponent" } },
+        { duration = 0.05, input = { down = true, attack = true , moveX = "onOpponent"} },
+        { duration = 0.1, input = { moveX = "awayFromOpponent"} },
+      }
+    },
+
 }
 
 --------------------------------------------------------------------------------
@@ -176,8 +199,10 @@ function AIController:getInput(dt, player, opponent)
     -- If we are not currently running a sequence, decide 
     if not self.activeSequence then
         self:decideAction(player, opponent)
-        if player.index == 1 then
+
+        if player.index == 2 then
             print(self.activeSequence.name)
+            -- self:startSequence("Jump HeavyAttack")
         end
     end
 
@@ -191,6 +216,7 @@ end
 --------------------------------------------------------------------------------
 function AIController:decideAction(player, opponent)
     local distX     = opponent.x - player.x
+    local distY     = opponent.y - player.y
     local absDistX  = math.abs(distX)
     local myStamina = player.stamina
     local r = math.random()
@@ -216,22 +242,35 @@ function AIController:decideAction(player, opponent)
         local options = {
           "Jump Approach",
           "Dash Light Attack",
-          "Double Jump Dash DownAir",
-          "Approach"
+          "Jump DownAir",
+          "Approach",
+          "Jump HeavyAttack",
         }
         local choice = options[math.random(#options)]
         self:startSequence(choice)
 
-    -- 4) Very close (absDistX < 10): pick from
-    else
+    -- On top of
+    elseif absDistX < 4 and distY < 0 then
+        local options = {
+          "Jump DownAir",
+          "Jump HeavyAttack",
+          "Jump Away DownAir"
+        }
+        local choice = options[math.random(#options)]
+        self:startSequence(choice)
+
+    -- 4) Very close (absDistX < 10):
+    else 
         local options = {
           "ShieldOnly",
           "Counter Heavy",
           "Shield Counter Heavy",
-          "DoubleJump DownAir",
           "LightAttack MoveAway",
           "LightAttack Shield Heavy",
-          "Jump LightAttack"
+          "Jump LightAttack",
+        --   "Jump DownAir",
+          "Jump HeavyAttack",
+          "Jump Away DownAir"
         }
         local choice = options[math.random(#options)]
         self:startSequence(choice)
@@ -303,12 +342,18 @@ end
 --------------------------------------------------------------------------------
 function AIController:handleMoveX(mode, input, player, opponent)
     local distX = (opponent.x - player.x)
+    local absDistX = math.abs(distX)
     if mode == "faceOpponent" then
-        input.moveX = (distX > 0) and 1 or -1
+        if absDistX > 8 then
+            input.moveX = (distX > 0) and 1 or -1
+        else
+            input.moveX = input.moveX * 0.5
+        end
     elseif mode == "awayFromOpponent" then
         input.moveX = (distX > 0) and -1 or 1
+    elseif mode == "onOpponent" then
+        input.moveX = (distX > 0) and 1 or -1
     else
-        -- Or if mode was a number, you could just do input.moveX = mode
         input.moveX = 0
     end
 end
