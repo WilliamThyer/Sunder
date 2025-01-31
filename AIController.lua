@@ -61,9 +61,9 @@ local SEQUENCES = {
     {
       name = "Jump DownAir",
       steps = {
-        { duration = 0.01, input = { jump = true, moveX = "faceOpponent"} },
-        { duration = 0.2, input = { moveX = "onOpponent"} },
-        { duration = 0.4, input = { down = true, attack = true , moveX = "onOpponent"} }
+        { duration = 0.01, input = { jump = true} },
+        { duration = 0.1, input = { moveX = "onOpponent"} },
+        { duration = 0.4, input = { down = true, attack = true } }
       }
     },
 
@@ -242,18 +242,20 @@ function AIController:decideAction(player, opponent)
         local options = {
           "Jump Approach",
           "Dash Light Attack",
-          "Jump DownAir",
           "Approach",
           "Jump HeavyAttack",
+          "Jump LightAttack",
+          "LightAttack Shield Heavy",
         }
         local choice = options[math.random(#options)]
         self:startSequence(choice)
 
     -- On top of
-    elseif absDistX < 4 and distY < 0 then
+    elseif absDistX < 4 and distY > 0 then
+        print('ontopof')
         local options = {
           "Jump DownAir",
-          "Jump HeavyAttack",
+        --   "Jump HeavyAttack",
           "Jump Away DownAir"
         }
         local choice = options[math.random(#options)]
@@ -267,7 +269,7 @@ function AIController:decideAction(player, opponent)
           "Shield Counter Heavy",
           "LightAttack MoveAway",
           "LightAttack Shield Heavy",
-          "Jump LightAttack",
+        --   "Jump LightAttack",
         --   "Jump DownAir",
           "Jump HeavyAttack",
           "Jump Away DownAir"
