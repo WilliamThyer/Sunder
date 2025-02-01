@@ -90,12 +90,7 @@ function updateGame(dt)
 
     -- Update each player
     p1:update(dt, p2)
-    print(p1.canMove)
     p2:update(dt, p1)
-
-    -- if p1.isDead or p2.isDead then
-    --     GameInfo.gameState = "restart"
-    -- end
 
     map:update(dt)
 end
@@ -105,6 +100,9 @@ function love.update(dt)
         Menu.updateMenu(GameInfo)
     else
         updateGame(dt)
+        if players[1].isDead or players[2].isDead then
+            Menu.updateRestartMenu(GameInfo)
+        end
     end
 end
 
@@ -120,6 +118,9 @@ function love.draw()
 
         for _, player in ipairs(players) do
             player:draw()
+        end
+        if players[1].isDead or players[2].isDead then
+            Menu.drawRestartMenu(players)
         end
     end
 

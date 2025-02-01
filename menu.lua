@@ -7,7 +7,7 @@ local bigFont = love.graphics.newFont("assets/Minecraft.ttf", 200)
 local font = love.graphics.newFont("assets/Minecraft.ttf", 100)
 
 -- ----------------------------------------------------------------------
--- Menu update logic
+-- Menu logic
 -- ----------------------------------------------------------------------
 function Menu.updateMenu(GameInfo)
     local joystick = love.joystick.getJoysticks()[1]
@@ -76,6 +76,34 @@ function Menu.drawMenu(GameInfo)
     love.graphics.printf("2 PLAYERS", 0, 450, GameInfo.displayWidth, "center")
 
     love.graphics.setColor(1,1,1,1)  -- reset
+    push:start()
+end
+
+function Menu.updateRestartMenu(GameInfo)
+    local joystick = love.joystick.getJoysticks()[1]
+
+    -- Confirm selection with 'A' on controller
+    if joystick:isGamepadDown("a") then
+            startGame(GameInfo.gameState)
+    end
+end
+
+function Menu.drawRestartMenu(players)
+    push:finish()
+    local p1, p2 = players[1], players[2]
+
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setFont(bigFont)
+    if p1.isDead and p2.isDead then
+        love.graphics.printf("Nobody Wins", 0, 100, GameInfo.displayWidth, "center")
+    elseif p1.isDead then
+        love.graphics.printf("Player 2 Wins", 0, 100, GameInfo.displayWidth, "center")
+    elseif p2.isDead then
+        love.graphics.printf("Player 1 Wins", 0, 100, GameInfo.displayWidth, "center")
+    end
+    love.graphics.setFont(font)
+    love.graphics.printf("Press A to play again", 0, 300, GameInfo.displayWidth, "center")
+
     push:start()
 end
 
