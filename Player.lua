@@ -85,7 +85,7 @@ function Player:initializeAnimations()
         shieldBlock  = anim8.newAnimation(self.grid(2, 2), 1),
         hurt         = anim8.newAnimation(self.grid(5, 1), 1),
         counter      = anim8.newAnimation(self.grid(2, 4), .5),
-        die          = anim8.newAnimation(self.grid(6, 1), 1.5)
+        die          = anim8.newAnimation(self.grid(6, 1), .5)
     }
 
     self.currentAnim = self.animations.idle

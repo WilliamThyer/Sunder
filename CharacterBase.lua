@@ -96,7 +96,7 @@ function CharacterBase:new(x, y)
     instance.staminaRegenAccumulator = 0
     instance.staminaRegenInterval    = 0.3
     -- Death
-    instance.timeToDeath = .5
+    instance.timeToDeath = .15
     instance.isDead = false
     instance.isDying = false
     instance.isDyingTimer = 0
