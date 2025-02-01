@@ -24,6 +24,8 @@ GameInfo = {
     gameHeight = 72,          -- internal virtual height
     displayWidth = displayWidth,
     displayHeight = displayHeight
+    -- displayWidth = 512,
+    -- displayHeight = 288
 }
 
 local world, map

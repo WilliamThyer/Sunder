@@ -35,7 +35,15 @@ local SEQUENCES = {
         { duration = 0.1, input = {} }
       }
     },
-
+    {
+    -- Single-step "Dash Away"
+      name = "DashAway",
+      steps = {
+        -- Dash away too avoid downair 
+        { duration = 0.1, input = {"awayFromOpponent"} },
+        { duration = 0.1, input = {dash = true} }
+      }
+    },
     ----------------------------------------------------------------------------
     -- Mid-range sequences (distX < 40 and distX > 10)
     ----------------------------------------------------------------------------
@@ -167,6 +175,7 @@ function AIController:new()
     local ai = {
         -- Sequence-related tracking
         activeSequence = nil,  -- The currently executing sequence (table)
+        activeSequenceName = nil,
         stepIndex      = 1,    -- Which step in the sequence we’re on
         stepTime       = 0,    -- How long we’ve been in the current step
 
@@ -198,13 +207,12 @@ function AIController:getInput(dt, player, opponent)
     end
 
     -- If we are not currently running a sequence, decide 
-    if not self.activeSequence then
+    if opponent.isDownAir
+    and self.activeSequenceName ~= "DashAway"
+    and self.activeSequenceName ~= "Retreat" then
         self:decideAction(player, opponent)
-
-        -- if player.index == 2 then
-        --     print(self.activeSequence.name)
-            -- self:startSequence("Jump HeavyAttack")
-        -- end
+    elseif not self.activeSequence then
+      self:decideAction(player, opponent)
     end
 
     self:runSequenceLogic(dt, input, player, opponent)
@@ -222,15 +230,35 @@ function AIController:decideAction(player, opponent)
     local myStamina = player.stamina
     local r = math.random()
 
-    -- 1) “Retreat”
-    if myStamina < 2 then
-        if r < .5 then
-            self:startSequence("Retreat")
-        else
-            self:startSequence("ShieldOnly")
-        end
+    -- Avoid downair 
+    if opponent.isDownAir then
+      if myStamina > 2 and r < .5 then
+          self:startSequence("DashAway")
+      elseif r < .6 then
+        self:startSequence("ShieldOnly")
+      else 
+        self:startSequence("Retreat")
+      end
 
-    -- 2) “Approach”
+    -- “Retreat”
+    elseif myStamina < 2 then
+      if r < .5 then
+          self:startSequence("Retreat")
+      else
+          self:startSequence("ShieldOnly")
+      end
+    
+    -- Chill
+    elseif myStamina < 4 then
+      if r < .3 then
+          self:startSequence("Retreat")
+      elseif r < .6 then
+          self:startSequence("ShieldOnly")
+      else
+          self:startSequence("LightAttack MoveAway")
+      end
+
+    -- “Approach”
     elseif absDistX > 40 then
         if r < .8 then -- 80%
             self:startSequence("Approach")
@@ -238,7 +266,7 @@ function AIController:decideAction(player, opponent)
             self:startSequence("Wait")
         end
 
-    -- 3) Mid-range: pick one from
+    -- Mid-range: pick one from
     elseif absDistX > 10 then
         local options = {
           "Jump Approach",
@@ -262,7 +290,7 @@ function AIController:decideAction(player, opponent)
         local choice = options[math.random(#options)]
         self:startSequence(choice)
 
-    -- 4) Very close (absDistX < 10):
+    -- Very close (absDistX < 10):
     else 
         local options = {
           "ShieldOnly",
@@ -285,6 +313,8 @@ end
 -- Start a particular sequence by name
 --------------------------------------------------------------------------------
 function AIController:startSequence(name)
+    print(name)
+    self.activeSequenceName = name
     -- Find the sequence in SEQUENCES
     for _, seq in ipairs(SEQUENCES) do
         if seq.name == name then

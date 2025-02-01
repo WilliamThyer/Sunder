@@ -637,6 +637,7 @@ function Player:canPerformAction(action)
             and not self.isStunned
             and (not self.isAttacking or self.isJumping)
             and not self.isCountering
+            and not self.isDownAir
         ),
 
         jump = (
