@@ -130,7 +130,7 @@ local SEQUENCES = {
         { duration = 0.15, input = { moveX = "awayFromOpponent" } },
         { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
         { duration = 0.3, input = { moveX = "faceOpponent" } },
-        { duration = 0.6, input = { lightAttack = true, attack = true , moveX = "faceOpponent"} },
+        { duration = 0.6, input = { lightAttack = true, attack = true } },
       }
     },
     -- Jump + Heavy Attack
@@ -141,7 +141,8 @@ local SEQUENCES = {
         { duration = 0.4, input = { moveX = "awayFromOpponent" } },
         { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
         { duration = 0.25, input = { moveX = "faceOpponent" } },
-        { duration = 0.6, input = { heavyAttack = true, attack = true , moveX = "faceOpponent"} },
+        { duration = 0.05, input = { } },
+        { duration = 0.6, input = { heavyAttack = true, attack = true } },
       }
     },
     -- Jump Away + Down Air
@@ -151,8 +152,8 @@ local SEQUENCES = {
         { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
         { duration = 0.4, input = { moveX = "awayFromOpponent" } },
         { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
-        { duration = 0.25, input = { moveX = "faceOpponent" } },
-        { duration = 0.05, input = { down = true, attack = true , moveX = "onOpponent"} },
+        { duration = 0.25, input = { moveX = "onOpponent" } },
+        { duration = 0.05, input = { down = true, attack = true } },
         { duration = 0.1, input = { moveX = "awayFromOpponent"} },
       }
     },
@@ -243,7 +244,7 @@ function AIController:decideAction(player, opponent)
           "Jump Approach",
           "Dash Light Attack",
           "Approach",
-          "Jump HeavyAttack",
+        --   "Jump HeavyAttack",
           "Jump LightAttack",
           "LightAttack Shield Heavy",
         }

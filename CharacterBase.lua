@@ -86,7 +86,7 @@ function CharacterBase:new(x, y)
     instance.counterActive       = false
 
     -- Health & Stamina
-    instance.health          = 1
+    instance.health          = 10
     instance.maxHealth       = 10
     instance.stamina         = 10
     instance.maxStamina      = 10
