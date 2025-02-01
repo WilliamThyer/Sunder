@@ -1,4 +1,5 @@
 -- main.lua
+
 if arg[#arg] == "vsc_debug" then
     require("lldebugger").start()
 end
@@ -11,76 +12,111 @@ local sti  = require("libraries.sti")
 local bump = require("libraries.bump")
 local Player = require("Player")
 local AIController = require("AIController")
+local Menu = require("Menu")
 
--- GAME RESOLUTION: small, pixel-art-friendly, 16:9 ratio
-local GAME_WIDTH  = 128
-local GAME_HEIGHT = 72
+local displayWidth, displayHeight = love.window.getDesktopDimensions()
+
+-- Game info stored in a global table
+GameInfo = {
+    gameState = "menu",       -- "menu", "game_1P", or "game_2P"
+    selectedOption = 1,       -- which menu option is highlighted
+    gameWidth = 128,          -- internal virtual width
+    gameHeight = 72,          -- internal virtual height
+    displayWidth = displayWidth,
+    displayHeight = displayHeight
+}
+
+local world, map
+local players = {}
 
 function love.load()
     -- For pixel art
     love.graphics.setDefaultFilter("nearest", "nearest")
 
-    -- Get user's desktop resolution
-    local displayWidth, displayHeight = love.window.getDesktopDimensions()
-    displayWidth = 512
-    displayHeight = 288
-
-    -- Decide on either fullscreen or windowed, your choice.
-    -- We'll do windowed in this example:
     push:setupScreen(
-        GAME_WIDTH,          -- “virtual” / game resolution width
-        GAME_HEIGHT,         -- “virtual” / game resolution height
-        displayWidth,        -- actual window width
-        displayHeight,       -- actual window height
+        GameInfo.gameWidth,
+        GameInfo.gameHeight,
+        GameInfo.displayWidth,
+        GameInfo.displayHeight,
         {
-        fullscreen   = false,
-        resizable    = false,
-        vsync        = true,
-        pixelperfect = true,  -- ensures integer scaling
-        stretched    = false  -- letterbox to preserve aspect
+            fullscreen   = true,
+            resizable    = false,
+            vsync        = true,
+            pixelperfect = true,
+            stretched    = false
         }
     )
+end
 
-    -- Load the Tiled map
+-- Start the game after menu selection
+function startGame(mode)
+    -- Update the global state
+    GameInfo.gameState = mode
+
+    -- Create collision world
     world = bump.newWorld(8)
+
+    -- Load map
     map = sti("assets/backgrounds/testNew.lua", {"bump"})
     map:bump_init(world)
 
-    -- Create AI for player 2:
-    local ai = AIController:new()
-    local ai2 = AIController:new()
+    if GameInfo.gameState == "game_1P" then
+        -- If 1P mode, Player 2 is AI
+        local ai = AIController:new()
+        players = {
+            Player:new(20, 49, 1, world, nil),  -- Player 1 (human)
+            Player:new(100, 49, 2, world, ai)   -- Player 2 (AI)
+        }
+    else
+        -- 2P mode: both human
+        players = {
+            Player:new(20, 49, 1, world, nil),
+            Player:new(100, 49, 2, world, nil)
+        }
+    end
 
-    -- Initialize players
-    players = {
-        Player:new(20, 49, 1, world, ai2),       -- Human
-        Player:new(100, 49, 2, world, ai)        -- AI
-    }
-    for _, player in ipairs(players) do
-        world:add(player, player.x+1, player.y, player.width-2, player.height-1)
+    -- Add players to bump world
+    for _, p in ipairs(players) do
+        world:add(p, p.x+1, p.y, p.width-2, p.height-1)
     end
 end
 
-function love.update(dt)
+-- Update the game (1P or 2P)
+function updateGame(dt)
+    if not map then return end
+    if #players < 2 then return end
+
     local p1, p2 = players[1], players[2]
 
+    -- Update each player
     p1:update(dt, p2)
     p2:update(dt, p1)
 
-    map:update(dt)  -- in case your STI map has dynamic layers, etc.
+    map:update(dt)
+end
+
+function love.update(dt)
+    if GameInfo.gameState == "menu" then
+        Menu.updateMenu(GameInfo)
+    else
+        updateGame(dt)
+    end
 end
 
 function love.draw()
-    -- Start push
     push:start()
 
-    -- Draw Tiled map
-    map:draw(0, 0, 1, 1)
+    if GameInfo.gameState == "menu" then
+        Menu.drawMenu(GameInfo)
+    else
+        if map then
+            map:draw(0, 0, 1, 1)
+        end
 
-    -- Draw players
-    for _, player in ipairs(players) do
-        player:draw()
+        for _, player in ipairs(players) do
+            player:draw()
+        end
     end
 
-    -- End push
     push:finish()
 end
