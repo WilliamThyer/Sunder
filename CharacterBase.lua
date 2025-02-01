@@ -86,8 +86,7 @@ function CharacterBase:new(x, y)
     instance.counterActive       = false
 
     -- Health & Stamina
-    instance.isDead = false
-    instance.health          = 10
+    instance.health          = 1
     instance.maxHealth       = 10
     instance.stamina         = 10
     instance.maxStamina      = 10
@@ -96,6 +95,11 @@ function CharacterBase:new(x, y)
     instance.staminaRegenDelay       = .75
     instance.staminaRegenAccumulator = 0
     instance.staminaRegenInterval    = 0.3
+    -- Death
+    instance.timeToDeath = .5
+    instance.isDead = false
+    instance.isDying = false
+    instance.isDyingTimer = 0
 
     -- Shield Knockback
     instance.isShieldKnockback  = false
@@ -304,12 +308,19 @@ end
 ----------------------------------------------------------------
 function CharacterBase:updateHurtState(dt)
     -- Check death
-    if self.health == 0 and not self.isDead then
-        self.isDead = true
+    if self.health == 0 and not self.isDying == true and not self.isDead == true then
+        self.isHurt = false
+        self.isDying = true
+        self.isDyingTimer = self.timeToDeath
         self.canMove = false
         self.soundEffects['die']:play()
-    elseif self.health == 0 then
-        self.isDead = true
+    elseif self.isDying == true then
+        self.isDyingTimer = self.isDyingTimer - dt
+        if self.isDyingTimer <= 0 then
+            self.isDead = true
+            self.isDying = false
+        end
+    elseif self.isDead then
         self.canMove = false
         self.y = -10
     end
@@ -357,6 +368,10 @@ function CharacterBase:updateHurtState(dt)
             self.isShieldKnockback = false
             self.canMove = true
         end
+    end
+    
+    if self.isDying or self.isDead then
+        self.canMove = false
     end
 end
 

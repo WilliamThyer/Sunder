@@ -85,7 +85,7 @@ function Player:initializeAnimations()
         shieldBlock  = anim8.newAnimation(self.grid(2, 2), 1),
         hurt         = anim8.newAnimation(self.grid(5, 1), 1),
         counter      = anim8.newAnimation(self.grid(2, 4), .5),
-        die          = anim8.newAnimation(self.grid(6, 1), 1)
+        die          = anim8.newAnimation(self.grid(6, 1), 1.5)
     }
 
     self.currentAnim = self.animations.idle
@@ -313,11 +313,9 @@ function Player:processInput(dt, input)
         if not self.shieldHeld then
             self.soundEffects['shield']:play()
         end
-        self.canMove     = false
         self.isShielding = true
         self.shieldHeld  = true
     else
-        self.canMove     = true
         self.isShielding = false
         self.shieldHeld  = false
     end
@@ -539,7 +537,7 @@ end
 -- Animation Update
 --------------------------------------------------------------------------
 function Player:updateAnimation(dt)
-    if self.isDead then
+    if self.isDying or self.isDead then
         self.currentAnim = self.animations.die
     elseif self.isHurt or self.isStunned then
         self.currentAnim = self.animations.hurt
@@ -572,7 +570,7 @@ end
 -- Action Permissions
 --------------------------------------------------------------------------
 function Player:canPerformAction(action)
-    if self.isShieldKnockback then
+    if self.isShieldKnockback or self.canMove == false then
         return false
     end
 

@@ -90,7 +90,12 @@ function updateGame(dt)
 
     -- Update each player
     p1:update(dt, p2)
+    print(p1.canMove)
     p2:update(dt, p1)
+
+    -- if p1.isDead or p2.isDead then
+    --     GameInfo.gameState = "restart"
+    -- end
 
     map:update(dt)
 end
