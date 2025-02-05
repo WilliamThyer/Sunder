@@ -79,3 +79,18 @@ THROW
 Throw mechanic?
 Does no damage but stuns them for a moment?
 
+
+change directions when you are shielding
+jump costs stamina
+projectiles
+directional attacks and blocks
+landing/cooldown land
+recovery frames
+stage 
+different colors
+Fix downair hitbox
+more knockback
+knockback in the Air
+slow down movements?
+longer range
+hit stun, interupt heavy attacks
