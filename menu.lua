@@ -82,8 +82,8 @@ end
 function Menu.updateRestartMenu(GameInfo)
     local joystick = love.joystick.getJoysticks()[1]
 
-    -- Confirm selection with 'A' on controller
-    if joystick:isGamepadDown("a") then
+    -- Confirm selection with 'start' on controller
+    if joystick:isGamepadDown("start") then
             startGame(GameInfo.gameState)
     end
 end
@@ -102,7 +102,7 @@ function Menu.drawRestartMenu(players)
         love.graphics.printf("Player 1 Wins", 0, 100, GameInfo.displayWidth, "center")
     end
     love.graphics.setFont(font)
-    love.graphics.printf("Press A to play again", 0, 300, GameInfo.displayWidth, "center")
+    love.graphics.printf("Press start to play again", 0, 300, GameInfo.displayWidth, "center")
 
     push:start()
 end
