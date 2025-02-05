@@ -45,8 +45,8 @@ function CharacterBase:new(x, y)
         downAir     = 2
     }
     instance.staminaMapping = {
-        lightAttack = 1,
-        heavyAttack = 2,
+        lightAttack = 2,
+        heavyAttack = 4,
         downAir     = 2,
         dash        = 1
     }
