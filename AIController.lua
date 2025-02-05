@@ -207,11 +207,7 @@ function AIController:getInput(dt, player, opponent)
     end
 
     -- If we are not currently running a sequence, decide 
-    if opponent.isDownAir
-    and self.activeSequenceName ~= "DashAway"
-    and self.activeSequenceName ~= "Retreat" then
-        self:decideAction(player, opponent)
-    elseif not self.activeSequence then
+    if not self.activeSequence then
       self:decideAction(player, opponent)
     end
 
@@ -232,21 +228,15 @@ function AIController:decideAction(player, opponent)
 
     -- Avoid downair 
     if opponent.isDownAir then
-      if myStamina > 2 and r < .5 then
-          self:startSequence("DashAway")
-      elseif r < .6 then
-        self:startSequence("ShieldOnly")
+      if myStamina > 3 and r < .5 then
+        self:startSequence("DashAway")
       else 
         self:startSequence("Retreat")
       end
 
     -- “Retreat”
-    elseif myStamina < 2 then
-      if r < .5 then
-          self:startSequence("Retreat")
-      else
-          self:startSequence("ShieldOnly")
-      end
+    elseif myStamina < 3 then
+      self:startSequence("Retreat")
     
     -- Chill
     elseif myStamina < 4 then
@@ -255,7 +245,9 @@ function AIController:decideAction(player, opponent)
       elseif r < .6 then
           self:startSequence("ShieldOnly")
       else
+        if absDistX < 10 then
           self:startSequence("LightAttack MoveAway")
+        end
       end
 
     -- “Approach”
@@ -313,7 +305,6 @@ end
 -- Start a particular sequence by name
 --------------------------------------------------------------------------------
 function AIController:startSequence(name)
-    print(name)
     self.activeSequenceName = name
     -- Find the sequence in SEQUENCES
     for _, seq in ipairs(SEQUENCES) do
@@ -332,7 +323,12 @@ end
 -- Advance the current sequence step by step
 --------------------------------------------------------------------------------
 function AIController:runSequenceLogic(dt, input, player, opponent)
+    print(self.activeSequenceName)
     local seq  = self.activeSequence
+    if not seq then
+      self:stopSequence()
+      return
+    end
     local step = seq.steps[self.stepIndex]
     if not step then
         -- No step? We’re done.
@@ -366,6 +362,7 @@ end
 
 function AIController:stopSequence()
     self.activeSequence = nil
+    self.activeSequenceName = nil
     self.stepIndex      = 1
     self.stepTime       = 0
 end
