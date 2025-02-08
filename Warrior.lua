@@ -10,7 +10,7 @@ function Warrior:new(x, y, joystickIndex, world, aiController)
     -- Call the base constructor:
     local instance = CharacterBase.new(self, x, y)
     setmetatable(instance, Warrior)
-    
+
     instance.index    = joystickIndex
     instance.joystick = love.joystick.getJoysticks()[joystickIndex]
     instance.world    = world

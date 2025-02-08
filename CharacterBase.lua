@@ -23,7 +23,7 @@ function CharacterBase:new(x, y)
     instance.isJumping     = false
     instance.canDoubleJump = false
 
-    instance.landingLag       = 0.25
+    instance.landingLag       = 0.2
     instance.landingLagTimer  = 0
     instance.isLanding        = false
 
@@ -71,7 +71,7 @@ function CharacterBase:new(x, y)
     instance.hurtTimer          = 0
     instance.isInvincible       = false
     instance.invincibleTimer    = 0
-    instance.knockbackBase      = instance.speed * 1.5
+    instance.knockbackBase      = instance.speed * 2 
     instance.knockbackSpeed     = 0
     instance.knockbackDirection = 1
 
@@ -146,11 +146,11 @@ end
 function CharacterBase:getHitbox(attackType)
     if attackType == "downAir" then
         return {
-            width  = self.width * 0.8,
+            width  = self.width,
             height = self.height * 0.5,
-            x      = self.x + (self.width - self.width * 0.8) / 2,
-            y      = self.y + self.height
-        }
+            x      = self.x,
+            y      = self.y + (self.height * 0.5)
+        } 
     elseif attackType == "heavyAttack" or attackType == "lightAttack" then
         local hitWidth = 4
         return {
