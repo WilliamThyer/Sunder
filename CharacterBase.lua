@@ -86,7 +86,7 @@ function CharacterBase:new(x, y)
     instance.isCountering    = false
     instance.counterTimer    = 0
     instance.counterDuration = 0.5
-    instance.counterActiveWindow = 0.15
+    instance.counterActiveWindow = 0.25
     instance.counterActive   = false
 
     -- Health & Stamina
@@ -152,7 +152,7 @@ function CharacterBase:getHitbox(attackType)
             y      = self.y + (self.height * 0.5)
         } 
     elseif attackType == "heavyAttack" or attackType == "lightAttack" then
-        local hitWidth = 4
+        local hitWidth = 4.5
         return {
             width  = hitWidth,
             height = self.height,
