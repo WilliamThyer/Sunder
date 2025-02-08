@@ -173,6 +173,14 @@ function Warrior:processInput(dt, input, otherPlayer)
         self.isMoving  = true
         self.direction = (input.moveX > 0) and 1 or -1
     else
+        -- Even if we cannot “move,” check if we’re shielding so we can flip direction
+        -- without actually moving our X position:
+        if self.isShielding then
+            if math.abs(input.moveX) > 0.5 then
+                self.direction = (input.moveX > 0) and 1 or -1
+            end
+        end
+        
         self.isMoving = false
     end
 
