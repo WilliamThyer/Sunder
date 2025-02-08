@@ -15,7 +15,7 @@ function CharacterBase:new(x, y)
 
     instance.direction = 1
     instance.canMove   = true
-    instance.speed     = 30
+    instance.speed     = 28
     instance.gravity   = 400
 
     instance.jumpHeight    = -120
@@ -60,7 +60,7 @@ function CharacterBase:new(x, y)
     instance.dashTimer    = 0
     instance.dashDuration = 0.25
     instance.canDash      = true
-    instance.dashSpeed    = 125
+    instance.dashSpeed    = 115
     instance.dashVelocity = 0
 
     -- Shield
