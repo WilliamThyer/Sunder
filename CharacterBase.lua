@@ -23,7 +23,7 @@ function CharacterBase:new(x, y)
     instance.isJumping     = false
     instance.canDoubleJump = false
 
-    instance.landingLag       = 0.2
+    instance.landingLag       = 0.15
     instance.landingLagTimer  = 0
     instance.isLanding        = false
 
