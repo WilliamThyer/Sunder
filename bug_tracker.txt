@@ -79,57 +79,36 @@ THROW
 Throw mechanic?
 Does no damage but stuns them for a moment?
 
-Feedback
+Feedback (easy)
 change directions when you are shielding
+- you should be able to move which direction you are facing while shielding. But still not able to move.
 jump costs stamina
+- jumping costs one stamina. double jump also costs one.
+landing/cooldown land
+- after landing, the player cannot move for .25 seconds. Basically a landing lag.
+different colors for characters
+- use the built-in lua shaders to color the characters blue and red.
+more knockback
+- every attack should do 1.5x more knockback.
+Fix downair hitbox
+- Downair hitbox only hurts when you land slightly to the front of them. The hitbox/hurtbox should work if you land anywhere on top of them.
+knockback in the Air
+- If you are hit in the air, you get knocked back.
+slow down movements?
+- slow down movement speed to 90%.
+longer range for attacks
+- Light attack and heavy attack range is 110%.
+longer counter
+- the window that the counter works is slightly longer, .1 seconds.
+
+
+Feedback
 projectiles
 directional attacks and blocks
-landing/cooldown land
 recovery frames
 stage with bottomless pits
-different colors for characters
-Fix downair hitbox
-more knockback
-knockback in the Air
-slow down movements?
-longer range for attacks
 hit stun, interupt heavy attacks
-longer counter
 
---- Character Refactor
-CharacterBase
-- new
-- checkCollision
-- resolveCollision
-- getHitbox
-- checkHit
-- checkShieldBlock
-- getKnockbackDirection
-- useStamina
-- updateStamina
-- handleAttackEffects
-- triggerSuccessfulCounter
-- updateHurtState
--- start player that needs to move to base
-- collisionFilter
-- initializeAnimations (p)
-- initializeUIAnimations
-- initializeSoundEffects (p)
-- update
-- moveWithBump
-- draw (p)
-- drawUI
-- drawIcon
-- processInput (p)
-- handleAttacks (p)
-- triggerDownAir
-- handleDownAir
-- endDownAir   
-- resetGravity
-- triggerCounter
-- updateCounter
-- updateAnimation
-- canPerformAction (p)
 
 Warrior
 - initializeAnimations (p)
