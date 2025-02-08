@@ -79,18 +79,97 @@ THROW
 Throw mechanic?
 Does no damage but stuns them for a moment?
 
-
+Feedback
 change directions when you are shielding
 jump costs stamina
 projectiles
 directional attacks and blocks
 landing/cooldown land
 recovery frames
-stage 
-different colors
+stage with bottomless pits
+different colors for characters
 Fix downair hitbox
 more knockback
 knockback in the Air
 slow down movements?
-longer range
+longer range for attacks
 hit stun, interupt heavy attacks
+longer counter
+
+--- Character Refactor
+CharacterBase
+- new
+- checkCollision
+- resolveCollision
+- getHitbox
+- checkHit
+- checkShieldBlock
+- getKnockbackDirection
+- useStamina
+- updateStamina
+- handleAttackEffects
+- triggerSuccessfulCounter
+- updateHurtState
+-- start player that needs to move to base
+- collisionFilter
+- initializeAnimations (p)
+- initializeUIAnimations
+- initializeSoundEffects (p)
+- update
+- moveWithBump
+- draw (p)
+- drawUI
+- drawIcon
+- processInput (p)
+- handleAttacks (p)
+- triggerDownAir
+- handleDownAir
+- endDownAir   
+- resetGravity
+- triggerCounter
+- updateCounter
+- updateAnimation
+- canPerformAction (p)
+
+Warrior
+- initializeAnimations (p)
+- initializeSoundEffects (p)
+- draw (p)
+- processInput (p)
+- handleAttacks (p)
+- canPerformAction (p)
+
+Player
+- getPlayerInput
+
+--- CLASSES ---
+Warrior
+- downstrike (downair)
+- shield (directional)
+- stab (light attack)
+- slash (heavy attack)
+- dash
+- counter
+
+Berserker
+- body slam (downair)
+- shield (omni-directional)
+- axe bash (light attack)
+- axe chop (heavy attack)
+- dash 
+- counter
+- Characteristics
+Very slow, attacks come out slow and have more recovery frames.
+
+Lancer
+- downair
+- shield (directional)
+- lance (light attack)
+- long lance (heavy attack)
+- dash
+- counter
+- Characteristics
+Very fast, attacks come out fast. Longer range.
+
+Mage
+-  (downair)
