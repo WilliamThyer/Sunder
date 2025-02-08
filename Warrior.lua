@@ -289,6 +289,7 @@ function Warrior:canPerformAction(action)
             not self.isShielding and
             not self.isHurt and
             not self.isStunned and
+            not self.isLanding and
             not self.isCountering
         ),
         shield = (
@@ -307,6 +308,7 @@ function Warrior:canPerformAction(action)
             not self.isStunned and
             not self.isCountering and
             not self.attackPressedLastFrame and
+            not self.isLanding and
             self.stamina >= 2
         ),
         lightAttack = (
@@ -317,6 +319,7 @@ function Warrior:canPerformAction(action)
             not self.isStunned and
             not self.isCountering and
             not self.attackPressedLastFrame and
+            not self.isLanding and
             self.stamina >= 1
         ),
         dash = (
@@ -327,6 +330,7 @@ function Warrior:canPerformAction(action)
             not self.isStunned and
             not self.isCountering and
             not self.dashPressedLastFrame and
+            not self.isLanding and
             self.stamina >= 1
         ),
         move = (
@@ -337,7 +341,8 @@ function Warrior:canPerformAction(action)
             not self.isStunned and
             (not self.isAttacking or self.isJumping) and
             not self.isCountering and
-            not self.isDownAir
+            not self.isDownAir and
+            not self.isLanding
         ),
         jump = (
             not self.isAttacking and
@@ -346,7 +351,8 @@ function Warrior:canPerformAction(action)
             not self.isHurt and
             not self.isStunned and
             not self.isCountering and
-            not self.JumpPressedLastFrame
+            not self.JumpPressedLastFrame and
+            not self.isLanding
         ),
         downAir = (
             self.isJumping and
@@ -366,7 +372,8 @@ function Warrior:canPerformAction(action)
             not self.isHurt and
             not self.isStunned and
             not self.isCountering and
-            not self.counterPressedLastFrame
+            not self.counterPressedLastFrame and
+            not self.isLanding
         )
     }
     return conditions[action]

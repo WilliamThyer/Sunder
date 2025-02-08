@@ -18,6 +18,7 @@ function Player:update(dt, otherPlayer)
     self:handleDownAir(dt, otherPlayer)
     self:updateHurtState(dt)
     self:updateCounter(dt)
+    self:updateLandingLag(dt)
     self:updateStamina(dt)
     self:updateAnimation(dt)
 end

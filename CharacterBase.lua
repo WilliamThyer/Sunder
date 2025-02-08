@@ -23,6 +23,10 @@ function CharacterBase:new(x, y)
     instance.isJumping     = false
     instance.canDoubleJump = false
 
+    instance.landingLag       = 0.25
+    instance.landingLagTimer  = 0
+    instance.isLanding        = false
+
     -- Attack states
     instance.isAttacking              = false
     instance.isHeavyAttacking         = false
@@ -454,6 +458,7 @@ function CharacterBase:land()
     self.canDoubleJump = false
     self.canDash       = true
     self.isDownAir     = false
+    self.landingLagTimer = self.landingLag
 end
 
 function CharacterBase:resetGravity()
@@ -477,6 +482,17 @@ function CharacterBase:updateCounter(dt)
             self.isCountering  = false
             self.counterTimer  = 0
             self.counterActive = false
+        end
+    end
+end
+
+function CharacterBase:updateLandingLag(dt)
+    if self.landingLagTimer > 0 then
+        self.isLanding = true
+        self.landingLagTimer = self.landingLagTimer - dt
+        if self.landingLagTimer <= 0 then
+            self.isLanding = false
+            self.landingLagTimer = 0
         end
     end
 end
