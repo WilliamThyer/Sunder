@@ -259,7 +259,10 @@ function CharacterBase:handleAttackEffects(attacker, dt, knockbackMultiplier, at
             self.hurtTimer      = 0.2
             self.isInvincible   = true
             self.invincibleTimer= 0.5
-
+            if self.isJumping then
+                -- Add some upward knockback if you're in the air
+                self.jumpVelocity = - math.abs(self.knockbackSpeed * 1.5)
+            end
             self.knockbackSpeed     = self.knockbackBase * (knockbackMultiplier or 1)
             self.knockbackDirection = self:getKnockbackDirection(attacker)
             self.x = self.x - self.knockbackSpeed * self.knockbackDirection * dt
