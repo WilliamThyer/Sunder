@@ -458,7 +458,10 @@ function CharacterBase:land()
     self.canDoubleJump = false
     self.canDash       = true
     self.isDownAir     = false
-    self.landingLagTimer = self.landingLag
+    if not self.isAttacking then
+        self.landingLagTimer = self.landingLag
+    end
+    
 end
 
 function CharacterBase:resetGravity()
@@ -506,6 +509,8 @@ function CharacterBase:updateAnimation(dt)
         self.currentAnim = self.animations.shieldBlock
     elseif self.isShielding then
         self.currentAnim = self.animations.shield
+    elseif self.isLanding then
+        self.currentAnim = self.animations.land
     elseif self.isCountering then
         self.currentAnim = self.animations.counter
     elseif self.isHeavyAttacking then

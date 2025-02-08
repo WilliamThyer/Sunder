@@ -50,6 +50,7 @@ function Warrior:initializeAnimations()
     self.animations = {
         move         = anim8.newAnimation(self.grid(1, '1-2'), 0.2),
         jump         = anim8.newAnimation(self.grid(1, 4), 1),
+        land         = anim8.newAnimation(self.grid(4, 2), 1),
         idle         = anim8.newAnimation(self.grid(4, '1-2'), 0.7),
         dash         = anim8.newAnimation(self.grid(3, 1), 0.2),
         heavyAttack  = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.1, 0.25, 0.05, 0.1}),
