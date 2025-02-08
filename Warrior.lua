@@ -184,25 +184,32 @@ function Warrior:processInput(dt, input, otherPlayer)
         self.isMoving = false
     end
 
-    -- Jump
+    -- Jump logic
     if input.jump and self:canPerformAction("jump") then
+        -- First jump
         if not self.isJumping then
-            self.soundEffects['jump']:play()
-            self.jumpVelocity   = self.jumpHeight
-            self.isJumping      = true
-            self.canDoubleJump  = true
-            self.canDash        = true
-            if self.animations and self.animations.jump then
-                self.animations.jump:gotoFrame(1)
+            -- Check if we can pay the stamina cost
+            if self:useStamina(1) then
+                self.soundEffects['jump']:play()
+                self.jumpVelocity   = self.jumpHeight
+                self.isJumping      = true
+                self.canDoubleJump  = true
+                self.canDash        = true
+                if self.animations and self.animations.jump then
+                    self.animations.jump:gotoFrame(1)
+                end
             end
+        -- Double jump
         elseif self.canDoubleJump then
-            self.soundEffects['jump']:play()
-            self.isDownAir     = false
-            self:resetGravity()
-            self.jumpVelocity  = self.jumpHeight
-            self.canDoubleJump = false
-            if self.animations and self.animations.jump then
-                self.animations.jump:gotoFrame(1)
+            if self:useStamina(1) then
+                self.soundEffects['jump']:play()
+                self.isDownAir    = false
+                self:resetGravity()
+                self.jumpVelocity  = self.jumpHeight
+                self.canDoubleJump = false
+                if self.animations and self.animations.jump then
+                    self.animations.jump:gotoFrame(1)
+                end
             end
         end
     end
