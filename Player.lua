@@ -1,5 +1,6 @@
 -- Player.lua
 local Warrior = require("Warrior")
+local Berserker = require("Berserker")
 local Player = {}
 Player.__index = Player
 setmetatable(Player, { __index = Warrior })

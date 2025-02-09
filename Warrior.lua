@@ -40,7 +40,7 @@ end
 -- Fighter–Specific (Warrior) Methods
 --------------------------------------------------
 function Warrior:initializeAnimations()
-    self.spriteSheet = love.graphics.newImage("assets/sprites/hero.png")
+    self.spriteSheet = love.graphics.newImage("assets/sprites/WarriorRed.png")
     self.grid = anim8.newGrid(8, 8, self.spriteSheet:getWidth(), self.spriteSheet:getHeight(), 0, 0, 1)
 
     local num_small_cols = 6

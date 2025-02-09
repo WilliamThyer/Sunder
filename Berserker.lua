@@ -1,15 +1,15 @@
--- Warrior.lua
+-- Berserker.lua
 local CharacterBase = require("CharacterBase")
 local anim8 = require("libraries.anim8")
 
-local Warrior = {}
-Warrior.__index = Warrior
-setmetatable(Warrior, { __index = CharacterBase })
+local Berserker = {}
+Berserker.__index = Berserker
+setmetatable(Berserker, { __index = CharacterBase })
 
-function Warrior:new(x, y, joystickIndex, world, aiController)
+function Berserker:new(x, y, joystickIndex, world, aiController)
     -- Call the base constructor:
     local instance = CharacterBase.new(self, x, y)
-    setmetatable(instance, Warrior)
+    setmetatable(instance, Berserker)
 
     instance.index    = joystickIndex
     instance.joystick = love.joystick.getJoysticks()[joystickIndex]
@@ -49,10 +49,10 @@ function Warrior:new(x, y, joystickIndex, world, aiController)
 end
 
 --------------------------------------------------
--- Fighter–Specific (Warrior) Methods
+-- Fighter–Specific (Berserker) Methods
 --------------------------------------------------
-function Warrior:initializeAnimations()
-    self.spriteSheet = love.graphics.newImage("assets/sprites/Berserker.png")
+function Berserker:initializeAnimations()
+    self.spriteSheet = love.graphics.newImage("assets/sprites/BerserkerBlue.png")
     self.grid = anim8.newGrid(12, 12, self.spriteSheet:getWidth(), self.spriteSheet:getHeight(), 0, 0, 1)
 
     local num_small_cols = 6
@@ -77,7 +77,7 @@ function Warrior:initializeAnimations()
     self.currentAnim = self.animations.idle
 end
 
-function Warrior:initializeSoundEffects()
+function Berserker:initializeSoundEffects()
     self.soundEffects = {
         counter             = love.audio.newSource("assets/soundEffects/counter.wav", "static"),
         dash                = love.audio.newSource("assets/soundEffects/dash.wav", "static"),
@@ -94,7 +94,7 @@ function Warrior:initializeSoundEffects()
     }
 end
 
-function Warrior:draw()
+function Berserker:draw()
     local CHARACTER_SCALE = 1
     local scaleX = CHARACTER_SCALE * self.direction
     local scaleY = CHARACTER_SCALE
@@ -117,7 +117,7 @@ function Warrior:draw()
     self:drawUI()
 end
 
-function Warrior:processInput(dt, input, otherPlayer)
+function Berserker:processInput(dt, input, otherPlayer)
     self.isIdle = true
 
     -- Shield
@@ -271,7 +271,7 @@ function Warrior:processInput(dt, input, otherPlayer)
     end
 end
 
-function Warrior:handleAttacks(dt, otherPlayer)
+function Berserker:handleAttacks(dt, otherPlayer)
     if not otherPlayer then return end
 
     if self.isHeavyAttacking and not self.hasHitHeavy and
@@ -293,7 +293,7 @@ function Warrior:handleAttacks(dt, otherPlayer)
     end
 end
 
-function Warrior:canPerformAction(action)
+function Berserker:canPerformAction(action)
     local conditions = {
         idle = (
             not self.isMoving and
@@ -393,4 +393,4 @@ function Warrior:canPerformAction(action)
     return conditions[action]
 end
 
-return Warrior
+return Berserker
