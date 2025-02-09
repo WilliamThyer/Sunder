@@ -27,6 +27,9 @@ DEATH
 MENU
 Players press button to get assigned 1P and 2P.
 
+PLAYER SELECT
+Be able to select which character you want to use, and their color.
+
 AI
 
 SOUND EFFECTS
