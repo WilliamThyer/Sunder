@@ -13,6 +13,7 @@ local bump = require("libraries.bump")
 local Player = require("Player")
 local AIController = require("AIController")
 local Menu = require("Menu")
+local CharacterSelect = require("CharacterSelect")
 
 local displayWidth, displayHeight = love.window.getDesktopDimensions()
 
@@ -50,38 +51,34 @@ function love.load()
     )
 end
 
--- Start the game after menu selection
 function startGame(mode)
-    -- Update the global state
-    GameInfo.gameState = mode
-
-    -- Create collision world
+    GameInfo.gameState = mode  -- mode is now either "game_1P" or "game_2P"
+    
     world = bump.newWorld(8)
-
-    -- Load map
     map = sti("assets/backgrounds/testNew.lua", {"bump"})
     map:bump_init(world)
-
-    if GameInfo.gameState == "game_1P" then
-        -- If 1P mode, Player 2 is AI
+    
+    local p1Character = GameInfo.player1Character or "warrior"
+    local p2Character = GameInfo.player2Character or "warrior"
+    
+    if mode == "game_1P" then
         local ai = AIController:new()
         players = {
-            Player:new("berserker", 20, 49, 1, world, nil),  -- Player 1 (human)
-            Player:new("berserker", 100, 49, 2, world, ai)   -- Player 2 (AI)
+            Player:new(p1Character, 20, 49, 1, world, nil),
+            Player:new(p2Character, 100, 49, 2, world, ai)
         }
     else
-        -- 2P mode: both human
         players = {
-            Player:new("berserker", 20, 49, 1, world, nil),
-            Player:new("berserker", 100, 49, 2, world, nil)
+            Player:new(p1Character, 20, 49, 1, world, nil),
+            Player:new(p2Character, 100, 49, 2, world, nil)
         }
     end
 
-    -- Add players to bump world
     for _, p in ipairs(players) do
         world:add(p, p.x+1, p.y, p.width-2, p.height-1)
     end
 end
+
 
 -- Update the game (1P or 2P)
 function updateGame(dt)
@@ -100,6 +97,8 @@ end
 function love.update(dt)
     if GameInfo.gameState == "menu" then
         Menu.updateMenu(GameInfo)
+    elseif GameInfo.gameState == "characterselect" then
+        CharacterSelect.update(GameInfo)
     else
         updateGame(dt)
         if players[1].isDead or players[2].isDead then
@@ -113,14 +112,15 @@ function love.draw()
 
     if GameInfo.gameState == "menu" then
         Menu.drawMenu(GameInfo)
+    elseif GameInfo.gameState == "characterselect" then
+        CharacterSelect.draw(GameInfo)
     else
-        if map then
-            map:draw(0, 0, 1, 1)
-        end
+        if map then map:draw(0, 0, 1, 1) end
 
         for _, player in ipairs(players) do
             player:draw()
         end
+
         if players[1].isDead or players[2].isDead then
             Menu.drawRestartMenu(players)
         end
