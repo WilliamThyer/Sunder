@@ -66,14 +66,14 @@ function startGame(mode)
         -- If 1P mode, Player 2 is AI
         local ai = AIController:new()
         players = {
-            Player:new(20, 49, 1, world, nil),  -- Player 1 (human)
-            Player:new(100, 49, 2, world, ai)   -- Player 2 (AI)
+            Player:new("berserker", 20, 49, 1, world, nil),  -- Player 1 (human)
+            Player:new("berserker", 100, 49, 2, world, ai)   -- Player 2 (AI)
         }
     else
         -- 2P mode: both human
         players = {
-            Player:new(20, 49, 1, world, nil),
-            Player:new(100, 49, 2, world, nil)
+            Player:new("berserker", 20, 49, 1, world, nil),
+            Player:new("berserker", 100, 49, 2, world, nil)
         }
     end
 
