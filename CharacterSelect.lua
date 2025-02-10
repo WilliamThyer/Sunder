@@ -14,9 +14,33 @@ local colorOptions = {
     {141/255, 141/255, 141/255},  -- Gray
     {241/255, 225/255, 115/255},  -- Yellow
 }
+-- Mapping from our color index to color name (used for sprite sheet lookup)
+local colorNames = {"Blue", "Red", "Gray", "Yellow"}
 
 -- List of characters for now
 local characters = {"Warrior", "Berserk", "Duelist", "Mage"}
+
+-- Load sprite sheets for the characters that have sprites.
+-- (Note: no sprites are loaded for Duelist and Mage.)
+local sprites = {
+    Warrior = {
+       Red    = love.graphics.newImage("assets/sprites/WarriorRed.png"),
+       Blue   = love.graphics.newImage("assets/sprites/WarriorBlue.png"),
+       Yellow = love.graphics.newImage("assets/sprites/WarriorYellow.png"),
+       Gray   = love.graphics.newImage("assets/sprites/WarriorGray.png")
+    },
+    Berserk = {
+       Red    = love.graphics.newImage("assets/sprites/BerserkRed.png"),
+       Blue   = love.graphics.newImage("assets/sprites/BerserkBlue.png"),
+       Yellow = love.graphics.newImage("assets/sprites/BerserkYellow.png"),
+       Gray   = love.graphics.newImage("assets/sprites/BerserkGray.png")
+    }
+}
+
+-- Create quads to pull the first sprite from each sheet.
+-- For Warrior: grid 8×8; for Berserk: grid 12×12.
+local warriorQuad = love.graphics.newQuad(0, 1, 9, 8, sprites.Warrior.Blue:getWidth(), sprites.Warrior.Blue:getHeight())
+local berserkQuad = love.graphics.newQuad(1, 2, 13, 13, sprites.Berserk.Blue:getWidth(), sprites.Berserk.Blue:getHeight())
 
 -- Store each player's selection state.
 --   moveCooldown: a timer to delay repeated stick moves (in seconds)
@@ -81,8 +105,7 @@ local function cycleColor(playerIndex)
         end
 
         attempts = attempts + 1
-    until (playerSelections[playerIndex].colorIndex
-               ~= playerSelections[otherIndex].colorIndex)
+    until (playerSelections[playerIndex].colorIndex ~= playerSelections[otherIndex].colorIndex)
           or (attempts >= maxAttempts)
 end
 
@@ -93,19 +116,13 @@ end
 --    If nil, no control is available (e.g. for the CPU in 1P mode when not active).
 -----------------------------------------------------
 function CharacterSelect.updateCharacter(controllingJoystickIndex, playerIndex)
-    if not controllingJoystickIndex then
-        -- This player is CPU/AI or not controlled.
-        return
-    end
+    if not controllingJoystickIndex then return end
 
     local dt = love.timer.getDelta()
     local joystick = love.joystick.getJoysticks()[controllingJoystickIndex]
     local input = getJoystickInput(joystick)
 
-    -- Decrement the movement cooldown
-    playerSelections[playerIndex].moveCooldown = math.max(
-        0, playerSelections[playerIndex].moveCooldown - dt
-    )
+    playerSelections[playerIndex].moveCooldown = math.max(0, playerSelections[playerIndex].moveCooldown - dt)
 
     -- 1) Movement input (only if not locked)
     if not playerSelections[playerIndex].locked then
@@ -121,17 +138,14 @@ function CharacterSelect.updateCharacter(controllingJoystickIndex, playerIndex)
             if move ~= 0 then
                 local s = playerSelections[playerIndex]
                 s.cursor = s.cursor + move
-                if s.cursor < 1 then
-                    s.cursor = #characters
-                elseif s.cursor > #characters then
-                    s.cursor = 1
-                end
+                if s.cursor < 1 then s.cursor = #characters
+                elseif s.cursor > #characters then s.cursor = 1 end
                 s.moveCooldown = 0.25
             end
         end
     end
 
-    -- 2) Color changing (Y button) -- edge-detected
+    -- 2) Color changing (Y button)
     if input.changeColor and (not playerSelections[playerIndex].prevY) then
         cycleColor(playerIndex)
     end
@@ -180,10 +194,10 @@ function CharacterSelect.update(GameInfo)
         if not playerSelections[1].locked then
             -- In P1 selection state: if B is pressed before locking, go back to main menu.
             if input.back and (not playerSelections[1].prevBack) then
-                GameInfo.gameState = "menu"   -- Use "menu" so main.lua draws the menu.
+                GameInfo.gameState = "menu"
                 return
             end
-            playerSelections[2].prevSelect = true -- to avoid misinput 
+            playerSelections[2].prevSelect = true -- avoid misinput
             CharacterSelect.updateCharacter(1, 1)
         else
             -- P1 is locked, so we are in CPU (P2) selection state.
@@ -209,7 +223,6 @@ function CharacterSelect.update(GameInfo)
             return
         end
 
-        -- Update each player's selection if their joystick is present.
         if joysticks[1] then
             CharacterSelect.updateCharacter(1, 1)
         end
@@ -234,7 +247,7 @@ function CharacterSelect.beginGame(GameInfo)
     GameInfo.player1Character = characters[playerSelections[1].cursor]
     GameInfo.player2Character = characters[playerSelections[2].cursor]
 
-    -- (Optional) Also store colors if needed later.
+    -- Also store colors for later.
     GameInfo.player1Color = colorOptions[playerSelections[1].colorIndex]
     GameInfo.player2Color = colorOptions[playerSelections[2].colorIndex]
 
@@ -251,7 +264,6 @@ function CharacterSelect.draw(GameInfo)
 
     local gameWidth  = GameInfo.gameWidth
     local gameHeight = GameInfo.gameHeight
-
     local isOnePlayer = (GameInfo.previousState == "game_1P")
 
     -- === Draw player info boxes at the top ===
@@ -265,7 +277,6 @@ function CharacterSelect.draw(GameInfo)
     local p2BoxX = gameWidth - boxWidth - paddingX
     local p2BoxY = paddingY
 
-    -- Helper to get a player's current color
     local function getPlayerColor(playerIndex)
         local ci = playerSelections[playerIndex].colorIndex
         return colorOptions[ci][1], colorOptions[ci][2], colorOptions[ci][3]
@@ -278,10 +289,26 @@ function CharacterSelect.draw(GameInfo)
         love.graphics.setColor(1, 1, 1, 1)
     end
     love.graphics.rectangle("line", p1BoxX, p1BoxY, boxWidth, boxHeight)
-    local p1Character = characters[playerSelections[1].cursor]
+    -- In the player box, if the selected character has a sprite (Warrior or Berserk), draw it
+    local p1Char = characters[playerSelections[1].cursor]
+    if p1Char == "Warrior" or p1Char == "Berserk" then
+        local colName = colorNames[playerSelections[1].colorIndex]
+        local image, quad, spriteW, spriteH
+        if p1Char == "Warrior" then
+            image = sprites.Warrior[colName]
+            quad = warriorQuad
+            spriteW, spriteH = 8, 8
+        elseif p1Char == "Berserk" then
+            image = sprites.Berserk[colName]
+            quad = berserkQuad
+            spriteW, spriteH = 12, 12
+        end
+        local offsetX = (boxWidth - spriteW) / 2
+        local offsetY = (boxHeight - spriteH) / 2
+        love.graphics.draw(image, quad, p1BoxX + offsetX, p1BoxY + offsetY)
+    end
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.printf("Player 1",
-        p1BoxX-boxWidth/2-2, p1BoxY - 8, boxWidth*5, "center", 0, .5, .5)
+    love.graphics.printf("Player 1", p1BoxX - boxWidth/2 - 2, p1BoxY - 8, boxWidth*5, "center", 0, 0.5, 0.5)
 
     -- --- Draw Player 2's box ---
     if playerSelections[2].locked then
@@ -290,15 +317,29 @@ function CharacterSelect.draw(GameInfo)
         love.graphics.setColor(1, 1, 1, 1)
     end
     love.graphics.rectangle("line", p2BoxX, p2BoxY, boxWidth, boxHeight)
-    local p2Character = characters[playerSelections[2].cursor]
+    local p2Char = characters[playerSelections[2].cursor]
+    if p2Char == "Warrior" or p2Char == "Berserk" then
+        local colName = colorNames[playerSelections[2].colorIndex]
+        local image, quad, spriteW, spriteH
+        if p2Char == "Warrior" then
+            image = sprites.Warrior[colName]
+            quad = warriorQuad
+            spriteW, spriteH = 9, 9
+        elseif p2Char == "Berserk" then
+            image = sprites.Berserk[colName]
+            quad = berserkQuad
+            spriteW, spriteH = 12, 12
+        end
+        local offsetX = (boxWidth - spriteW) / 2
+        local offsetY = (boxHeight - spriteH) / 2
+        love.graphics.draw(image, quad, p2BoxX + offsetX, p2BoxY + offsetY)
+    end
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.printf("Player 2",
-        p2BoxX-boxWidth/2-2, p2BoxY  - 8, boxWidth*5, "center", 0, 0.5, 0.5)
+    love.graphics.printf("Player 2", p2BoxX - boxWidth/2 - 2, p2BoxY - 8, boxWidth*5, "center", 0, 0.5, 0.5)
 
     -- === Draw character boxes in the center ===
     local charBoxWidth  = 16
     local charBoxHeight = 16
-    local totalWidth    = charBoxWidth * #characters + paddingX * (#characters - 1)
     local startX        = 6
     local startY        = p1BoxY + boxHeight + 20
     local charBoxPadding = 16
@@ -307,58 +348,52 @@ function CharacterSelect.draw(GameInfo)
         local x = startX + (i - 1) * (charBoxWidth + charBoxPadding)
         local y = startY
         love.graphics.rectangle("line", x, y, charBoxWidth, charBoxHeight)
-        love.graphics.printf(
-            charName,
-            x - charBoxWidth / 1.7, y - charBoxHeight/2,
-            charBoxWidth*5, "center",
-            0, .5,.5
-        )
+        -- For characters with sprites (Warrior or Berserk), draw the blue sprite in the option box.
+        if charName == "Warrior" then
+            local image = sprites.Warrior["Gray"]
+            local quad = warriorQuad
+            local spriteW, spriteH = 8, 8
+            local offsetX = (charBoxWidth - spriteW) / 2
+            local offsetY = (charBoxHeight - spriteH) / 2
+            love.graphics.draw(image, quad, x + offsetX, y + offsetY, 0, 1, 1, 0, -1)
+        elseif charName == "Berserk" then
+            local image = sprites.Berserk["Gray"]
+            local quad = berserkQuad
+            local spriteW, spriteH = 12, 12
+            local offsetX = (charBoxWidth - spriteW) / 2
+            local offsetY = (charBoxHeight - spriteH) / 2
+            love.graphics.draw(image, quad, x + offsetX, y + offsetY, 0, 1, 1, 0, 0)
+        end
+        love.graphics.printf(charName, x - charBoxWidth/1.7, y - charBoxHeight/2, charBoxWidth*5, "center", 0, 0.5, 0.5)
     end
 
     -- === Draw each player’s cursor below the character boxes ===
     local cursorY   = startY + charBoxHeight + 7
-    local offsetX
     local arrowSize = 5
+    local charBoxSpace = charBoxPadding
 
     for playerIndex = 1, 2 do
-        -- In 1-player mode, do not draw the CPU (P2) cursor until P1 is locked.
         if isOnePlayer and playerIndex == 2 and (not playerSelections[1].locked) then
-            -- (CPU cursor is hidden until P1 has locked in.)
+            -- Hide CPU cursor until P1 is locked.
         else
             local cursorIndex = playerSelections[playerIndex].cursor
-            if playerIndex == 1 then
-                offsetX = -3
-            else
-                offsetX = 3
-            end
-
+            local offsetX = (playerIndex == 1) and -3 or 3
             local x = startX + (cursorIndex - 1) * (charBoxWidth + charBoxPadding) + charBoxWidth/2 + offsetX
             local y = cursorY
 
             love.graphics.setColor(getPlayerColor(playerIndex))
-            love.graphics.polygon("fill",
-                x - arrowSize/2, y,
-                x + arrowSize/2, y,
-                x, y - arrowSize
-            )
-
-            -- Draw label under the cursor: "P1" or "P2" (or "CPU" in 1P mode for player 2)
-            love.graphics.setColor(1,1,1,1)
+            love.graphics.polygon("fill", x - arrowSize/2, y, x + arrowSize/2, y, x, y - arrowSize)
+            love.graphics.setColor(1, 1, 1, 1)
             local label = (playerIndex == 1) and "P1" or "P2"
-            if isOnePlayer and playerIndex == 2 then
-                label = "CPU"
-            end
-            love.graphics.printf(label,
-                x - 30, y + 5, 60, "center")
+            if isOnePlayer and playerIndex == 2 then label = "CPU" end
+            love.graphics.printf(label, x - 30, y + 5, 60, "center")
         end
     end
 
     love.graphics.setColor(1, 1, 1, 1)
     if playerSelections[1].locked and playerSelections[2].locked then
-        love.graphics.printf("Press start to begin",
-            0, gameHeight - 25, gameWidth, "center")
+        love.graphics.printf("Press start to begin!", 0, gameHeight - 43, gameWidth*2, "center", 0, 0.5, 0.5)
     end
-
 end
 
 return CharacterSelect
