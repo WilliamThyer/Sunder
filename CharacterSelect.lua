@@ -19,7 +19,7 @@ local characters = {"Warrior", "Berserker", "Duelist", "Mage"}
 
 -- Store each player's selection state.
 --   moveCooldown: a timer to delay repeated stick moves (in seconds)
---   prevSelect, prevBack, prevStart, prevY: to detect edge presses
+--   prevSelect, prevBack, prevStart, prevY: for edge-detection
 --   colorIndex: which color index from colorOptions
 local playerSelections = {
     [1] = {
@@ -40,7 +40,7 @@ font:setFilter("nearest", "nearest")
 
 -----------------------------------------------------
 -- Helper: Return current input for a given joystick
---         or an empty table if no joystick is connected
+--         (or a table of "false" values if no joystick is connected)
 -----------------------------------------------------
 local function getJoystickInput(joystick)
     if joystick then
@@ -71,7 +71,7 @@ local function cycleColor(playerIndex)
 
     local attempts = 0
     repeat
-        -- Move to the next color index
+        -- Advance to the next color index
         playerSelections[playerIndex].colorIndex =
             playerSelections[playerIndex].colorIndex + 1
 
@@ -83,19 +83,17 @@ local function cycleColor(playerIndex)
     until (playerSelections[playerIndex].colorIndex
                ~= playerSelections[otherIndex].colorIndex)
           or (attempts >= maxAttempts)
-    -- If attempts >= maxAttempts, it means all colors are taken,
-    -- but with only 2 players, that situation typically won't happen
-    -- unless you have only 1 color in colorOptions.
 end
 
 -----------------------------------------------------
--- Update the character select screen for a given player
---   controllingJoystickIndex: which joystick index is controlling *this* player
---   If controllingJoystickIndex = nil, means no control
+-- Update the character select screen for a given player.
+-- controllingJoystickIndex:
+--    which joystick to use for controlling this player's selection.
+--    If nil, no control is available (e.g. for the CPU in 1P mode when not active).
 -----------------------------------------------------
 function CharacterSelect.updateCharacter(controllingJoystickIndex, playerIndex)
     if not controllingJoystickIndex then
-        -- This player is CPU/AI or no control is allowed
+        -- This player is CPU/AI or not controlled.
         return
     end
 
@@ -108,7 +106,7 @@ function CharacterSelect.updateCharacter(controllingJoystickIndex, playerIndex)
         0, playerSelections[playerIndex].moveCooldown - dt
     )
 
-    -- 1) Movement input
+    -- 1) Movement input (only if not locked)
     if not playerSelections[playerIndex].locked then
         if playerSelections[playerIndex].moveCooldown <= 0 then
             local move = 0
@@ -127,7 +125,6 @@ function CharacterSelect.updateCharacter(controllingJoystickIndex, playerIndex)
                 elseif s.cursor > #characters then
                     s.cursor = 1
                 end
-                -- Reset the movement cooldown
                 s.moveCooldown = 0.25
             end
         end
@@ -138,24 +135,22 @@ function CharacterSelect.updateCharacter(controllingJoystickIndex, playerIndex)
         cycleColor(playerIndex)
     end
 
-    -- 3) Lock/unlock with A/B (edge detection)
+    -- 3) Lock/unlock with A/B (edge-detected)
     if not playerSelections[playerIndex].locked then
-        -- If A is pressed *now* but wasn't last frame => lock
+        -- Lock in selection when A is pressed
         if input.select and (not playerSelections[playerIndex].prevSelect) then
             playerSelections[playerIndex].locked = true
         end
-        -- If B is pressed *now* but wasn't last frame => unlock (redundant here if not locked)
-        if input.back and (not playerSelections[playerIndex].prevBack) then
-            playerSelections[playerIndex].locked = false
-        end
+        -- (Do NOT handle B here when not locked --
+        --  global update will cancel character select if B is pressed.)
     else
-        -- If locked, allow unlocking with B
+        -- When already locked, allow unlocking with B
         if input.back and (not playerSelections[playerIndex].prevBack) then
             playerSelections[playerIndex].locked = false
         end
     end
 
-    -- 4) Store previous button states
+    -- 4) Store previous button states (for edge detection)
     playerSelections[playerIndex].prevSelect = input.select
     playerSelections[playerIndex].prevBack   = input.back
     playerSelections[playerIndex].prevStart  = input.start
@@ -163,25 +158,57 @@ function CharacterSelect.updateCharacter(controllingJoystickIndex, playerIndex)
 end
 
 -----------------------------------------------------
--- Main update for the character select screen
+-- Main update for the character select screen.
+--
+-- In 1-player mode:
+--   - If P1 is not locked, B returns to the main menu.
+--   - Once P1 locks, the same joystick is used to update CPU (P2).
+--   - While in CPU selection, B unlocks P1 so that you can reselect.
+--
+-- In 2-player mode:
+--   - Each controller updates its own player.
+--   - If a controller is in the unlocked state and its B is pressed, the screen exits.
 -----------------------------------------------------
 function CharacterSelect.update(GameInfo)
-    -- Determine if we are in 1-player or 2-player mode
-    local isOnePlayer = (GameInfo.gameState == "game_1P")
+    local isOnePlayer = (GameInfo.previousMode == "game_1P")
+    local joysticks = love.joystick.getJoysticks()
 
     if isOnePlayer then
-        -- Player 1 uses joystick #1
-        -- Step 1: Let P1 pick their character
-        CharacterSelect.updateCharacter(1, 1)
-
-        -- Step 2: If P1 is locked, let the same joystick control "P2" (the CPU).
-        if playerSelections[1].locked then
-            CharacterSelect.updateCharacter(1, 2)
+        -- Only joystick[1] is used in one-player mode.
+        local input = getJoystickInput(joysticks[1])
+        if not playerSelections[1].locked then
+            -- In P1 selection state: if B is pressed before locking, go back to main menu.
+            if input.back and (not playerSelections[1].prevBack) then
+                GameInfo.gameState = "menu"   -- Use "menu" so main.lua draws the menu.
+                return
+            end
+            playerSelections[2].prevSelect = true -- to avoid misinput 
+            CharacterSelect.updateCharacter(1, 1)
+        else
+            -- P1 is locked, so we are in CPU (P2) selection state.
+            if input.back and (not playerSelections[1].prevBack) then
+                -- B pressed while controlling CPU: unlock P1 (and reset CPU lock)
+                playerSelections[1].locked = false
+                playerSelections[2].locked = false
+            else
+                CharacterSelect.updateCharacter(1, 2)
+            end
         end
     else
-        -- 2-player mode
-        local joysticks = love.joystick.getJoysticks()
-        -- Safely call updateCharacter if the joystick is present
+        -- Two-player mode
+        -- First, check for cancellation (B pressed) on any unlocked controller.
+        local input1 = getJoystickInput(joysticks[1])
+        local input2 = getJoystickInput(joysticks[2])
+        if (not playerSelections[1].locked) and input1.back and (not playerSelections[1].prevBack) then
+            GameInfo.gameState = "menu"
+            return
+        end
+        if (not playerSelections[2].locked) and input2.back and (not playerSelections[2].prevBack) then
+            GameInfo.gameState = "menu"
+            return
+        end
+
+        -- Update each player's selection if their joystick is present.
         if joysticks[1] then
             CharacterSelect.updateCharacter(1, 1)
         end
@@ -192,38 +219,31 @@ function CharacterSelect.update(GameInfo)
 
     -- === START THE GAME WHEN BOTH PLAYERS ARE LOCKED ===
     if playerSelections[1].locked and playerSelections[2].locked then
-        -- If either player presses start, begin
-        local js = love.joystick.getJoysticks()
-        local p1Start = js[1] and getJoystickInput(js[1]).start
-        local p2Start = js[2] and getJoystickInput(js[2]).start
-
-        if p1Start or p2Start then
+        if getJoystickInput(joysticks[1]).start or getJoystickInput(joysticks[2]).start then
             CharacterSelect.beginGame(GameInfo)
         end
     end
 end
 
 -----------------------------------------------------
--- Called when both players have locked in their characters
+-- Called when both players have locked in their characters.
 -----------------------------------------------------
 function CharacterSelect.beginGame(GameInfo)
     -- Save the chosen characters into GameInfo for later use by startGame.
     GameInfo.player1Character = characters[playerSelections[1].cursor]
     GameInfo.player2Character = characters[playerSelections[2].cursor]
 
-    -- (Optional) You could also store colors if you want them later.
+    -- (Optional) Also store colors if needed later.
     GameInfo.player1Color = colorOptions[playerSelections[1].colorIndex]
     GameInfo.player2Color = colorOptions[playerSelections[2].colorIndex]
 
-    -- Set the game state to the previously selected mode
-    GameInfo.gameState = GameInfo.previousMode  -- e.g. "game_1P" or "game_2P"
-
-    -- Now start the game
+    -- Transition to the previously selected game mode (e.g. "game_1P" or "game_2P")
+    GameInfo.gameState = GameInfo.previousMode
     startGame(GameInfo.gameState)
 end
 
 -----------------------------------------------------
--- Draw the character select screen
+-- Draw the character select screen.
 -----------------------------------------------------
 function CharacterSelect.draw(GameInfo)
     push:finish()
@@ -252,13 +272,11 @@ function CharacterSelect.draw(GameInfo)
 
     -- --- Draw Player 1's box ---
     if playerSelections[1].locked then
-        -- Fill the box with that player's chosen color
         love.graphics.setColor(getPlayerColor(1))
         love.graphics.rectangle("fill", p1BoxX, p1BoxY, boxWidth, boxHeight)
     end
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.rectangle("line", p1BoxX, p1BoxY, boxWidth, boxHeight)
-
     local p1Character = characters[playerSelections[1].cursor]
     love.graphics.printf("Player 1\n" .. p1Character,
         p1BoxX, p1BoxY + 30, boxWidth, "center", 0, 0.5, 0.5)
@@ -270,7 +288,6 @@ function CharacterSelect.draw(GameInfo)
     end
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.rectangle("line", p2BoxX, p2BoxY, boxWidth, boxHeight)
-
     local p2Character = characters[playerSelections[2].cursor]
     love.graphics.printf("Player 2\n" .. p2Character,
         p2BoxX, p2BoxY + 30, boxWidth, "center", 0, 0.5, 0.5)
@@ -294,40 +311,33 @@ function CharacterSelect.draw(GameInfo)
     local arrowSize = 20
 
     for playerIndex = 1, 2 do
-        -- If in 1P mode and P1 isn't locked yet, don't draw P2's cursor
+        -- In 1-player mode, do not draw the CPU (P2) cursor until P1 is locked.
         if isOnePlayer and playerIndex == 2 and (not playerSelections[1].locked) then
-            -- Hide the CPU cursor until P1 is locked
+            -- (CPU cursor is hidden until P1 has locked in.)
         else
             local cursorIndex = playerSelections[playerIndex].cursor
             local x = startX + (cursorIndex - 1) * (charBoxWidth + padding) + charBoxWidth/2
             local y = cursorY
 
-            -- Player color
             love.graphics.setColor(getPlayerColor(playerIndex))
-
-            -- Draw the arrow
             love.graphics.polygon("fill",
                 x - arrowSize/2, y,
                 x + arrowSize/2, y,
                 x, y - arrowSize
             )
 
-            -- Draw the label below the cursor
+            -- Draw label under the cursor: "P1" or "P2" (or "CPU" in 1P mode for player 2)
             love.graphics.setColor(1,1,1,1)
             local label = (playerIndex == 1) and "P1" or "P2"
             if isOnePlayer and playerIndex == 2 then
-                label = "CPU"  -- in 1P mode, second is CPU
+                label = "CPU"
             end
-            love.graphics.printf(
-                label,
-                x - 30, y + 5, 60, "center"  -- a small bounding box
-            )
+            love.graphics.printf(label,
+                x - 30, y + 5, 60, "center")
         end
     end
 
     love.graphics.setColor(1, 1, 1, 1)
-
-    -- === If both players are locked, prompt to start the game ===
     if playerSelections[1].locked and playerSelections[2].locked then
         love.graphics.printf("Press start to begin",
             0, displayHeight - 150, displayWidth, "center")
