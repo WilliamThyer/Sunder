@@ -3,7 +3,7 @@ Menu.__index = Menu
 
 local push = require("libraries.push")
 
-local font = love.graphics.newFont("assets/Minecraft.ttf", 16)
+local font = love.graphics.newFont("assets/FreePixel.ttf", 16)
 font:setFilter("nearest", "nearest")
 
 local function getJoystickInput(joystick)

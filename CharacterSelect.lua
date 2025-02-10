@@ -5,6 +5,7 @@ local CharacterSelect = {}
 CharacterSelect.__index = CharacterSelect
 
 local push = require("libraries.push")
+love.graphics.setDefaultFilter("nearest", "nearest")
 
 -- === Predefined colors for players ===
 local colorOptions = {
@@ -15,7 +16,7 @@ local colorOptions = {
 }
 
 -- List of characters for now
-local characters = {"Warrior", "Berserker", "Duelist", "Mage"}
+local characters = {"Warrior", "Berserk", "Duelist", "Mage"}
 
 -- Store each player's selection state.
 --   moveCooldown: a timer to delay repeated stick moves (in seconds)
@@ -34,9 +35,9 @@ local playerSelections = {
     }
 }
 
-local font = love.graphics.newFont("assets/Minecraft.ttf", 16)
-love.graphics.setFont(font)
+local font = love.graphics.newFont("assets/FreePixel.ttf", 16)
 font:setFilter("nearest", "nearest")
+love.graphics.setFont(font)
 
 -----------------------------------------------------
 -- Helper: Return current input for a given joystick
@@ -246,23 +247,23 @@ end
 -- Draw the character select screen.
 -----------------------------------------------------
 function CharacterSelect.draw(GameInfo)
-    push:finish()
     love.graphics.clear(0, 0, 0, 1)
 
-    local displayWidth  = GameInfo.displayWidth
-    local displayHeight = GameInfo.displayHeight
+    local gameWidth  = GameInfo.gameWidth
+    local gameHeight = GameInfo.gameHeight
 
-    local isOnePlayer = (GameInfo.gameState == "game_1P")
+    local isOnePlayer = (GameInfo.previousState == "game_1P")
 
     -- === Draw player info boxes at the top ===
-    local boxWidth  = 200
-    local boxHeight = 100
-    local padding   = 20
+    local boxWidth  = 16
+    local boxHeight = 16
+    local paddingX  = 32
+    local paddingY  = 10
 
-    local p1BoxX = padding
-    local p1BoxY = padding
-    local p2BoxX = displayWidth - boxWidth - padding
-    local p2BoxY = padding
+    local p1BoxX = paddingX
+    local p1BoxY = paddingY
+    local p2BoxX = gameWidth - boxWidth - paddingX
+    local p2BoxY = paddingY
 
     -- Helper to get a player's current color
     local function getPlayerColor(playerIndex)
@@ -273,42 +274,51 @@ function CharacterSelect.draw(GameInfo)
     -- --- Draw Player 1's box ---
     if playerSelections[1].locked then
         love.graphics.setColor(getPlayerColor(1))
-        love.graphics.rectangle("fill", p1BoxX, p1BoxY, boxWidth, boxHeight)
+    else
+        love.graphics.setColor(1, 1, 1, 1)
     end
-    love.graphics.setColor(1, 1, 1, 1)
     love.graphics.rectangle("line", p1BoxX, p1BoxY, boxWidth, boxHeight)
     local p1Character = characters[playerSelections[1].cursor]
-    love.graphics.printf("Player 1\n" .. p1Character,
-        p1BoxX, p1BoxY + 30, boxWidth, "center", 0, 0.5, 0.5)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.printf("Player 1",
+        p1BoxX-boxWidth/2-2, p1BoxY - 8, boxWidth*5, "center", 0, .5, .5)
 
     -- --- Draw Player 2's box ---
     if playerSelections[2].locked then
         love.graphics.setColor(getPlayerColor(2))
-        love.graphics.rectangle("fill", p2BoxX, p2BoxY, boxWidth, boxHeight)
+    else
+        love.graphics.setColor(1, 1, 1, 1)
     end
-    love.graphics.setColor(1, 1, 1, 1)
     love.graphics.rectangle("line", p2BoxX, p2BoxY, boxWidth, boxHeight)
     local p2Character = characters[playerSelections[2].cursor]
-    love.graphics.printf("Player 2\n" .. p2Character,
-        p2BoxX, p2BoxY + 30, boxWidth, "center", 0, 0.5, 0.5)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.printf("Player 2",
+        p2BoxX-boxWidth/2-2, p2BoxY  - 8, boxWidth*5, "center", 0, 0.5, 0.5)
 
     -- === Draw character boxes in the center ===
-    local charBoxWidth  = 150
-    local charBoxHeight = 100
-    local totalWidth    = charBoxWidth * #characters + padding * (#characters - 1)
-    local startX        = (displayWidth - totalWidth) / 2
-    local startY        = p1BoxY + boxHeight + 50
+    local charBoxWidth  = 16
+    local charBoxHeight = 16
+    local totalWidth    = charBoxWidth * #characters + paddingX * (#characters - 1)
+    local startX        = 6
+    local startY        = p1BoxY + boxHeight + 20
+    local charBoxPadding = 16
 
     for i, charName in ipairs(characters) do
-        local x = startX + (i - 1) * (charBoxWidth + padding)
+        local x = startX + (i - 1) * (charBoxWidth + charBoxPadding)
         local y = startY
         love.graphics.rectangle("line", x, y, charBoxWidth, charBoxHeight)
-        love.graphics.printf(charName, x, y + charBoxHeight/2 - 10, charBoxWidth, "center")
+        love.graphics.printf(
+            charName,
+            x - charBoxWidth / 1.7, y - charBoxHeight/2,
+            charBoxWidth*5, "center",
+            0, .5,.5
+        )
     end
 
     -- === Draw each player’s cursor below the character boxes ===
-    local cursorY   = startY + charBoxHeight + 10
-    local arrowSize = 20
+    local cursorY   = startY + charBoxHeight + 7
+    local offsetX
+    local arrowSize = 5
 
     for playerIndex = 1, 2 do
         -- In 1-player mode, do not draw the CPU (P2) cursor until P1 is locked.
@@ -316,7 +326,13 @@ function CharacterSelect.draw(GameInfo)
             -- (CPU cursor is hidden until P1 has locked in.)
         else
             local cursorIndex = playerSelections[playerIndex].cursor
-            local x = startX + (cursorIndex - 1) * (charBoxWidth + padding) + charBoxWidth/2
+            if playerIndex == 1 then
+                offsetX = -3
+            else
+                offsetX = 3
+            end
+
+            local x = startX + (cursorIndex - 1) * (charBoxWidth + charBoxPadding) + charBoxWidth/2 + offsetX
             local y = cursorY
 
             love.graphics.setColor(getPlayerColor(playerIndex))
@@ -340,10 +356,9 @@ function CharacterSelect.draw(GameInfo)
     love.graphics.setColor(1, 1, 1, 1)
     if playerSelections[1].locked and playerSelections[2].locked then
         love.graphics.printf("Press start to begin",
-            0, displayHeight - 150, displayWidth, "center")
+            0, gameHeight - 25, gameWidth, "center")
     end
 
-    push:start()
 end
 
 return CharacterSelect
