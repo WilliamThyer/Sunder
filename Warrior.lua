@@ -6,6 +6,13 @@ local Warrior = {}
 Warrior.__index = Warrior
 setmetatable(Warrior, { __index = CharacterBase })
 
+local sprites = {
+    Red = love.graphics.newImage("assets/sprites/WarriorRed.png"),
+    Blue   = love.graphics.newImage("assets/sprites/WarriorBlue.png"),
+    Yellow = love.graphics.newImage("assets/sprites/WarriorYellow.png"),
+    Gray   = love.graphics.newImage("assets/sprites/WarriorGray.png")
+}
+
 function Warrior:new(x, y, joystickIndex, world, aiController)
     -- Call the base constructor:
     local instance = CharacterBase.new(self, x, y)

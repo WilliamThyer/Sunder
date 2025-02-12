@@ -59,7 +59,7 @@ local playerSelections = {
     }
 }
 
-local font = love.graphics.newFont("assets/FreePixel.ttf", 16)
+local font = love.graphics.newFont("assets/Minecraft.ttf", 16)
 font:setFilter("nearest", "nearest")
 love.graphics.setFont(font)
 
@@ -185,29 +185,37 @@ end
 --   - If a controller is in the unlocked state and its B is pressed, the screen exits.
 -----------------------------------------------------
 function CharacterSelect.update(GameInfo)
+    -- Reset selection state if just entering character select.
+    if GameInfo.justEnteredCharacterSelect then
+        playerSelections[1].locked = false
+        playerSelections[2].locked = false
+        playerSelections[1].cursor = 1
+        playerSelections[2].cursor = 1
+        GameInfo.justEnteredCharacterSelect = false
+    end
+
     local isOnePlayer = (GameInfo.previousMode == "game_1P")
     local joysticks = love.joystick.getJoysticks()
 
     if isOnePlayer then
-        -- Only joystick[1] is used in one-player mode.
+        -- Only use joystick[1] for one-player mode.
         local input = getJoystickInput(joysticks[1])
-        if not playerSelections[1].locked then
-            -- In P1 selection state: if B is pressed before locking, go back to main menu.
-            if input.back and (not playerSelections[1].prevBack) then
-                GameInfo.gameState = "menu"
-                return
-            end
-            playerSelections[2].prevSelect = true -- avoid misinput
-            CharacterSelect.updateCharacter(1, 1)
-        else
-            -- P1 is locked, so we are in CPU (P2) selection state.
-            if input.back and (not playerSelections[1].prevBack) then
-                -- B pressed while controlling CPU: unlock P1 (and reset CPU lock)
+        -- NEW: Check for B button first.
+        if input.back and (not playerSelections[1].prevBack) then
+            if playerSelections[1].locked then
+                -- If P1 is locked, unlock both so the player can reselect.
                 playerSelections[1].locked = false
                 playerSelections[2].locked = false
             else
-                CharacterSelect.updateCharacter(1, 2)
+                -- If not locked, exit to menu.
+                GameInfo.gameState = "menu"
+                return
             end
+        end
+        if not playerSelections[1].locked then
+            CharacterSelect.updateCharacter(1, 1)
+        else
+            CharacterSelect.updateCharacter(1, 2)
         end
     else
         -- Two-player mode
@@ -324,7 +332,7 @@ function CharacterSelect.draw(GameInfo)
         if p2Char == "Warrior" then
             image = sprites.Warrior[colName]
             quad = warriorQuad
-            spriteW, spriteH = 9, 9
+            spriteW, spriteH = 8, 8
         elseif p2Char == "Berserk" then
             image = sprites.Berserk[colName]
             quad = berserkQuad

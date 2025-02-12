@@ -6,6 +6,13 @@ local Berserker = {}
 Berserker.__index = Berserker
 setmetatable(Berserker, { __index = CharacterBase })
 
+local sprites = {
+    Red    = love.graphics.newImage("assets/sprites/BerserkRed.png"),
+    Blue   = love.graphics.newImage("assets/sprites/BerserkBlue.png"),
+    Yellow = love.graphics.newImage("assets/sprites/BerserkYellow.png"),
+    Gray   = love.graphics.newImage("assets/sprites/BerserkGray.png")
+}
+
 function Berserker:new(x, y, joystickIndex, world, aiController)
     -- Call the base constructor:
     local instance = CharacterBase.new(self, x, y)

@@ -24,9 +24,8 @@ GameInfo = {
     gameWidth = 128,          -- internal virtual width
     gameHeight = 72,          -- internal virtual height
     displayWidth = displayWidth,
-    displayHeight = displayHeight
-    -- displayWidth = 512,
-    -- displayHeight = 288
+    displayHeight = displayHeight,
+    justEnteredCharacterSelect = false
 }
 
 local world, map
@@ -53,14 +52,14 @@ end
 
 function startGame(mode)
     GameInfo.gameState = mode  -- mode is now either "game_1P" or "game_2P"
-    
+
     world = bump.newWorld(8)
     map = sti("assets/backgrounds/testNew.lua", {"bump"})
     map:bump_init(world)
-    
+
     local p1Character = GameInfo.player1Character or "warrior"
     local p2Character = GameInfo.player2Character or "warrior"
-    
+
     if mode == "game_1P" then
         local ai = AIController:new()
         players = {

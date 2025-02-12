@@ -3,7 +3,7 @@ Menu.__index = Menu
 
 local push = require("libraries.push")
 
-local font = love.graphics.newFont("assets/FreePixel.ttf", 16)
+local font = love.graphics.newFont("assets/Minecraft.ttf", 16)
 font:setFilter("nearest", "nearest")
 
 local function getJoystickInput(joystick)
@@ -50,6 +50,7 @@ function Menu.updateMenu(GameInfo)
             GameInfo.previousMode = "game_2P"
         end
         GameInfo.gameState = "characterselect"
+        GameInfojustEnteredCharacterSelect = true
     end
     
 end
@@ -71,11 +72,11 @@ function Menu.drawMenu(GameInfo)
 
     -- Option 1: 1 PLAYER
     love.graphics.setColor(color1)
-    love.graphics.printf("1 PLAYER", GameInfo.gameWidth / 4, 30, GameInfo.gameWidth, "center", 0, .5, .5)
+    love.graphics.printf("1 PLAYER", 0, 30, GameInfo.gameWidth*2, "center", 0, .5, .5)
 
     -- Option 2: 2 PLAYERS
     love.graphics.setColor(color2)
-    love.graphics.printf("2 PLAYERS", GameInfo.gameWidth / 4, 40, GameInfo.gameWidth, "center", 0, .5, .5)
+    love.graphics.printf("2 PLAYERS", 0, 40, GameInfo.gameWidth*2, "center", 0, .5, .5)
 
     love.graphics.setColor(1,1,1,1)  -- reset
 end

@@ -4,11 +4,10 @@ local Berserker = require("Berserker")
 
 local Player = {}
 Player.__index = Player
-local characterType = "warrior"
 
 function Player:new(characterType, x, y, joystickIndex, world, aiController)
     local baseClass
-    if characterType == "berserker" then
+    if characterType == "Berserk" then
         baseClass = Berserker
     else
         baseClass = Warrior
