@@ -59,7 +59,7 @@ local playerSelections = {
     }
 }
 
-local font = love.graphics.newFont("assets/Minecraft.ttf", 16)
+local font = love.graphics.newFont("assets/6px-Normal.ttf", 8)
 font:setFilter("nearest", "nearest")
 love.graphics.setFont(font)
 
@@ -316,7 +316,7 @@ function CharacterSelect.draw(GameInfo)
         love.graphics.draw(image, quad, p1BoxX + offsetX, p1BoxY + offsetY)
     end
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.printf("Player 1", p1BoxX - boxWidth/2 - 2, p1BoxY - 8, boxWidth*5, "center", 0, 0.5, 0.5)
+    love.graphics.printf("Player 1", p1BoxX - boxWidth/2 - 22, p1BoxY - 9, boxWidth*5, "center", 0, 1, 1)
 
     -- --- Draw Player 2's box ---
     if playerSelections[2].locked then
@@ -343,7 +343,7 @@ function CharacterSelect.draw(GameInfo)
         love.graphics.draw(image, quad, p2BoxX + offsetX, p2BoxY + offsetY)
     end
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.printf("Player 2", p2BoxX - boxWidth/2 - 2, p2BoxY - 8, boxWidth*5, "center", 0, 0.5, 0.5)
+    love.graphics.printf("Player 2", p2BoxX - boxWidth/2 - 22, p2BoxY - 9, boxWidth*5, "center", 0, 1, 1)
 
     -- === Draw character boxes in the center ===
     local charBoxWidth  = 16
@@ -372,7 +372,7 @@ function CharacterSelect.draw(GameInfo)
             local offsetY = (charBoxHeight - spriteH) / 2
             love.graphics.draw(image, quad, x + offsetX, y + offsetY, 0, 1, 1, 0, 0)
         end
-        love.graphics.printf(charName, x - charBoxWidth/1.7, y - charBoxHeight/2, charBoxWidth*5, "center", 0, 0.5, 0.5)
+        love.graphics.printf(charName, x - charBoxWidth * 2, y - charBoxHeight/2 - 1, charBoxWidth*5, "center", 0, 1, 1)
     end
 
     -- === Draw each player’s cursor below the character boxes ===
@@ -394,13 +394,13 @@ function CharacterSelect.draw(GameInfo)
             love.graphics.setColor(1, 1, 1, 1)
             local label = (playerIndex == 1) and "P1" or "P2"
             if isOnePlayer and playerIndex == 2 then label = "CPU" end
-            love.graphics.printf(label, x - 30, y + 5, 60, "center")
+            -- love.graphics.printf(label, x - 30, y - 5, 60, "center")
         end
     end
 
     love.graphics.setColor(1, 1, 1, 1)
     if playerSelections[1].locked and playerSelections[2].locked then
-        love.graphics.printf("Press start to begin!", 0, gameHeight - 43, gameWidth*2, "center", 0, 0.5, 0.5)
+        love.graphics.printf("Press start to begin!", 0, gameHeight - 43, gameWidth, "center", 0, 1, 1)
     end
 end
 

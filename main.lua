@@ -4,7 +4,7 @@ if arg[#arg] == "vsc_debug" then
     require("lldebugger").start()
 end
 io.stdout:setvbuf("no")
-
+love.graphics.setDefaultFilter("nearest", "nearest")
 love = require("love")
 
 local push = require("libraries.push")
@@ -33,7 +33,6 @@ local players = {}
 
 function love.load()
     -- For pixel art
-    love.graphics.setDefaultFilter("nearest", "nearest")
 
     push:setupScreen(
         GameInfo.gameWidth,

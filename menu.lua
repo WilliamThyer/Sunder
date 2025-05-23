@@ -1,10 +1,14 @@
 local Menu = {}
 Menu.__index = Menu
 
+love.graphics.setDefaultFilter("nearest","nearest")
+
 local push = require("libraries.push")
 
-local font = love.graphics.newFont("assets/Minecraft.ttf", 16)
+-- local font = love.graphics.newFont("assets/Minecraftia-Regular.ttf", 8)
+local font = love.graphics.newFont("assets/6px-Normal.ttf", 8)
 font:setFilter("nearest", "nearest")
+love.graphics.setFont(font)
 
 local function getJoystickInput(joystick)
     if joystick then
@@ -65,18 +69,18 @@ function Menu.drawMenu(GameInfo)
 
     love.graphics.setFont(font)
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.printf("SUNDER", 0, 10, GameInfo.gameWidth, "center", 0, 1, 1)
+    love.graphics.printf("SUNDER", 0, 10, GameInfo.gameWidth/2, "center", 0, 2, 2)
 
     local color1 = (GameInfo.selectedOption == 1) and {1, 1, 0, 1} or {1, 1, 1, 1}
     local color2 = (GameInfo.selectedOption == 2) and {1, 1, 0, 1} or {1, 1, 1, 1}
 
     -- Option 1: 1 PLAYER
     love.graphics.setColor(color1)
-    love.graphics.printf("1 PLAYER", 0, 30, GameInfo.gameWidth*2, "center", 0, .5, .5)
+    love.graphics.printf("1 PLAYER", 0, 30, GameInfo.gameWidth, "center", 0, 1, 1)
 
     -- Option 2: 2 PLAYERS
     love.graphics.setColor(color2)
-    love.graphics.printf("2 PLAYERS", 0, 40, GameInfo.gameWidth*2, "center", 0, .5, .5)
+    love.graphics.printf("2 PLAYERS", 0, 40, GameInfo.gameWidth, "center", 0, 1, 1)
 
     love.graphics.setColor(1,1,1,1)  -- reset
 end
@@ -96,13 +100,13 @@ function Menu.drawRestartMenu(players)
     love.graphics.setFont(font)
     love.graphics.setColor(1, 1, 1, 1)
     if p1.isDead and p2.isDead then
-        love.graphics.printf("Nobody Wins", GameInfo.gameWidth / 4, 30, GameInfo.gameWidth, "center", 0, .5, .5)
+        love.graphics.printf("Nobody Wins", GameInfo.gameWidth / 4, 20, GameInfo.gameWidth/2, "center", 0, 1, 1)
     elseif p1.isDead then
-        love.graphics.printf("Player 2 Wins", GameInfo.gameWidth / 4, 30, GameInfo.gameWidth, "center", 0, .5, .5)
+        love.graphics.printf("Player 2 Wins", GameInfo.gameWidth / 4, 20, GameInfo.gameWidth/2, "center", 0, 1, 1)
     elseif p2.isDead then
-        love.graphics.printf("Player 1 Wins", GameInfo.gameWidth / 4, 30, GameInfo.gameWidth, "center", 0, .5, .5)
+        love.graphics.printf("Player 1 Wins", GameInfo.gameWidth / 4, 20, GameInfo.gameWidth/2, "center", 0, 1, 1)
     end
-    love.graphics.printf("Press start to play again", GameInfo.gameWidth / 4, 40, GameInfo.gameWidth, "center", 0, .5, .5)
+    love.graphics.printf("Press start to play again", GameInfo.gameWidth / 4, 30, GameInfo.gameWidth/2, "center", 0, 1, 1)
 
 end
 
