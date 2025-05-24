@@ -59,7 +59,7 @@ end
 -- Fighter–Specific (Berserker) Methods
 --------------------------------------------------
 function Berserker:initializeAnimations()
-    self.spriteSheet = love.graphics.newImage("assets/sprites/BerserkerBlue.png")
+    self.spriteSheet = love.graphics.newImage("assets/sprites/BerserkBlue.png")
     self.grid = anim8.newGrid(12, 12, self.spriteSheet:getWidth(), self.spriteSheet:getHeight(), 0, 0, 1)
 
     local num_small_cols = 6
@@ -117,8 +117,9 @@ function Berserker:draw()
         offsetX = offsetX -1 * CHARACTER_SCALE
     end
 
+    local th = self.grid.frameHeight
     if self.currentAnim and self.spriteSheet then
-        self.currentAnim:draw(self.spriteSheet, self.x + offsetX, self.y + offsetY, 0, scaleX, scaleY)
+        self.currentAnim:draw(self.spriteSheet, self.x + offsetX, self.y + offsetY, 0, scaleX, scaleY, 0, 2)
     end
 
     self:drawUI()
