@@ -30,6 +30,33 @@ function Berserker:new(x, y, joystickIndex, world, aiController)
     instance.height = 10
     instance.groundY = instance.y
 
+    instance.speed     = 20
+    instance.gravity   = 600
+
+    instance.jumpHeight    = -100
+
+    instance.landingLag       = 0.25
+    instance.heavyAttackDuration      = 0.75
+    instance.heavyAttackNoDamageDuration = 0.35
+
+    instance.lightAttackDuration      = 0.5
+    instance.lightAttackNoDamageDuration = 0.175
+
+    instance.downAirDuration          = 1
+    instance.downAirTimer             = 0
+
+    instance.damageMapping = {
+        lightAttack = 2,
+        heavyAttack = 4,
+        downAir     = 3
+    }
+    instance.staminaMapping = {
+        lightAttack = 3,
+        heavyAttack = 3,
+        downAir     = 2,
+        dash        = 1
+    }
+
     instance.hasHitHeavy   = false
     instance.hasHitLight   = false
     instance.hasHitDownAir = false
@@ -59,7 +86,7 @@ end
 -- Fighter–Specific (Berserker) Methods
 --------------------------------------------------
 function Berserker:initializeAnimations()
-    self.spriteSheet = love.graphics.newImage("assets/sprites/BerserkBlue.png")
+    self.spriteSheet = love.graphics.newImage("assets/sprites/BerserkBlueTest.png")
     self.grid = anim8.newGrid(12, 12, self.spriteSheet:getWidth(), self.spriteSheet:getHeight(), 0, 0, 1)
 
     local num_small_cols = 6
