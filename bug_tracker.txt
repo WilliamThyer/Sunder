@@ -3,11 +3,9 @@
 DOWNAIR ATTACK
 
 LIGHT ATTACK
-Hit box is messed up, doesn't take into account Y diff?
 
 HEAVY ATTACK
 Chargable? Each .25s charge increases damage by 1.
-Hit box is messed up, doesn't take into account Y diff?
 
 SHIELD
 

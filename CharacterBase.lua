@@ -33,11 +33,17 @@ function CharacterBase:new(x, y)
     instance.heavyAttackTimer         = 0
     instance.heavyAttackDuration      = 0.5
     instance.heavyAttackNoDamageDuration = 0.35
+    instance.heavyAttackWidth        = 4.5
+    instance.heavyAttackHeight       = 8
+    instance.heavyAttackHitboxOffset = 0.5
 
     instance.isLightAttacking         = false
     instance.lightAttackTimer         = 0
     instance.lightAttackDuration      = 0.4
     instance.lightAttackNoDamageDuration = 0.175
+    instance.lightAttackWidth        = 3
+    instance.lightAttackHeight       = 8
+    instance.lightAttackHitboxOffset = 0.5
 
     instance.isDownAir                = false
     instance.downAirDuration          = 1
@@ -95,9 +101,9 @@ function CharacterBase:new(x, y)
     instance.stamina         = 10
     instance.maxStamina      = 10
     instance.timeSinceStaminaUse     = 0
-    instance.staminaRegenDelay       = 0.75
+    instance.staminaRegenDelay       = 0.5 -- .5
     instance.staminaRegenAccumulator = 0
-    instance.staminaRegenInterval    = 0.3
+    instance.staminaRegenInterval    = 0.3 -- .3
 
     -- Death
     instance.timeToDeath = 0.15
@@ -145,19 +151,35 @@ end
 --------------------------------------------------
 function CharacterBase:getHitbox(attackType)
     if attackType == "downAir" then
+        -- pull the real frame size
+        local aw, ah = self.attackGrid.frameWidth, self.attackGrid.frameHeight
+
+        -- choose a narrower width (e.g. 50% of frame)…
+        local w = aw * 0.5
+        -- …and half the height if you like the lower half only
+        local h = ah * 0.5
+
+        -- center that smaller box under your character
+        local x = self.x + (aw - w) * 0.5
+        -- if self.y is the **top** of the sprite:
+        local y = self.y + (ah * 0.5)
+        -- if you switched to using oy=ah in draw (so self.y is **ground**), use: 
+        -- local y = self.y - h
+
+        return { x = x, y = y, width = w, height = h }
+    elseif attackType == "lightAttack" then
         return {
-            width  = self.width,
-            height = self.height * 0.5,
-            x      = self.x,
-            y      = self.y + (self.height * 0.5)
-        } 
-    elseif attackType == "heavyAttack" or attackType == "lightAttack" then
-        local hitWidth = 4.5
+            width  = self.lightAttackWidth,
+            height = self.lightAttackHeight,
+            x      = (self.direction == 1) and (self.x + self.width - self.lightAttackHitboxOffset) or (self.x - self.lightAttackWidth + self.lightAttackHitboxOffset),
+            y      = self.y - (self.height * 0.5)
+        }
+    elseif attackType == "heavyAttack" then
         return {
-            width  = hitWidth,
-            height = self.height,
-            x      = (self.direction == 1) and (self.x + self.width) or (self.x - hitWidth),
-            y      = self.y
+            width  = self.heavyAttackWidth,
+            height = self.heavyAttackHeight,
+            x      = (self.direction == 1) and (self.x + self.width - self.heavyAttackHitboxOffset) or (self.x - self.heavyAttackWidth + self.heavyAttackHitboxOffset),
+            y      = self.y - (self.height * 0.5)
         }
     elseif attackType == "upAir" then
         return {
@@ -177,14 +199,19 @@ function CharacterBase:getHitbox(attackType)
     end
 end
 
+-- get hurtbox func
+function CharacterBase:getHurtbox()
+    return {
+        width  = self.width,
+        height = self.height,
+        x      = self.x,
+        y      = self.y
+    }
+end
+
 function CharacterBase:checkHit(other, attackType)
     local hitbox = self:getHitbox(attackType)
-    local hurtbox = {
-        width  = 8,
-        height = 8,
-        x      = other.x + (other.width - 8) / 2,
-        y      = other.y + (other.height - 8) / 2
-    }
+    local hurtbox = other:getHurtbox()
     local hit = hitbox.x < hurtbox.x + hurtbox.width and
                 hitbox.x + hitbox.width > hurtbox.x and
                 hitbox.y < hurtbox.y + hurtbox.height and

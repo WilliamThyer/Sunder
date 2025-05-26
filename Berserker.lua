@@ -30,17 +30,21 @@ function Berserker:new(x, y, joystickIndex, world, aiController)
     instance.height = 10
     instance.groundY = instance.y
 
-    instance.speed     = 20
-    instance.gravity   = 600
+    instance.speed     = 22
 
     instance.jumpHeight    = -100
 
     instance.landingLag       = 0.25
-    instance.heavyAttackDuration      = 0.75
-    instance.heavyAttackNoDamageDuration = 0.35
 
-    instance.lightAttackDuration      = 0.5
-    instance.lightAttackNoDamageDuration = 0.175
+    instance.heavyAttackDuration      = 0.75
+    instance.heavyAttackNoDamageDuration = 0.45
+    instance.heavyAttackWidth        = 6
+    instance.heavyAttackHeight       = 8
+    instance.heavyAttackHitboxOffset = 0.5
+
+    instance.lightAttackWidth        = 4
+    instance.lightAttackHeight       = 8
+    instance.lightAttackHitboxOffset = 0.5
 
     instance.downAirDuration          = 1
     instance.downAirTimer             = 0
@@ -99,8 +103,8 @@ function Berserker:initializeAnimations()
         land         = anim8.newAnimation(self.grid(4, 2), 1),
         idle         = anim8.newAnimation(self.grid(4, '1-2'), 0.7),
         dash         = anim8.newAnimation(self.grid(3, 1), 0.2),
-        heavyAttack  = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.1, 0.25, 0.05, 0.1}),
-        lightAttack  = anim8.newAnimation(self.attackGrid(2, '1-3'), {0.15, 0.1, 0.25}),
+        heavyAttack  = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.1, 0.35, 0.05, 0.15}),
+        lightAttack  = anim8.newAnimation(self.attackGrid(2, '1-4'), {0.05, 0.2, 0.05, 0.05}),
         downAir      = anim8.newAnimation(self.attackGrid(3, '1-2'), {0.2, 0.8}),
         shield       = anim8.newAnimation(self.grid(2, 1), 1),
         shieldBlock  = anim8.newAnimation(self.grid(2, 2), 1),
