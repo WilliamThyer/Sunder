@@ -1,36 +1,42 @@
 -- Player.lua
-local Warrior   = require("Warrior")
-local Berserker = require("Berserker")
+local Berserker   = require("Berserker")
+local Warrior     = require("Warrior")
+local Player      = {}
+Player.__index    = Player
 
-local Player = {}
-Player.__index = Player
+function Player:new(characterType, colorName, x, y, joystickIndex, world, aiController)
+    -- pick your fighter class
+    local fighterClass = (characterType == "Berserk") and Berserker or Warrior
 
-function Player:new(characterType, x, y, joystickIndex, world, aiController)
-    local baseClass
-    if characterType == "Berserk" then
-        baseClass = Berserker
-    else
-        baseClass = Warrior
-    end
+    -- create the actual fighter (passes colorName through to constructor)
+    local fighterInstance = fighterClass:new(x, y, joystickIndex, world, aiController, colorName)
 
-    -- Create the actual base instance
-    local baseInstance = baseClass:new(x, y, joystickIndex, world, aiController)
-
-    -- Now make a new table that can see both `Player` and `baseInstance`.
+    -- build the Player wrapper
     local instance = {
-        base = baseInstance  -- store the base in a field
+        base = fighterInstance
     }
 
-    -- The custom __index looks up Player methods first, else fallback to baseInstance
     setmetatable(instance, {
         __index = function(t, k)
-            return Player[k] or t.base[k]
+            -- Player methods first, then fighter methods
+            if Player[k] then
+                return Player[k]
+            else
+                return fighterInstance[k]
+            end
+        end,
+        __newindex = function(t, k, v)
+            -- write through to fighter if it already has that field
+            if fighterInstance[k] ~= nil then
+                fighterInstance[k] = v
+            else
+                rawset(t, k, v)
+            end
         end
     })
 
     return instance
 end
-
 
 function Player:update(dt, otherPlayer)
     -- Because we changed the instance’s metatable to Player,

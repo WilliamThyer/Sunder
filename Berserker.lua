@@ -14,7 +14,7 @@ local sprites = {
     Gray   = love.graphics.newImage("assets/sprites/BerserkGray.png")
 }
 
-function Berserker:new(x, y, joystickIndex, world, aiController)
+function Berserker:new(x, y, joystickIndex, world, aiController, colorName)
     -- Call the base constructor:
     local instance = CharacterBase.new(self, x, y)
     setmetatable(instance, Berserker)
@@ -23,6 +23,8 @@ function Berserker:new(x, y, joystickIndex, world, aiController)
     instance.joystick = love.joystick.getJoysticks()[joystickIndex]
     instance.world    = world
     instance.aiController = aiController
+
+    instance.colorName        = colorName or "Blue"
 
     -- Position & Size
     instance.x = x or 0
@@ -94,7 +96,12 @@ end
 -- Fighter–Specific (Berserker) Methods
 --------------------------------------------------
 function Berserker:initializeAnimations()
-    self.spriteSheet = love.graphics.newImage("assets/sprites/BerserkBlueTest.png")
+    local file = "assets/sprites/Berserk" .. self.colorName .. ".png"
+    if not love.filesystem.getInfo(file) then
+        file = "assets/sprites/BerserkBlue.png"  -- fallback to default sprite
+    end
+    -- Load the sprite sheet and create grids for animations:
+    self.spriteSheet = love.graphics.newImage(file)
     self.grid = anim8.newGrid(12, 12, self.spriteSheet:getWidth(), self.spriteSheet:getHeight(), 0, 0, 1)
 
     local num_small_cols = 6

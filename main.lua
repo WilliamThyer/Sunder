@@ -50,25 +50,28 @@ function love.load()
 end
 
 function startGame(mode)
-    GameInfo.gameState = mode  -- mode is now either "game_1P" or "game_2P"
-
+    GameInfo.gameState = mode
     world = bump.newWorld(8)
     map = sti("assets/backgrounds/testNew.lua", {"bump"})
     map:bump_init(world)
 
-    local p1Character = GameInfo.player1Character or "warrior"
-    local p2Character = GameInfo.player2Character or "warrior"
+    -- read both character *and* color
+    local p1Char  = GameInfo.player1Character or "Warrior"
+    local p2Char  = GameInfo.player2Character or "Warrior"
+    local p1Color = GameInfo.player1Color     or "Blue"
+    local p2Color = GameInfo.player2Color     or "Blue"
 
     if mode == "game_1P" then
         local ai = AIController:new()
         players = {
-            Player:new(p1Character, 20, 49, 1, world, nil),
-            Player:new(p2Character, 100, 49, 2, world, ai)
+            -- signature now: Player:new(character, color, x, y, joystick, world, controller)
+            Player:new(p1Char, p1Color, 20, 49, 1, world, nil),
+            Player:new(p2Char, p2Color, 100, 49, 2, world, ai)
         }
     else
         players = {
-            Player:new(p1Character, 20, 49, 1, world, nil),
-            Player:new(p2Character, 100, 49, 2, world, nil)
+            Player:new(p1Char, p1Color, 20, 49, 1, world, nil),
+            Player:new(p2Char, p2Color, 100, 49, 2, world, nil)
         }
     end
 

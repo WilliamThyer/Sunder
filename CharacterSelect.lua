@@ -255,14 +255,16 @@ function CharacterSelect.beginGame(GameInfo)
     GameInfo.player1Character = characters[playerSelections[1].cursor]
     GameInfo.player2Character = characters[playerSelections[2].cursor]
 
-    -- Also store colors for later.
-    GameInfo.player1Color = colorOptions[playerSelections[1].colorIndex]
-    GameInfo.player2Color = colorOptions[playerSelections[2].colorIndex]
+    -- Store the selected color NAME (not the RGB) so we can load the correct sprite.
+    local colorNames = {"Blue","Red","Gray","Yellow"}
+    GameInfo.player1Color = colorNames[playerSelections[1].colorIndex]
+    GameInfo.player2Color = colorNames[playerSelections[2].colorIndex]
 
     -- Transition to the previously selected game mode (e.g. "game_1P" or "game_2P")
     GameInfo.gameState = GameInfo.previousMode
     startGame(GameInfo.gameState)
 end
+
 
 -----------------------------------------------------
 -- Draw the character select screen.
