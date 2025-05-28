@@ -330,7 +330,9 @@ function Berserker:handleAttacks(dt, otherPlayer)
        and (self.heavyAttackTimer <= self.heavyAttackDuration - self.heavyAttackNoDamageDuration)
     then
         -- don't spawn in mid-air:
-        if not self.isJumping then
+        local dy = (self.y + self.height) - otherPlayer.y
+        local standingOn = math.abs(dy) < 2
+        if not self.isJumping and not standingOn then
             self:spawnShockwave()
         end
         self.shockwaveSpawned = true
@@ -365,14 +367,15 @@ function Berserker:spawnShockwave()
     local wave = Shockwave:new(0, 0, self.direction, self.damageMapping["heavyAttack"])
     local w = wave.width
 
-    -- 5px beyond the character’s bounding box:
-    local ox = (self.direction == 1)
-        and (self.x + self.width + 5)
-        or (self.x - w - 5)
-    local oy = self.y + (self.height - wave.height) * 0.5
+    local fw, fh = wave.width, wave.height
 
-    wave.x = ox
-    wave.y = oy
+    -- if facing right: place at x + width + 5; if left: x - fw - 5
+    if self.direction == 1 then
+        wave.x = self.x + self.width + 5
+    else
+        wave.x = self.x - fw + 1
+    end
+    wave.y = self.y + (self.height - fh) * 0.5
 
     table.insert(self.shockwaves, wave)
 end
