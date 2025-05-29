@@ -1,5 +1,8 @@
 local Menu = {}
 Menu.__index = Menu
+Menu.paused      = false
+Menu.pausePlayer = nil
+Menu.restartMenu = false
 
 love.graphics.setDefaultFilter("nearest","nearest")
 
@@ -90,9 +93,11 @@ function Menu.updateRestartMenu(GameInfo)
 
     -- Confirm selection with 'start' on controller
     if joystick:isGamepadDown("start") then
-            startGame(GameInfo.gameState)
+        Menu.restartMenu = false
+        startGame(GameInfo.gameState)
     -- Press Y to go back to character select
     elseif joystick:isGamepadDown("y") then
+        Menu.restartMenu = false
         GameInfo.gameState = "characterselect"
         GameInfo.justEnteredCharacterSelect = true
     end
@@ -114,5 +119,51 @@ function Menu.drawRestartMenu(players)
     love.graphics.printf("Press Y to return to menu", GameInfo.gameWidth / 12, 40, GameInfo.gameWidth*.9, "center", 0, 1, 1)
 
 end
+
+-- called by love.gamepadpressed in main.lua
+function Menu.handlePauseInput(joystick, button)
+  -- only during an actual fight
+  if not (GameInfo.gameState == "game_1P" or GameInfo.gameState == "game_2P") then
+    return
+  end
+  print(Menu.restartMenu)
+  if Menu.restartMenu then
+    -- if we're in the restart menu, we don't handle pause input
+    return
+  end
+
+  if button == "start" then
+    if not Menu.paused then
+      Menu.paused      = true
+      Menu.pausePlayer = joystick:getID()
+    elseif joystick:getID() == Menu.pausePlayer then
+      Menu.paused      = false
+      Menu.pausePlayer = nil
+    end
+  end
+
+  if Menu.paused 
+  and joystick:getID() == Menu.pausePlayer
+  and button == "y" then
+    -- return to character select
+    Menu.paused      = false
+    Menu.pausePlayer = nil
+    GameInfo.gameState               = "characterselect"
+    GameInfo.justEnteredCharacterSelect = true
+  end
+end
+
+function Menu.drawPauseOverlay()
+  -- a translucent black
+  love.graphics.setColor(0,0,0,0.75)
+  love.graphics.rectangle("fill", 0,0, GameInfo.gameWidth, GameInfo.gameHeight)
+  love.graphics.setColor(1,1,1,1)
+  love.graphics.printf(
+    "PAUSED\nPress START to resume\nPress Y to return to menu",
+    0, GameInfo.gameHeight/2 - 10,
+    GameInfo.gameWidth, "center"
+  )
+end
+
 
 return Menu

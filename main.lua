@@ -80,6 +80,10 @@ function startGame(mode)
     end
 end
 
+function love.gamepadpressed(joystick, button)
+    -- forward to our pause handler in menu.lua
+    Menu.handlePauseInput(joystick, button)
+end
 
 -- Update the game (1P or 2P)
 function updateGame(dt)
@@ -96,6 +100,7 @@ function updateGame(dt)
 end
 
 function love.update(dt)
+    if Menu.paused then return end
     if GameInfo.gameState == "menu" then
         Menu.updateMenu(GameInfo)
     elseif GameInfo.gameState == "characterselect" then
@@ -123,9 +128,15 @@ function love.draw()
         end
 
         if players[1].isDead or players[2].isDead then
+            Menu.restartMenu = true
             Menu.drawRestartMenu(players)
         end
+        if Menu.paused then
+            Menu.drawPauseOverlay()
+        end
     end
+
+    
 
     push:finish()
 end
