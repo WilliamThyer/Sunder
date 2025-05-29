@@ -91,6 +91,10 @@ function Menu.updateRestartMenu(GameInfo)
     -- Confirm selection with 'start' on controller
     if joystick:isGamepadDown("start") then
             startGame(GameInfo.gameState)
+    -- Press Y to go back to character select
+    elseif joystick:isGamepadDown("y") then
+        GameInfo.gameState = "characterselect"
+        GameInfo.justEnteredCharacterSelect = true
     end
 end
 
@@ -106,7 +110,8 @@ function Menu.drawRestartMenu(players)
     elseif p2.isDead then
         love.graphics.printf("Player 1 Wins", GameInfo.gameWidth / 4, 20, GameInfo.gameWidth/2, "center", 0, 1, 1)
     end
-    love.graphics.printf("Press start to play again", GameInfo.gameWidth / 4, 30, GameInfo.gameWidth/2, "center", 0, 1, 1)
+    love.graphics.printf("Press start to play again", GameInfo.gameWidth / 12, 30, GameInfo.gameWidth*.9, "center", 0, 1, 1)
+    love.graphics.printf("Press Y to return to menu", GameInfo.gameWidth / 12, 40, GameInfo.gameWidth*.9, "center", 0, 1, 1)
 
 end
 
