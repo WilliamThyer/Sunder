@@ -57,7 +57,7 @@ function Menu.updateMenu(GameInfo)
             GameInfo.previousMode = "game_2P"
         end
         GameInfo.gameState = "characterselect"
-        GameInfojustEnteredCharacterSelect = true
+        GameInfo.justEnteredCharacterSelect = true
     end
     
 end

@@ -28,6 +28,8 @@ GameInfo = {
     justEnteredCharacterSelect = false
 }
 
+justPressed = {}
+
 local world, map
 local players = {}
 
@@ -81,7 +83,12 @@ function startGame(mode)
 end
 
 function love.gamepadpressed(joystick, button)
-    -- forward to our pause handler in menu.lua
+    -- 1) Mark “button was pressed this frame” for edge-detection:
+    local jid = joystick:getID()
+    justPressed[jid] = justPressed[jid] or {}
+    justPressed[jid][button] = true
+
+    -- 2) Still forward to pause logic in Menu:
     Menu.handlePauseInput(joystick, button)
 end
 
