@@ -13,7 +13,7 @@ local sprites = {
     Gray   = love.graphics.newImage("assets/sprites/WarriorGray.png")
 }
 
-function Warrior:new(x, y, joystickIndex, world, aiController)
+function Warrior:new(x, y, joystickIndex, world, aiController, colorName)
     -- Call the base constructor:
     local instance = CharacterBase.new(self, x, y)
     setmetatable(instance, Warrior)
@@ -22,6 +22,7 @@ function Warrior:new(x, y, joystickIndex, world, aiController)
     instance.joystick = love.joystick.getJoysticks()[joystickIndex]
     instance.world    = world
     instance.aiController = aiController
+    instance.colorName        = colorName or "Blue"
 
     instance.hasHitHeavy   = false
     instance.hasHitLight   = false
@@ -47,7 +48,11 @@ end
 -- Fighter–Specific (Warrior) Methods
 --------------------------------------------------
 function Warrior:initializeAnimations()
-    self.spriteSheet = love.graphics.newImage("assets/sprites/WarriorRed.png")
+    local file = "assets/sprites/Warrior" .. self.colorName .. ".png"
+    if not love.filesystem.getInfo(file) then
+        file = "assets/sprites/WarriorBlue.png"  -- fallback to default sprite
+    end
+    self.spriteSheet = love.graphics.newImage(file)
     self.grid = anim8.newGrid(8, 8, self.spriteSheet:getWidth(), self.spriteSheet:getHeight(), 0, 0, 1)
 
     local num_small_cols = 6

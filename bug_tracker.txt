@@ -12,7 +12,7 @@ SHOCKWAVE
 SHIELD
 
 COUNTER
-- should be able to counter shockwave
+- should be able to counter shockwave?
 
 DASH
 
@@ -29,12 +29,13 @@ MENU
 Players press button to get assigned 1P and 2P.
 
 PLAYER SELECT
-Be able to select which character you want to use, and their color.
+Be able to select which character you want to use, and their color. Need to make color select work for warrior. Need to update berserker color sprites.
 
 AI
 AI doesn't take into account shockwave.
 
 SOUND EFFECTS
+Need to make berserker sound effects, especially heavy.
 Dash X
 https://sfxr.me/#7dGFHBNpHZyArosfE1PakHY1mGNZdHoVohphorT2uatgSR4NiyNxxPLkheTV2vuVTbkLVyLgungHxvZAzQ9nJhEcQhzNMwu7S8KiarLsvN1UDJsMTsqcZCNo9
 Jump X
