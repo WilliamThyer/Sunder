@@ -9,11 +9,11 @@ function Shockwave:new(x, y, direction, damage)
     instance.x         = x
     instance.y         = y
     instance.direction = direction
-    instance.speed     = 40            -- pixels/sec
+    instance.speed     = 50            -- pixels/sec
     instance.damage    = damage
     instance.active    = true
 
-    -- load your 2-frame sheet (user provides this PNG)
+    -- load your 2-frame sheet 
     instance.spriteSheet = love.graphics.newImage("assets/sprites/Shockwave.png")
     instance.width  = 8
     instance.height = 8
@@ -46,7 +46,20 @@ function Shockwave:draw()
 end
 
 function Shockwave:getHitbox()
-    return { x=self.x, y=self.y, width=self.width, height=self.height }
+    local w = self.width - 1
+    local h = self.height - 5
+
+    -- If we’re facing right, draw+hitbox both start at self.x.
+    -- If we’re facing left, the drawn sprite actually spans [self.x - width .. self.x],
+    -- so we must also shift the hitbox left by its own width.
+    local hx = (self.direction == 1) and self.x or (self.x - w)
+
+    return {
+      x      = hx,
+      y      = self.y,
+      width  = w,
+      height = h
+    }
 end
 
 function Shockwave:checkHit(target)
