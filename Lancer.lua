@@ -25,11 +25,11 @@ function Lancer:new(x, y, joystickIndex, world, aiController, colorName)
     instance.height = 10
     instance.groundY = instance.y
 
-    instance.speed     = 22
+    instance.speed     = 30
 
-    instance.jumpHeight    = -110
+    instance.jumpHeight    = -130
 
-    instance.landingLag       = 0.25
+    instance.landingLag       = 0.15
 
     instance.heavyAttackDuration      = 0.75
     instance.heavyAttackNoDamageDuration = 0.45
@@ -70,9 +70,6 @@ function Lancer:new(x, y, joystickIndex, world, aiController, colorName)
     instance.lightAttackTimer         = 0
     instance.lightAttackDuration      = .5
     instance.lightAttackNoDamageDuration = 0.175
-
-    instance.shockwaves = {}
-    instance.shockwaveSpawned   = false
 
     instance:initializeAnimations()
     instance:initializeSoundEffects()
@@ -118,7 +115,7 @@ function Lancer:initializeAnimations()
     self.currentAnim = self.animations.idle
 end
 
-function Berserker:initializeSoundEffects()
+function Lancer:initializeSoundEffects()
     self.soundEffects = {
         counter             = love.audio.newSource("assets/soundEffects/counter.wav", "static"),
         dash                = love.audio.newSource("assets/soundEffects/dash.wav", "static"),
@@ -135,7 +132,7 @@ function Berserker:initializeSoundEffects()
     }
 end
 
-function Berserker:draw()
+function Lancer:draw()
     local CHARACTER_SCALE = 1
     local scaleX = CHARACTER_SCALE * self.direction
     local scaleY = CHARACTER_SCALE
@@ -156,15 +153,10 @@ function Berserker:draw()
         self.currentAnim:draw(self.spriteSheet, self.x + offsetX, self.y + offsetY, 0, scaleX, scaleY, 0, 2)
     end
 
-    -- draw any active shockwaves
-    for _, wave in ipairs(self.shockwaves) do
-        wave:draw()
-    end
-
     self:drawUI()
 end
 
-function Berserker:processInput(dt, input, otherPlayer)
+function Lancer:processInput(dt, input, otherPlayer)
     self.isIdle = true
 
     -- Shield
@@ -194,8 +186,6 @@ function Berserker:processInput(dt, input, otherPlayer)
             self.isAttacking      = true
             self.isHeavyAttacking = true
             self.heavyAttackTimer = self.heavyAttackDuration
-            -- self:spawnShockwave()
-            self.shockwaveSpawned = false
             if self.animations and self.animations.heavyAttack then
                 self.animations.heavyAttack:gotoFrame(1)
             end
@@ -320,22 +310,8 @@ function Berserker:processInput(dt, input, otherPlayer)
     end
 end
 
-function Berserker:handleAttacks(dt, otherPlayer)
+function Lancer:handleAttacks(dt, otherPlayer)
     if not otherPlayer then return end
-
-    -- **1) once the "no-damage" portion is over, spawn exactly one wave**
-    if self.isHeavyAttacking
-       and not self.shockwaveSpawned
-       and (self.heavyAttackTimer <= self.heavyAttackDuration - self.heavyAttackNoDamageDuration)
-    then
-        -- don't spawn in mid-air:
-        local dy = (self.y + self.height) - otherPlayer.y
-        local standingOn = math.abs(dy) < 2
-        if not self.isJumping and not standingOn then
-            self:spawnShockwave()
-        end
-        self.shockwaveSpawned = true
-    end
 
     -- **2) your old melee-hit checks** (unchanged)
     if self.isHeavyAttacking and not self.hasHitHeavy and
@@ -356,46 +332,9 @@ function Berserker:handleAttacks(dt, otherPlayer)
         end
     end
 
-    -- **3) update your shockwaves as before**
-    self:updateShockwaves(dt, otherPlayer)
 end
 
--- spawn one shockwave at the hammer’s tip
-function Berserker:spawnShockwave()
-    -- create the wave so we know its width:
-    local wave = Shockwave:new(0, 0, self.direction, self.damageMapping["heavyAttack"])
-    local w = wave.width
-
-    local fw, fh = wave.width, wave.height
-
-    -- if facing right: place at x + width + 5; if left: x - fw - 5
-    if self.direction == 1 then
-        wave.x = self.x + self.width + 5
-    else
-        wave.x = self.x - fw + 1
-    end
-    wave.y = self.y + (self.height - fh) * 0.5
-
-    table.insert(self.shockwaves, wave)
-end
-
-
--- update & collide all active shockwaves
-function Berserker:updateShockwaves(dt, otherPlayer)
-    for i = #self.shockwaves,1,-1 do
-        local wave = self.shockwaves[i]
-        wave:update(dt)
-        if wave.active and wave:checkHit(otherPlayer) then
-            otherPlayer:handleAttackEffects(self, dt, 1, "heavyAttack")
-            wave.active = false
-        end
-        if not wave.active then
-            table.remove(self.shockwaves, i)
-        end
-    end
-end
-
-function Berserker:canPerformAction(action)
+function Lancer:canPerformAction(action)
     local conditions = {
         idle = (
             not self.isMoving and
@@ -495,4 +434,4 @@ function Berserker:canPerformAction(action)
     return conditions[action]
 end
 
-return Berserker
+return Lancer

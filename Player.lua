@@ -1,20 +1,26 @@
 -- Player.lua
 local Berserker   = require("Berserker")
 local Warrior     = require("Warrior")
+local Lancer     = require("Lancer")
 local Player      = {}
 Player.__index    = Player
 
 function Player:new(characterType, colorName, x, y, joystickIndex, world, aiController)
-    -- pick your fighter class
-    local fighterClass = (characterType == "Berserk") and Berserker or Warrior
+      local fighterClass
 
-    -- create the actual fighter (passes colorName through to constructor)
-    local fighterInstance = fighterClass:new(x, y, joystickIndex, world, aiController, colorName)
+    if characterType == "Berserk" then
+        fighterClass = Berserker
+    elseif characterType == "Lancer" then
+        fighterClass = Lancer
+    else
+        -- fallback (Warrior covers "Warrior" and any unrecognized string)
+        fighterClass = Warrior
+    end
 
-    -- build the Player wrapper
-    local instance = {
-        base = fighterInstance
-    }
+    local fighterInstance =
+        fighterClass:new(x, y, joystickIndex, world, aiController, colorName)
+
+    local instance = { base = fighterInstance }
 
     setmetatable(instance, {
         __index = function(t, k)

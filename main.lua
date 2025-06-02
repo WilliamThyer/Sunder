@@ -142,8 +142,5 @@ function love.draw()
             Menu.drawPauseOverlay()
         end
     end
-
-    
-
     push:finish()
 end
