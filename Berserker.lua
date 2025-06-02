@@ -115,7 +115,7 @@ function Berserker:initializeAnimations()
         idle         = anim8.newAnimation(self.grid(4, '1-2'), 0.7),
         dash         = anim8.newAnimation(self.grid(3, 1), 0.2),
         heavyAttack  = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.1, 0.35, 0.05, 0.15}),
-        lightAttack  = anim8.newAnimation(self.attackGrid(2, '1-4'), {0.05, 0.2, 0.05, 0.05}),
+        lightAttack  = anim8.newAnimation(self.attackGrid(2, '1-4'), {0.05, 0.2, 0.1, 0.05}),
         downAir      = anim8.newAnimation(self.attackGrid(3, '1-2'), {0.2, 0.8}),
         shield       = anim8.newAnimation(self.grid(2, 1), 1),
         shieldBlock  = anim8.newAnimation(self.grid(2, 2), 1),
