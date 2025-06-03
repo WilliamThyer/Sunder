@@ -52,7 +52,8 @@ function CharacterBase:new(x, y)
     instance.damageMapping = {
         lightAttack = 1,
         heavyAttack = 3,
-        downAir     = 2
+        downAir     = 2,
+        shockWave = 1
     }
     instance.staminaMapping = {
         lightAttack = 2,
@@ -267,6 +268,7 @@ function CharacterBase:handleAttackEffects(attacker, dt, knockbackMultiplier, at
         damage = damage + 1
     end
     local shieldCostMapping = {
+        shockWave = 1,
         lightAttack = 1,
         heavyAttack = 3
     }

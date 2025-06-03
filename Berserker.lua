@@ -55,7 +55,8 @@ function Berserker:new(x, y, joystickIndex, world, aiController, colorName)
     instance.damageMapping = {
         lightAttack = 2,
         heavyAttack = 4,
-        downAir     = 3
+        downAir     = 3,
+        shockWave   = 1
     }
     instance.staminaMapping = {
         lightAttack = 3,
@@ -109,7 +110,7 @@ function Berserker:initializeAnimations()
     self.attackGrid = anim8.newGrid(18, 18, self.spriteSheet:getWidth(), self.spriteSheet:getHeight(), (num_small_cols * col_width) + 1, 0, 1)
 
     self.animations = {
-        move         = anim8.newAnimation(self.grid(1, '1-2'), 0.2),
+        move         = anim8.newAnimation(self.grid(1, '1-2'), 0.25),
         jump         = anim8.newAnimation(self.grid(1, 4), 1),
         land         = anim8.newAnimation(self.grid(4, 2), 1),
         idle         = anim8.newAnimation(self.grid(4, '1-2'), 0.7),
@@ -202,7 +203,6 @@ function Berserker:processInput(dt, input, otherPlayer)
             self.isAttacking      = true
             self.isHeavyAttacking = true
             self.heavyAttackTimer = self.heavyAttackDuration
-            -- self:spawnShockwave()
             self.shockwaveSpawned = false
             if self.animations and self.animations.heavyAttack then
                 self.animations.heavyAttack:gotoFrame(1)
@@ -371,8 +371,7 @@ end
 -- spawn one shockwave at the hammer’s tip
 function Berserker:spawnShockwave()
     -- create the wave so we know its width:
-    local wave = Shockwave:new(0, 0, self.direction, self.damageMapping["heavyAttack"])
-    local w = wave.width
+    local wave = Shockwave:new(0, 0, self.direction, self.damageMapping["shockWave"])
 
     local fw, fh = wave.width, wave.height
 
@@ -394,7 +393,7 @@ function Berserker:updateShockwaves(dt, otherPlayer)
         local wave = self.shockwaves[i]
         wave:update(dt)
         if wave.active and wave:checkHit(otherPlayer) then
-            otherPlayer:handleAttackEffects(self, dt, 1, "heavyAttack")
+            otherPlayer:handleAttackEffects(self, dt, 1, "shockWave")
             wave.active = false
         end
         if not wave.active then

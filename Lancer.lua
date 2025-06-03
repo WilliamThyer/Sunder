@@ -26,13 +26,17 @@ function Lancer:new(x, y, joystickIndex, world, aiController, colorName)
     instance.groundY = instance.y
 
     instance.speed     = 30
+    instance.dashDuration = 0.3
+    instance.canDash      = true
+    instance.dashSpeed    = 120
+
 
     instance.jumpHeight    = -130
 
     instance.landingLag       = 0.15
 
-    instance.heavyAttackDuration      = 0.75
-    instance.heavyAttackNoDamageDuration = 0.45
+    instance.heavyAttackDuration      = 0.65
+    instance.heavyAttackNoDamageDuration = 0.5
     instance.heavyAttackWidth        = 6
     instance.heavyAttackHeight       = 8
     instance.heavyAttackHitboxOffset = 0.5
@@ -44,15 +48,17 @@ function Lancer:new(x, y, joystickIndex, world, aiController, colorName)
     instance.downAirDuration          = 1
     instance.downAirTimer             = 0
 
+    instance.chargeLaunched = false
+
     instance.damageMapping = {
-        lightAttack = 2,
+        lightAttack = 1,
         heavyAttack = 4,
-        downAir     = 3
+        downAir     = 2
     }
     instance.staminaMapping = {
-        lightAttack = 3,
+        lightAttack = 2,
         heavyAttack = 3,
-        downAir     = 2,
+        downAir     = 1,
         dash        = 1
     }
 
@@ -68,7 +74,7 @@ function Lancer:new(x, y, joystickIndex, world, aiController, colorName)
 
     instance.isLightAttacking         = false
     instance.lightAttackTimer         = 0
-    instance.lightAttackDuration      = .5
+    instance.lightAttackDuration      = .35
     instance.lightAttackNoDamageDuration = 0.175
 
     instance:initializeAnimations()
@@ -98,13 +104,13 @@ function Lancer:initializeAnimations()
     self.attackGrid = anim8.newGrid(18, 18, self.spriteSheet:getWidth(), self.spriteSheet:getHeight(), (num_small_cols * col_width) + 1, 0, 1)
 
     self.animations = {
-        move         = anim8.newAnimation(self.grid(1, '1-2'), 0.2),
+        move         = anim8.newAnimation(self.grid(1, '1-2'), 0.125),
         jump         = anim8.newAnimation(self.grid(1, 4), 1),
         land         = anim8.newAnimation(self.grid(4, 2), 1),
         idle         = anim8.newAnimation(self.grid(4, '1-2'), 0.7),
         dash         = anim8.newAnimation(self.grid(3, 1), 0.2),
-        heavyAttack  = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.1, 0.35, 0.05, 0.15}),
-        lightAttack  = anim8.newAnimation(self.attackGrid(2, '1-4'), {0.05, 0.2, 0.1, 0.05}),
+        heavyAttack  = anim8.newAnimation(self.attackGrid(1, '1-3'), {0.1, 0.4, 0.15}),
+        lightAttack  = anim8.newAnimation(self.attackGrid(2, '1-3'), {0.05, 0.2, .1}),
         downAir      = anim8.newAnimation(self.attackGrid(3, '1-2'), {0.2, 0.8}),
         shield       = anim8.newAnimation(self.grid(2, 1), 1),
         shieldBlock  = anim8.newAnimation(self.grid(2, 2), 1),
@@ -186,6 +192,7 @@ function Lancer:processInput(dt, input, otherPlayer)
             self.isAttacking      = true
             self.isHeavyAttacking = true
             self.heavyAttackTimer = self.heavyAttackDuration
+            self:resetChargeFlags()
             if self.animations and self.animations.heavyAttack then
                 self.animations.heavyAttack:gotoFrame(1)
             end
@@ -310,8 +317,21 @@ function Lancer:processInput(dt, input, otherPlayer)
     end
 end
 
+function Lancer:resetChargeFlags()
+    self.chargeLaunched = false
+end
+
 function Lancer:handleAttacks(dt, otherPlayer)
     if not otherPlayer then return end
+
+    -- once “wind-up” has passed, shove Lancer forward by 7 pixels (only once)
+    if self.isHeavyAttacking
+       and not self.chargeLaunched
+       and (self.heavyAttackTimer <= self.heavyAttackDuration - self.heavyAttackNoDamageDuration)
+    then
+        self.x = self.x + (7 * self.direction)
+        self.chargeLaunched = true
+    end
 
     -- **2) your old melee-hit checks** (unchanged)
     if self.isHeavyAttacking and not self.hasHitHeavy and
