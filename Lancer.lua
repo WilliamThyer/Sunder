@@ -40,6 +40,7 @@ function Lancer:new(x, y, joystickIndex, world, aiController, colorName)
     instance.heavyAttackWidth        = 6
     instance.heavyAttackHeight       = 8
     instance.heavyAttackHitboxOffset = 0.5
+    instance.isUnblockableHeavy = true
 
     instance.lightAttackWidth        = 4
     instance.lightAttackHeight       = 8

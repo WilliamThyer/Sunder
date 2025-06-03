@@ -273,24 +273,30 @@ function CharacterBase:handleAttackEffects(attacker, dt, knockbackMultiplier, at
         heavyAttack = 3
     }
     local blockCost = shieldCostMapping[attackType] or 1
+    
+    local isUnblockable = (attackType == "heavyAttack") and attacker.isUnblockableHeavy
 
-    if not self.isHurt and not self.isInvincible then
-        if self:checkShieldBlock(attacker) and self:useStamina(blockCost) then
+     if not self.isHurt and not self.isInvincible then
+        -- Use normal shield logic **only when the hit is NOT unblockable**
+        if (not isUnblockable)
+           and self:checkShieldBlock(attacker)
+           and self:useStamina(blockCost) then
+            -- regular shield-block response
             self.soundEffects['shieldHit']:play()
             self.isShieldKnockback = true
             self.shieldKnockTimer  = self.shieldKnockDuration
             self.shieldKnockDir    = self:getKnockbackDirection(attacker)
             self.shieldKnockSpeed  = self.shieldKnockBase * (knockbackMultiplier or 1)
         else
+            -- full damage goes through
             self.soundEffects['hitHurt']:play()
             self.health = math.max(0, self.health - damage)
-            self.isHurt         = true
-            self.hurtTimer      = 0.2
-            self.isInvincible   = true
-            self.invincibleTimer= 0.5
+            self.isHurt          = true
+            self.hurtTimer       = 0.2
+            self.isInvincible    = true
+            self.invincibleTimer = 0.5
             if self.isJumping then
-                -- Add some upward knockback if you're in the air
-                self.jumpVelocity = - math.abs(self.knockbackSpeed * 1.5)
+                self.jumpVelocity = -math.abs(self.knockbackSpeed * 1.5)
             end
             self.knockbackSpeed     = self.knockbackBase * (knockbackMultiplier or 1)
             self.knockbackDirection = self:getKnockbackDirection(attacker)
