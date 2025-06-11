@@ -39,6 +39,12 @@ local sprites = {
         Blue   = love.graphics.newImage("assets/sprites/LancerBlue.png"),
         Yellow = love.graphics.newImage("assets/sprites/LancerYellow.png"),
         Gray   = love.graphics.newImage("assets/sprites/LancerGray.png")
+        },
+    Mage = {
+        Red    = love.graphics.newImage("assets/sprites/MageRed.png"),
+        Blue   = love.graphics.newImage("assets/sprites/MageBlue.png"),
+        Yellow = love.graphics.newImage("assets/sprites/MageYellow.png"),
+        Gray   = love.graphics.newImage("assets/sprites/MageGray.png")
         }
 }
 
@@ -58,7 +64,11 @@ local lancerQuad = love.graphics.newQuad(
     sprites.Lancer.Blue:getWidth(),
     sprites.Lancer.Blue:getHeight()
 )
-
+local mageQuad = love.graphics.newQuad(
+    1, 2, 13, 13,
+    sprites.Mage.Blue:getWidth(),
+    sprites.Mage.Blue:getHeight()
+)
 -- Per-player state (two players: 1 and 2)
 --   locked: whether that player has pressed A to lock in
 --   cursor: which character index is highlighted (1..#characters)
@@ -299,7 +309,7 @@ function CharacterSelect.draw(GameInfo)
     end
     love.graphics.rectangle("line", p1BoxX, p1BoxY, boxWidth, boxHeight)
     local p1Char = characters[playerSelections[1].cursor]
-    if p1Char == "Warrior" or p1Char == "Berserk" or p1Char == "Lancer" then
+    if p1Char == "Warrior" or p1Char == "Berserk" or p1Char == "Lancer" or p1Char == "Mage" then
         local colName = colorNames[playerSelections[1].colorIndex]
         local image, quad, spriteW, spriteH
         if p1Char == "Warrior" then
@@ -308,8 +318,11 @@ function CharacterSelect.draw(GameInfo)
         elseif p1Char == "Berserk" then
             image, quad = sprites.Berserk[colName], berserkQuad
             spriteW, spriteH = 12, 12
-        else
+        elseif p1Char == "Lancer" then
             image, quad = sprites.Lancer[colName], lancerQuad
+            spriteW, spriteH = 12, 12
+        elseif p1Char == "Mage" then
+            image, quad = sprites.Mage[colName], mageQuad
             spriteW, spriteH = 12, 12
         end
         local offsetX = (boxWidth - spriteW) / 2
@@ -327,7 +340,7 @@ function CharacterSelect.draw(GameInfo)
     end
     love.graphics.rectangle("line", p2BoxX, p2BoxY, boxWidth, boxHeight)
     local p2Char = characters[playerSelections[2].cursor]
-    if p2Char == "Warrior" or p2Char == "Berserk" or p2Char == "Lancer" then
+    if p2Char == "Warrior" or p2Char == "Berserk" or p2Char == "Lancer" or p2Char == "Mage" then
         local colName = colorNames[playerSelections[2].colorIndex]
         local image, quad, spriteW, spriteH
         if p2Char == "Warrior" then
@@ -336,8 +349,11 @@ function CharacterSelect.draw(GameInfo)
         elseif p2Char == "Berserk" then
             image, quad = sprites.Berserk[colName], berserkQuad
             spriteW, spriteH = 12, 12
-        else
+        elseif p1Char == "Lancer" then
             image, quad = sprites.Lancer[colName], lancerQuad
+            spriteW, spriteH = 12, 12
+        elseif p1Char == "Mage" then
+            image, quad = sprites.Mage[colName], mageQuad
             spriteW, spriteH = 12, 12
         end
         local offsetX = (boxWidth - spriteW) / 2
@@ -378,8 +394,14 @@ function CharacterSelect.draw(GameInfo)
             local offsetX = (charBoxWidth - spriteW) / 2
             local offsetY = (charBoxHeight - spriteH) / 2
             love.graphics.draw(image, quad, x + offsetX, y + offsetY)
+        elseif charName == "Mage" and sprites.Mage["Gray"] then
+            local image, quad = sprites.Mage["Gray"], mageQuad
+            local spriteW, spriteH = 12, 12
+            local offsetX = (charBoxWidth - spriteW) / 2
+            local offsetY = (charBoxHeight - spriteH) / 2
+            love.graphics.draw(image, quad, x + offsetX, y + offsetY)
         else
-            -- No sprite for Mage, so just draw a gray box
+            -- No sprite, so just draw a gray box
             love.graphics.setColor(0.5, 0.5, 0.5, 1)
             love.graphics.rectangle("fill", x + 1, y + 1, charBoxWidth - 2, charBoxHeight - 2)
             love.graphics.setColor(1, 1, 1, 1)

@@ -273,7 +273,6 @@ function AIController:decideAction(player, opponent)
 
     -- On top of
     elseif absDistX < 4 and distY > 0 then
-        print('ontopof')
         local options = {
           "Jump DownAir",
         --   "Jump HeavyAttack",
@@ -316,14 +315,12 @@ function AIController:startSequence(name)
         end
     end
     -- If not found, do nothing (or default to Approach)
-    print("Sequence not found:", name)
 end
 
 --------------------------------------------------------------------------------
 -- Advance the current sequence step by step
 --------------------------------------------------------------------------------
 function AIController:runSequenceLogic(dt, input, player, opponent)
-    print(self.activeSequenceName)
     local seq  = self.activeSequence
     if not seq then
       self:stopSequence()

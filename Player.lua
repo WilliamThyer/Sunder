@@ -2,6 +2,7 @@
 local Berserker   = require("Berserker")
 local Warrior     = require("Warrior")
 local Lancer     = require("Lancer")
+local Mage     = require("Mage")
 local Player      = {}
 Player.__index    = Player
 
@@ -12,6 +13,8 @@ function Player:new(characterType, colorName, x, y, joystickIndex, world, aiCont
         fighterClass = Berserker
     elseif characterType == "Lancer" then
         fighterClass = Lancer
+    elseif characterType == "Mage" then
+        fighterClass = Mage
     else
         -- fallback (Warrior covers "Warrior" and any unrecognized string)
         fighterClass = Warrior
