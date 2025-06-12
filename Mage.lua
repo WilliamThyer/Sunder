@@ -30,6 +30,14 @@ function Mage:new(x, y, joystickIndex, world, aiController, colorName)
     instance.canDash      = true
     instance.dashSpeed    = 120
 
+    -- DASH-TELEPORT STATE
+    instance.dashPhase         = nil                  -- "start" or "end" (nil = no dash in progress)
+    instance.dashDistance      = instance.dashSpeed * instance.dashDuration
+    instance.dashStartDuration = 3 * 0.06             -- 3 frames × 0.05s/frame (match your dashStart anim)
+    instance.dashEndDuration   = 3 * 0.06             -- same for dashEnd anim
+    instance.dashStartTimer    = 0
+    instance.dashEndTimer      = 0
+
     instance.jumpHeight    = -130
 
     instance.landingLag       = 0.15
@@ -108,8 +116,8 @@ function Mage:initializeAnimations()
         jump         = anim8.newAnimation(self.grid(1, '4-6'), .05),
         land         = anim8.newAnimation(self.grid(4, 2), 1),
         idle         = anim8.newAnimation(self.grid(4, '1-4'), 0.5),
-        dashStart         = anim8.newAnimation(self.grid(3, '1-3'), 0.05),
-        dashEnd         = anim8.newAnimation(self.grid(3, '3-1'), 0.05),
+        dashStart         = anim8.newAnimation(self.grid(3, '1-3'), 0.075),
+        dashEnd         = anim8.newAnimation(self.grid(3, '3-1'), 0.075),
         heavyAttack  = anim8.newAnimation(self.attackGrid(1, '1-3'), {0.1, 0.4, 0.15}),
         lightAttack  = anim8.newAnimation(self.attackGrid(2, '1-3'), {0.05, 0.2, .1}),
         downAir      = anim8.newAnimation(self.attackGrid(3, '1-2'), {0.2, 0.8}),
@@ -165,6 +173,49 @@ end
 
 function Mage:processInput(dt, input, otherPlayer)
     self.isIdle = true
+
+    ----------------------------------------------------------------
+    -- 1) Dash‐teleport phases
+    ----------------------------------------------------------------
+    if self.dashPhase == "start" then
+        self.dashStartTimer = self.dashStartTimer - dt
+        if self.dashStartTimer <= 0 then
+            -- teleport through players but still collide with walls
+            local goalX = self.x + (self.direction * self.dashDistance)
+            local defaultFilter = function(item, other)
+                return self:collisionFilter(item, other)
+            end
+            local phaseFilter = function(item, other)
+                if other.isPlayer then return "cross" end
+                return defaultFilter(item, other)
+            end
+            local actualX, actualY = self.world:move(self, goalX, self.y, phaseFilter)
+            self.x, self.y = actualX, actualY
+
+            -- begin portal‐out
+            self.dashPhase    = "end"
+            self.dashEndTimer = self.dashEndDuration
+            self.currentAnim  = self.animations.dashEnd
+        end
+
+        -- **lock movement for the entire start phase**
+        self.isMoving = false
+        self.canMove  = false
+        return
+
+    elseif self.dashPhase == "end" then
+        self.dashEndTimer = self.dashEndTimer - dt
+        if self.dashEndTimer <= 0 then
+            -- dash is fully over: restore both dash and move ability
+            self.dashPhase = nil
+            self.canDash   = true
+            self.canMove   = true
+        end
+
+        -- **also lock movement during the end phase** 
+        self.isMoving = false
+        return
+    end
 
     -- Shield
     if input.shield and self:canPerformAction("shield") and self.stamina > 0 then
@@ -278,17 +329,14 @@ function Mage:processInput(dt, input, otherPlayer)
 
     -- Dash
     if input.dash and self:canPerformAction("dash") then
-        if self:useStamina(1) then
+        if self:useStamina(self.staminaMapping.dash or 1) then
+            -- portal‐in
             self.soundEffects['dash']:play()
-            self.isDashing    = true
-            self.dashTimer    = self.dashDuration
-            self.dashVelocity = self.dashSpeed * self.direction
-            if self.isJumping then
-                self.canDash = false
-            end
-            if self.animations and self.animations.dash then
-                self.animations.dash:gotoFrame(1)
-            end
+            self.dashPhase         = "start"
+            self.dashStartTimer    = self.dashStartDuration
+            self.currentAnim       = self.animations.dashStart
+            self.currentAnim:gotoFrame(1)
+            self.canDash           = false
         end
     end
     self.dashPressedLastFrame = input.dash
@@ -308,11 +356,11 @@ function Mage:processInput(dt, input, otherPlayer)
     if self:canPerformAction("idle") then
         self.isIdle    = true
         self.idleTimer = self.idleTimer + dt
-        -- if self.idleTimer < . then
-        --     if self.animations and self.animations.idle then
-        --         self.animations.idle:gotoFrame(1)
-        --     end
-        -- end
+        if self.idleTimer < .3 then
+            if self.animations and self.animations.idle then
+                self.animations.idle:gotoFrame(1)
+            end
+        end
     else
         self.idleTimer = 0
     end
@@ -326,13 +374,12 @@ function Mage:handleAttacks(dt, otherPlayer)
     if not otherPlayer then return end
 
     -- once “wind-up” has passed, shove Mage forward by 7 pixels (only once)
-    if self.isHeavyAttacking
-       and not self.chargeLaunched
-       and (self.heavyAttackTimer <= self.heavyAttackDuration - self.heavyAttackNoDamageDuration)
-    then
-        self.x = self.x + (7 * self.direction)
-        self.chargeLaunched = true
-    end
+    -- if self.isHeavyAttacking
+    --    and not self.chargeLaunched
+    --    and (self.heavyAttackTimer <= self.heavyAttackDuration - self.heavyAttackNoDamageDuration)
+    -- then
+    --     self.chargeLaunched = true
+    -- end
 
     -- **2) your old melee-hit checks** (unchanged)
     if self.isHeavyAttacking and not self.hasHitHeavy and
@@ -353,6 +400,24 @@ function Mage:handleAttacks(dt, otherPlayer)
         end
     end
 
+end
+
+-- Save a reference to the base implementation:
+local base_updateAnimation = CharacterBase.updateAnimation
+
+-- Override updateAnimation so our portal anims actually play
+function Mage:updateAnimation(dt)
+    if self.dashPhase == "start" then
+        self.currentAnim = self.animations.dashStart
+        self.currentAnim:update(dt)
+        return
+    elseif self.dashPhase == "end" then
+        self.currentAnim = self.animations.dashEnd
+        self.currentAnim:update(dt)
+        return
+    end
+    -- Otherwise fall back to default:
+    base_updateAnimation(self, dt)
 end
 
 function Mage:canPerformAction(action)
