@@ -1,5 +1,6 @@
 -- Mage.lua
 local CharacterBase = require("CharacterBase")
+local Missile = require("Missile")
 local anim8 = require("libraries.anim8")
 
 local Mage = {}
@@ -26,9 +27,9 @@ function Mage:new(x, y, joystickIndex, world, aiController, colorName)
     instance.groundY = instance.y
 
     instance.speed     = 30
-    instance.dashDuration = 0.3
+    instance.dashDuration = 0.4
     instance.canDash      = true
-    instance.dashSpeed    = 120
+    instance.dashSpeed    = 140
 
     -- DASH-TELEPORT STATE
     instance.dashPhase         = nil                  -- "start" or "end" (nil = no dash in progress)
@@ -42,8 +43,8 @@ function Mage:new(x, y, joystickIndex, world, aiController, colorName)
 
     instance.landingLag       = 0.15
 
-    instance.heavyAttackDuration      = 0.65
-    instance.heavyAttackNoDamageDuration = 0.5
+    instance.heavyAttackDuration      = 0.85
+    instance.heavyAttackNoDamageDuration = 0.7
     instance.heavyAttackWidth        = 6
     instance.heavyAttackHeight       = 8
     instance.heavyAttackHitboxOffset = 0.5
@@ -89,6 +90,10 @@ function Mage:new(x, y, joystickIndex, world, aiController, colorName)
     instance:initializeSoundEffects()
     instance:initializeUIAnimations()  -- from CharacterBase
 
+    -- Missile & spawn‐flag
+    instance.missiles        = {}
+    instance.hasSpawnedMissile = false
+
     -- Mark as a player-controlled fighter (if needed)
     instance.isPlayer = true
 
@@ -116,9 +121,9 @@ function Mage:initializeAnimations()
         jump         = anim8.newAnimation(self.grid(1, '4-6'), .05),
         land         = anim8.newAnimation(self.grid(4, 2), 1),
         idle         = anim8.newAnimation(self.grid(4, '1-4'), 0.5),
-        dashStart         = anim8.newAnimation(self.grid(3, '1-3'), 0.075),
-        dashEnd         = anim8.newAnimation(self.grid(3, '3-1'), 0.075),
-        heavyAttack  = anim8.newAnimation(self.attackGrid(1, '1-3'), {0.1, 0.4, 0.15}),
+        dashStart    = anim8.newAnimation(self.grid(3, '1-3'), 0.075),
+        dashEnd      = anim8.newAnimation(self.grid(3, '3-1'), 0.075),
+        heavyAttack  = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.1, 0.3, 0.3, 0.05}),
         lightAttack  = anim8.newAnimation(self.attackGrid(2, '1-3'), {0.05, 0.2, .1}),
         downAir      = anim8.newAnimation(self.attackGrid(3, '1-2'), {0.2, 0.8}),
         shield       = anim8.newAnimation(self.grid(2, '1-3'), .1),
@@ -128,6 +133,7 @@ function Mage:initializeAnimations()
         die          = anim8.newAnimation(self.grid(6, 1), 0.5)
     }
     self.currentAnim = self.animations.idle
+
 end
 
 function Mage:initializeSoundEffects()
@@ -166,6 +172,10 @@ function Mage:draw()
     local th = self.grid.frameHeight
     if self.currentAnim and self.spriteSheet then
         self.currentAnim:draw(self.spriteSheet, self.x + offsetX, self.y + offsetY, 0, scaleX, scaleY, 0, 2)
+    end
+
+    for _, fb in ipairs(self.missiles) do
+        fb:draw()
     end
 
     self:drawUI()
@@ -244,7 +254,7 @@ function Mage:processInput(dt, input, otherPlayer)
             self.isAttacking      = true
             self.isHeavyAttacking = true
             self.heavyAttackTimer = self.heavyAttackDuration
-            self:resetChargeFlags()
+            self.hasSpawnedMissile = false
             if self.animations and self.animations.heavyAttack then
                 self.animations.heavyAttack:gotoFrame(1)
             end
@@ -268,6 +278,7 @@ function Mage:processInput(dt, input, otherPlayer)
             self.isAttacking      = false
             self.isHeavyAttacking = false
             self.hasHitHeavy      = false
+            self.hasSpawnedMissile = false
         end
     end
 
@@ -366,30 +377,36 @@ function Mage:processInput(dt, input, otherPlayer)
     end
 end
 
-function Mage:resetChargeFlags()
-    self.chargeLaunched = false
-end
-
 function Mage:handleAttacks(dt, otherPlayer)
     if not otherPlayer then return end
 
-    -- once “wind-up” has passed, shove Mage forward by 7 pixels (only once)
-    -- if self.isHeavyAttacking
-    --    and not self.chargeLaunched
-    --    and (self.heavyAttackTimer <= self.heavyAttackDuration - self.heavyAttackNoDamageDuration)
-    -- then
-    --     self.chargeLaunched = true
-    -- end
-
-    -- **2) your old melee-hit checks** (unchanged)
-    if self.isHeavyAttacking and not self.hasHitHeavy and
-       (self.heavyAttackTimer <= self.heavyAttackDuration - self.heavyAttackNoDamageDuration)
+       --------------------------------------------------
+    -- 1) spawn missile once per heavy attack
+    --------------------------------------------------
+    if    self.isHeavyAttacking
+      and not self.hasSpawnedMissile
+      and (self.heavyAttackTimer <= self.heavyAttackDuration - self.heavyAttackNoDamageDuration)
     then
-        if self:checkHit(otherPlayer, "heavyAttack") then
-            otherPlayer:handleAttackEffects(self, dt, 1, "heavyAttack")
-            self.hasHitHeavy = true
-        end
+        -- spawn right in front of the mage:
+        local spawnX = (self.direction == 1)
+                       and (self.x + self.width)
+                       or (self.x - 16)
+        local spawnY = self.y + (self.height * 0.5) - 9
+
+        local fb = Missile:new(
+            spawnX,
+            spawnY,
+            self.direction,
+            self.damageMapping["heavyAttack"],
+            self.colorName
+        )
+        table.insert(self.missiles, fb)
+        self.hasSpawnedMissile = true
     end
+
+    --------------------------------------------------
+    --- 2) Melee attacks 
+    --------------------------------------------------
 
     if self.isLightAttacking and not self.hasHitLight and
        (self.lightAttackTimer <= self.lightAttackDuration - self.lightAttackNoDamageDuration)
@@ -397,6 +414,22 @@ function Mage:handleAttacks(dt, otherPlayer)
         if self:checkHit(otherPlayer, "lightAttack") then
             otherPlayer:handleAttackEffects(self, dt, 0.5, "lightAttack")
             self.hasHitLight = true
+        end
+    end
+
+    --------------------------------------------------
+    -- 3) update & collide all missiles 
+    --------------------------------------------------
+    for i = #self.missiles,1,-1 do
+        local fb = self.missiles[i]
+        fb:update(dt)
+
+        if fb:checkHit(otherPlayer) then
+            otherPlayer:handleAttackEffects(self, dt, 1, "heavyAttack")
+        end
+
+        if not fb.active then
+            table.remove(self.missiles, i)
         end
     end
 
