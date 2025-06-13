@@ -33,7 +33,7 @@ function heavyAttackMissile:new(x, y, dir, damage, colorName)
     o.x      = x
     o.y      = y
     o.dir    = dir
-    o.speed  = 60
+    o.speed  = 70
     o.damage = damage or 1
     o.active = true
 

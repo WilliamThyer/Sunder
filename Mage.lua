@@ -50,6 +50,8 @@ function Mage:new(x, y, joystickIndex, world, aiController, colorName)
     instance.heavyAttackHitboxOffset = 0.5
     instance.isUnblockableHeavy = true
 
+    instance.lightAttackDuration      = 0.35
+    instance.lightAttackNoDamageDuration = 0.175
     instance.lightAttackWidth        = 4
     instance.lightAttackHeight       = 8
     instance.lightAttackHitboxOffset = 0.5
@@ -97,6 +99,11 @@ function Mage:new(x, y, joystickIndex, world, aiController, colorName)
     -- Mark as a player-controlled fighter (if needed)
     instance.isPlayer = true
 
+    -- flight fields
+    instance.isFlying            = false
+    instance.flySpeed            = 60          -- pixels per second upward
+    instance.flyStaminaDrainRate = 2           -- stamina per second
+
     return instance
 end
 
@@ -124,7 +131,7 @@ function Mage:initializeAnimations()
         dashStart    = anim8.newAnimation(self.grid(3, '1-3'), 0.075),
         dashEnd      = anim8.newAnimation(self.grid(3, '3-1'), 0.075),
         heavyAttack  = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.1, 0.3, 0.3, 0.05}),
-        lightAttack  = anim8.newAnimation(self.attackGrid(2, '1-3'), {0.05, 0.2, .1}),
+        lightAttack  = anim8.newAnimation(self.attackGrid(2, '1-3'), {0.2, 0.15, .05}),
         downAir      = anim8.newAnimation(self.attackGrid(3, '1-2'), {0.2, 0.8}),
         shield       = anim8.newAnimation(self.grid(2, '1-3'), .1),
         shieldBlock  = anim8.newAnimation(self.grid(2, 4), 1),
@@ -307,36 +314,12 @@ function Mage:processInput(dt, input, otherPlayer)
         self.isMoving = false
     end
 
-    -- Jump logic
-    if input.jump and self:canPerformAction("jump") then
-        -- First jump
-        if not self.isJumping then
-            -- Check if we can pay the stamina cost
-            if self:useStamina(1) then
-                self.soundEffects['jump']:play()
-                self.jumpVelocity   = self.jumpHeight
-                self.isJumping      = true
-                self.canDoubleJump  = true
-                self.canDash        = true
-                if self.animations and self.animations.jump then
-                    self.animations.jump:gotoFrame(1)
-                end
-            end
-        -- Double jump
-        elseif self.canDoubleJump then
-            if self:useStamina(1) then
-                self.soundEffects['jump']:play()
-                self.isDownAir    = false
-                self:resetGravity()
-                self.jumpVelocity  = self.jumpHeight
-                self.canDoubleJump = false
-                if self.animations and self.animations.jump then
-                    self.animations.jump:gotoFrame(1)
-                end
-            end
-        end
+    -- Flight logic: hold jump to rise (if you have stamina), release to fall
+    if input.jump and self.stamina > 0 then
+        self.isFlying = true
+    else
+        self.isFlying = false
     end
-    self.JumpPressedLastFrame = input.jump
 
     -- Dash
     if input.dash and self:canPerformAction("dash") then
@@ -377,6 +360,36 @@ function Mage:processInput(dt, input, otherPlayer)
     end
 end
 
+-- keep a reference to the base bump–move
+local baseMoveWithBump = CharacterBase.moveWithBump
+
+function Mage:moveWithBump(dt)
+    if self.isFlying then
+        -- drain stamina
+        self.stamina = math.max(0, self.stamina - self.flyStaminaDrainRate * dt)
+
+        -- compute goal pos: up + any left/right input
+        local goalX = self.x
+        if self.isMoving and self.canMove then
+            goalX = goalX + (self.direction * self.speed * dt)
+        end
+        local goalY = self.y - (self.flySpeed * dt) 
+
+        -- do the bump move
+        local actualX, actualY, cols, len =
+          self.world:move(self, goalX, goalY, self.collisionFilter)
+        self.x, self.y = actualX, actualY
+
+        -- if you ran out of stamina, stop flying this frame
+        if self.stamina <= 0 then
+            self.isFlying = false
+        end
+    else
+        -- normal gravity/jump+fall behavior
+        baseMoveWithBump(self, dt)
+    end
+end
+
 function Mage:handleAttacks(dt, otherPlayer)
     if not otherPlayer then return end
 
@@ -389,8 +402,8 @@ function Mage:handleAttacks(dt, otherPlayer)
     then
         -- spawn right in front of the mage:
         local spawnX = (self.direction == 1)
-                       and (self.x + self.width)
-                       or (self.x - 16)
+                       and (self.x + 10)
+                       or (self.x - 10)
         local spawnY = self.y + (self.height * 0.5) - 9
 
         local fb = Missile:new(
@@ -440,6 +453,7 @@ local base_updateAnimation = CharacterBase.updateAnimation
 
 -- Override updateAnimation so our portal anims actually play
 function Mage:updateAnimation(dt)
+    -- 1) dash‐teleport anims
     if self.dashPhase == "start" then
         self.currentAnim = self.animations.dashStart
         self.currentAnim:update(dt)
@@ -449,7 +463,22 @@ function Mage:updateAnimation(dt)
         self.currentAnim:update(dt)
         return
     end
-    -- Otherwise fall back to default:
+
+    -- 2) hovering: always show the jump animation
+    if self.isFlying then
+        self.currentAnim = self.animations.jump
+        self.currentAnim:update(dt)
+        return
+    end
+
+    -- 3) falling: show idle animation instead of jump
+    if self.isJumping then
+        self.currentAnim = self.animations.idle
+        self.currentAnim:update(dt)
+        return
+    end
+
+    -- 4) everything else uses the base character logic
     base_updateAnimation(self, dt)
 end
 
