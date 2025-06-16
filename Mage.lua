@@ -173,7 +173,11 @@ function Mage:draw()
     local offsetY = 0
     if self.isAttacking and not self.isDownAir then
         offsetY = -3 * CHARACTER_SCALE
-        offsetX = offsetX -1 * CHARACTER_SCALE
+        if self.direction == 1 then
+            offsetX = offsetX - 1 * CHARACTER_SCALE
+        else
+            offsetX = offsetX + 1 * CHARACTER_SCALE
+        end
     end
 
     local th = self.grid.frameHeight
@@ -315,11 +319,16 @@ function Mage:processInput(dt, input, otherPlayer)
     end
 
     -- Flight logic: hold jump to rise (if you have stamina), release to fall
-    if input.jump and self.stamina > 0 then
-        self.isFlying = true
-    else
-        self.isFlying = false
+    local nowFlying = (input.jump and self.stamina > 0)
+    self.isFlying = nowFlying
+
+    -- If we just dropped out of hover, clear any accumulated fall velocity:
+    if self.wasFlying and not self.isFlying then
+        self.jumpVelocity = 0
+        -- ensure we’re in “falling” state so gravity kicks in
+        self.isJumping   = true
     end
+    self.wasFlying = self.isFlying
 
     -- Dash
     if input.dash and self:canPerformAction("dash") then

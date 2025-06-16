@@ -219,7 +219,12 @@ function CharacterBase:checkHit(other, attackType)
                 hitbox.y + hitbox.height > hurtbox.y
     -- Counter window check:
     if hit and other.isCountering and other.counterActive then
-        other:triggerSuccessfulCounter(self)
+        -- Only allow counter if defender is facing the attacker
+        local isFacingAttacker = (other.direction == 1 and self.x > other.x) or 
+                                (other.direction == -1 and self.x < other.x)
+        if isFacingAttacker then
+            other:triggerSuccessfulCounter(self)
+        end
         return false
     end
     return hit
@@ -384,7 +389,7 @@ function CharacterBase:updateHurtState(dt)
 end
 
 --------------------------------------------------
--- Generic “Infrastructure” Methods
+-- Generic "Infrastructure" Methods
 --------------------------------------------------
 function CharacterBase:collisionFilter(item, other)
     if other and other.isPlayer then

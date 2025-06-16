@@ -1,42 +1,33 @@
---- FEATURES ---
+To Do
+- Shockwave can be countered, changes color.
+- You should be able to interupt attacks. Need Hit stun in general. 
+- Need to add more recovery frames.
+- Counter shouldn't work while facing the other way.
+- Countering a missile heals 1 heart.
+- Make 3 more stages. Bottomless pit, platforms, no edges.
+- Game shouldn't crash when controller disconnects.
+- Button remapping?
+- AI needs to take into account shockwave. 
+- AI needs to take into account missile.
+- AI for berserker.
+- AI for Lancer.
+- AI for Mage.
+- Aerial light attacks for Warrior.
+- Aerial light attacks for Berserker.
+- Aerial light attacks for Lancer.
+- Aerial light attacks for Mage.
+- Sound effects for Berserker.
+- Sounds effects for Lancer.
+- Sounds effects for Mage.
+- Color variants for Berserker.
+- Color variants for Lancer.
+- Color variants for Mage.
+- Story mode. Select fighter,. 
 
-DOWNAIR ATTACK
 
-LIGHT ATTACK
-
-HEAVY ATTACK
-
-SHOCKWAVE
-- Should be able to be countered and returned
-
-SHIELD
-
-COUNTER
-- should be able to counter shockwave?
-- shouldn't work if facing away
-
-DASH
-
-HEALTH
-
-STAMINA
-
-STAGES
-platforms?
-
-DEATH
-
-MENU
-Players press button to get assigned 1P and 2P.
-
-PLAYER SELECT
-Need to update berserker color sprites.
-
-AI
-AI doesn't take into account shockwave.
 
 SOUND EFFECTS
-Need to make berserker sound effects, especially heavy.
+Need to make berserker, mage, lancer sound effects.
 Dash X
 https://sfxr.me/#7dGFHBNpHZyArosfE1PakHY1mGNZdHoVohphorT2uatgSR4NiyNxxPLkheTV2vuVTbkLVyLgungHxvZAzQ9nJhEcQhzNMwu7S8KiarLsvN1UDJsMTsqcZCNo9
 Jump X
@@ -60,70 +51,5 @@ shieldHit X
 hitHurt X
 Die X
 https://sfxr.me/#7BMHBGNhG8sMUEMg3Xa1UdWuSefiQAcWAjCP3PAxFZe7fds8nhRY7TzqG4AoZEStacoMyG1ZwaMUeZ3fNcDsBc6XM3LibdyFkD73AMuzEzMqnmpbhhbuoHLTH
-
---- EXPERIMENTAL FEATURES ---
-
-AERIAL
-Create dedicated aerial move for attacking.
-Heavy and light?
-Or directional?
-Damage = ground based damage.
-
-MAGIC MISSILE
-Costs 1 health, deals 2 damage.
-Physics?
-Can be parried, or shielded. Parrying regens health. Shield reduces to 1.
-
-GRAB
-Create grabbing mechanic.
-Can grab through shield/parry, grabee can't move.
-Lasts 2 seconds.
-Grabber can "punch" for 2 damage, or throw directionally?
-
-THROW
-1 stamina.
-Throw mechanic?
-Does no damage but stuns them for a moment?
-
-
-Feedback
-projectiles
-directional attacks and blocks
-recovery frames
-stage with bottomless pits
-hit stun, interupt heavy attacks
-
-
---- CLASSES ---
-Warrior
-- downstrike (downair)
-- shield (directional)
-- stab (light attack)
-- slash (heavy attack)
-- dash
-- counter
-
-Berserker
-- body slam (downair)
-- shield (omni-directional)
-- axe bash (light attack)
-- axe chop (heavy attack)
-- dash 
-- counter
-- Characteristics
-Very slow, attacks come out slow and have more recovery frames.
-
-Lancer
-- downair
-- shield (directional)
-- lance (light attack)
-- long lance (heavy attack)
-- dash
-- counter
-- Characteristics
-Very fast, attacks come out fast. Longer range.
-
-Mage
--  (downair)
 
 https://www.dafont.com/free-pixel.font
