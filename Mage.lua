@@ -307,7 +307,7 @@ function Mage:processInput(dt, input, otherPlayer)
         self.isMoving  = true
         self.direction = (input.moveX > 0) and 1 or -1
     else
-        -- Even if we cannot “move,” check if we’re shielding so we can flip direction
+        -- Even if we cannot "move," check if we're shielding so we can flip direction
         -- without actually moving our X position:
         if self.isShielding then
             if math.abs(input.moveX) > 0.5 then
@@ -325,7 +325,7 @@ function Mage:processInput(dt, input, otherPlayer)
     -- If we just dropped out of hover, clear any accumulated fall velocity:
     if self.wasFlying and not self.isFlying then
         self.jumpVelocity = 0
-        -- ensure we’re in “falling” state so gravity kicks in
+        -- ensure we're in "falling" state so gravity kicks in
         self.isJumping   = true
     end
     self.wasFlying = self.isFlying
@@ -446,8 +446,19 @@ function Mage:handleAttacks(dt, otherPlayer)
         local fb = self.missiles[i]
         fb:update(dt)
 
-        if fb:checkHit(otherPlayer) then
-            otherPlayer:handleAttackEffects(self, dt, 1, "heavyAttack")
+        -- Check if the missile hits the other player
+        if fb.active then
+            local hitResult = fb:checkHit(otherPlayer)
+            if hitResult == "countered" then
+                -- Missile was countered - heal the player
+                otherPlayer:heal(1)
+                -- Remove the countered missile
+                fb.active = false
+            elseif hitResult == "hit" then
+                -- Normal hit - apply damage
+                otherPlayer:handleAttackEffects(self, dt, 1, "heavyAttack")
+                fb.active = false
+            end
         end
 
         if not fb.active then

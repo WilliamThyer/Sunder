@@ -254,6 +254,10 @@ function CharacterBase:useStamina(amount)
     return false
 end
 
+function CharacterBase:heal(amount)
+    self.health = math.min(self.maxHealth, self.health + amount)
+end
+
 function CharacterBase:updateStamina(dt)
     self.timeSinceStaminaUse = self.timeSinceStaminaUse + dt
     if self.timeSinceStaminaUse > self.staminaRegenDelay then

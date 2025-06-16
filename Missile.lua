@@ -78,8 +78,17 @@ function heavyAttackMissile:checkHit(target)
     and self.x + 8 > target.x
     and self.y < target.y + target.height
     and self.y + 8 > target.y then
-        self.active = false
-        return true
+        -- Check if target is countering
+        if target.isCountering and target.counterActive then
+            -- Only allow counter if defender is facing the missile
+            local isFacingMissile = (target.direction == 1 and self.x > target.x) or 
+                                  (target.direction == -1 and self.x < target.x)
+            if isFacingMissile then
+                target:triggerSuccessfulCounter(self)
+                return "countered"
+            end
+        end
+        return "hit"
     end
     return false
 end

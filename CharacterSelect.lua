@@ -349,10 +349,10 @@ function CharacterSelect.draw(GameInfo)
         elseif p2Char == "Berserk" then
             image, quad = sprites.Berserk[colName], berserkQuad
             spriteW, spriteH = 12, 12
-        elseif p1Char == "Lancer" then
+        elseif p2Char == "Lancer" then
             image, quad = sprites.Lancer[colName], lancerQuad
             spriteW, spriteH = 12, 12
-        elseif p1Char == "Mage" then
+        elseif p2Char == "Mage" then
             image, quad = sprites.Mage[colName], mageQuad
             spriteW, spriteH = 12, 12
         end
