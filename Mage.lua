@@ -186,6 +186,7 @@ function Mage:draw()
     end
 
     for _, fb in ipairs(self.missiles) do
+        print(fb.x, fb.y)
         fb:draw()
     end
 
@@ -420,7 +421,8 @@ function Mage:handleAttacks(dt, otherPlayer)
             spawnY,
             self.direction,
             self.damageMapping["heavyAttack"],
-            self.colorName
+            self.colorName,
+            self.world  -- Pass world reference for collision detection
         )
         table.insert(self.missiles, fb)
         self.hasSpawnedMissile = true

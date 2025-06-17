@@ -25,7 +25,7 @@ local function ensureResources(colorName)
     end
 end
 
-function heavyAttackMissile:new(x, y, dir, damage, colorName)
+function heavyAttackMissile:new(x, y, dir, damage, colorName, world)
     -- make sure our texture & grid are loaded
     ensureResources(colorName)
 
@@ -36,18 +36,52 @@ function heavyAttackMissile:new(x, y, dir, damage, colorName)
     o.speed  = 70
     o.damage = damage or 1
     o.active = true
+    o.world  = world  -- Store reference to bump world
 
     -- just reference the cached img & grid
     o.spriteSheet = spriteSheets[colorName]
     o.grid        = grids       [colorName]
     o.anim        = anim8.newAnimation(o.grid(5,'5-6'), 0.05)
 
+    -- Don't add to bump world - missiles shouldn't be physical objects
+    o.width = 8   -- Missile hitbox width for collision detection
+    o.height = 8  -- Missile hitbox height for collision detection
+
     return o
 end
 
 function heavyAttackMissile:update(dt)
     if not self.active then return end
-    self.x = self.x + self.speed * self.dir * dt
+    
+    -- Calculate goal position
+    local goalX = self.x + self.speed * self.dir * dt
+    local goalY = self.y
+    
+    -- Check for wall collisions using bump's query functions
+    if self.world then
+        -- Query for any objects at the goal position
+        local items, len = self.world:queryRect(goalX, goalY, self.width, self.height)
+        
+        -- Check if any of the items are walls (not players)
+        for i = 1, len do
+            local item = items[i]
+            if not item.isPlayer then
+                -- Hit a wall, deactivate missile
+                self.active = false
+                break
+            end
+        end
+        
+        -- If no wall collision, move to goal position
+        if self.active then
+            self.x = goalX
+            self.y = goalY
+        end
+    else
+        -- Fallback to simple movement if no world
+        self.x = goalX
+    end
+    
     self.anim:update(dt)
 end
 
