@@ -330,7 +330,7 @@ function Lancer:handleAttacks(dt, otherPlayer)
        and not self.chargeLaunched
        and (self.heavyAttackTimer <= self.heavyAttackDuration - self.heavyAttackNoDamageDuration)
     then
-        self.x = self.x + (7 * self.direction)
+        self.x = self.x + (15 * self.direction)
         self.chargeLaunched = true
     end
 

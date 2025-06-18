@@ -1,6 +1,4 @@
 To Do
-- Shockwave can be countered, changes color.
-- You should be able to interupt attacks. Need Hit stun in general. 
 - Need to add more recovery frames.
 - Make 3 more stages. Bottomless pit, platforms, no edges.
 - Game shouldn't crash when controller disconnects.

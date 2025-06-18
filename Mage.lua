@@ -48,7 +48,7 @@ function Mage:new(x, y, joystickIndex, world, aiController, colorName)
     instance.heavyAttackWidth        = 6
     instance.heavyAttackHeight       = 8
     instance.heavyAttackHitboxOffset = 0.5
-    instance.isUnblockableHeavy = true
+    instance.isUnblockableHeavy = false
 
     instance.lightAttackDuration      = 0.35
     instance.lightAttackNoDamageDuration = 0.175
