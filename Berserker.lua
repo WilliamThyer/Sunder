@@ -407,21 +407,38 @@ function Berserker:updateShockwaves(dt, otherPlayer)
                     -- Don't deactivate the wave, let it continue in the opposite direction
                 else
                     -- Counter failed - normal hit
-                    otherPlayer:handleAttackEffects(self, dt, 1, "shockWave")
+                    otherPlayer:handleAttackEffects(wave.sender, dt, 1, "shockWave")
                     wave.active = false
                 end
             else
                 -- Normal hit
-                otherPlayer:handleAttackEffects(self, dt, 1, "shockWave")
+                otherPlayer:handleAttackEffects(wave.sender, dt, 1, "shockWave")
                 wave.active = false
             end
         end
         
-        -- Check collision with original sender (if shockwave was countered)
-        if wave.active and wave.sender ~= self and wave:checkHit(self) then
-            -- Shockwave hits its original sender
-            self:handleAttackEffects(wave.sender, dt, 1, "shockWave")
-            wave.active = false
+        -- Check collision with self (if shockwave was countered back to original sender)
+        if wave.active and wave:checkHit(self) then
+            -- Check if self is countering
+            if self.isCountering and self.counterActive then
+                -- Only allow counter if self is facing the shockwave
+                local isFacingShockwave = (self.direction == 1 and wave.direction == -1) or 
+                                         (self.direction == -1 and wave.direction == 1)
+                if isFacingShockwave then
+                    -- Counter successful - reverse the shockwave back
+                    wave:reverseDirection(self)
+                    self.soundEffects['successfulCounter']:play()
+                    -- Don't deactivate the wave, let it continue in the opposite direction
+                else
+                    -- Counter failed - normal hit
+                    self:handleAttackEffects(wave.sender, dt, 1, "shockWave")
+                    wave.active = false
+                end
+            else
+                -- Normal hit
+                self:handleAttackEffects(wave.sender, dt, 1, "shockWave")
+                wave.active = false
+            end
         end
         
         if not wave.active then
