@@ -218,9 +218,9 @@ function AIController:new()
         stepIndex      = 1,    -- Which step in the sequence we're on
         stepTime       = 0,    -- How long we've been in the current step
 
-        -- Missile response tracking
-        isRespondingToMissile = false,  -- True if currently in a missile response sequence
-        missileResponseTimer = 0,       -- Time since last missile response (to prevent spam)
+        -- Projectile response tracking
+        isRespondingToProjectile = false,  -- True if currently in a projectile response sequence
+        projectileResponseTimer = 0,       -- Time since last projectile response (to prevent spam)
 
         -- Stage boundaries, etc.
         stageLeft  = 0,
@@ -249,19 +249,19 @@ function AIController:getInput(dt, player, opponent)
         return input
     end
 
-    -- Update missile response timer
-    if self.missileResponseTimer > 0 then
-        self.missileResponseTimer = self.missileResponseTimer - dt
+    -- Update projectile response timer
+    if self.projectileResponseTimer > 0 then
+        self.projectileResponseTimer = self.projectileResponseTimer - dt
     end
 
-    -- Check for incoming missiles first (highest priority)
-    local hasIncomingMissile, missile = self:detectIncomingMissile(player, opponent)
-    if hasIncomingMissile then
-        -- Interrupt current sequence to respond to missile
-        if self.activeSequence and not self.isRespondingToMissile then
+    -- Check for incoming projectiles first (highest priority)
+    local hasIncomingProjectile, projectile = self:detectIncomingProjectile(player, opponent)
+    if hasIncomingProjectile then
+        -- Interrupt current sequence to respond to projectile
+        if self.activeSequence and not self.isRespondingToProjectile then
             self:stopSequence()
         end
-        self:startMissileResponse(missile, player, opponent)
+        self:startProjectileResponse(projectile, player, opponent)
     end
 
     -- If we are not currently running a sequence, decide 
@@ -278,8 +278,8 @@ end
 -- DECIDE ACTION: A simpler approach using your conditions and picking sequences
 --------------------------------------------------------------------------------
 function AIController:decideAction(player, opponent)
-    -- Don't start new sequences if we're responding to a missile
-    if self.isRespondingToMissile then
+    -- Don't start new sequences if we're responding to a projectile
+    if self.isRespondingToProjectile then
         return
     end
 
@@ -426,9 +426,9 @@ function AIController:stopSequence()
     self.stepIndex      = 1
     self.stepTime       = 0
     
-    -- If we were responding to a missile, mark that we're done
-    if self.isRespondingToMissile then
-        self.isRespondingToMissile = false
+    -- If we were responding to a projectile, mark that we're done
+    if self.isRespondingToProjectile then
+        self.isRespondingToProjectile = false
     end
 end
 
@@ -454,66 +454,89 @@ function AIController:handleMoveX(mode, input, player, opponent)
 end
 
 --------------------------------------------------------------------------------
--- Missile Detection and Response
+-- Projectile Detection and Response (Missiles and Shockwaves)
 --------------------------------------------------------------------------------
-function AIController:detectIncomingMissile(player, opponent)
-    -- If we're already responding to a missile, don't check for new ones
-    if self.isRespondingToMissile then
+function AIController:detectIncomingProjectile(player, opponent)
+    -- If we're already responding to a projectile, don't check for new ones
+    if self.isRespondingToProjectile then
         return false
     end
     
-    -- If we recently responded to a missile, wait a bit
-    if self.missileResponseTimer > 0 then
+    -- If we recently responded to a projectile, wait a bit
+    if self.projectileResponseTimer > 0 then
         return false
     end
     
-    -- Check if opponent has any active missiles
-    if not opponent.missiles or #opponent.missiles == 0 then
-        return false
-    end
-    
-    -- Find the closest incoming missile
-    local closestMissile = nil
+    -- Find the closest incoming projectile (missile or shockwave)
+    local closestProjectile = nil
     local closestDistance = math.huge
     
-    for _, missile in ipairs(opponent.missiles) do
-        if missile.active then
-          print(missile.x, missile.y, player.x, player.y)
-            -- Calculate distance to missile
-            local distX = missile.x - player.x
-            local distY = missile.y - player.y
-            local distance = math.sqrt(distX * distX + distY * distY)
-            
-            -- Check if missile is incoming (moving toward player)
-            local isIncoming = false
-            if missile.dir == 1 and distX < 0 then  -- Missile moving right, player is to the right
-                isIncoming = true
-            elseif missile.dir == -1 and distX > 0 then  -- Missile moving left, player is to the left
-                isIncoming = true
-            end
-            print('isIncoming', isIncoming)
-            
-            -- Check if missile is close enough to be a threat
-            local isClose = distance < 30  -- Adjust this threshold as needed
-            print('isClose', isClose)
-            
-            if isIncoming and isClose and distance < closestDistance then
-                closestMissile = missile
-                closestDistance = distance
+    -- Check for missiles
+    if opponent.missiles and #opponent.missiles > 0 then
+        for _, missile in ipairs(opponent.missiles) do
+            if missile.active then
+                -- Calculate distance to missile
+                local distX = missile.x - player.x
+                local distY = missile.y - player.y
+                local distance = math.sqrt(distX * distX + distY * distY)
+                
+                -- Check if missile is incoming (moving toward player)
+                local isIncoming = false
+                if missile.dir == 1 and distX < 0 then  -- Missile moving right, player is to the right
+                    isIncoming = true
+                elseif missile.dir == -1 and distX > 0 then  -- Missile moving left, player is to the left
+                    isIncoming = true
+                end
+                
+                -- Check if missile is close enough to be a threat
+                local isClose = distance < 30  -- Adjust this threshold as needed
+                
+                if isIncoming and isClose and distance < closestDistance then
+                    closestProjectile = missile
+                    closestDistance = distance
+                end
             end
         end
     end
     
-    return closestMissile ~= nil, closestMissile
+    -- Check for shockwaves
+    if opponent.shockwaves and #opponent.shockwaves > 0 then
+        for _, shockwave in ipairs(opponent.shockwaves) do
+            if shockwave.active then
+                -- Calculate distance to shockwave
+                local distX = shockwave.x - player.x
+                local distY = shockwave.y - player.y
+                local distance = math.sqrt(distX * distX + distY * distY)
+                
+                -- Check if shockwave is incoming (moving toward player)
+                local isIncoming = false
+                if shockwave.direction == 1 and distX < 0 then  -- Shockwave moving right, player is to the right
+                    isIncoming = true
+                elseif shockwave.direction == -1 and distX > 0 then  -- Shockwave moving left, player is to the left
+                    isIncoming = true
+                end
+                
+                -- Check if shockwave is close enough to be a threat
+                local isClose = distance < 25  -- Slightly closer threshold for shockwaves
+                
+                if isIncoming and isClose and distance < closestDistance then
+                    closestProjectile = shockwave
+                    closestDistance = distance
+                end
+            end
+        end
+    end
+    
+    return closestProjectile ~= nil, closestProjectile
 end
 
-function AIController:startMissileResponse(missile, player, opponent)
-    -- Mark that we're responding to a missile
-    self.isRespondingToMissile = true
-    self.missileResponseTimer = 0.5  -- Prevent immediate re-triggering
+function AIController:startProjectileResponse(projectile, player, opponent)
+    -- Mark that we're responding to a projectile
+    self.isRespondingToProjectile = true
+    self.projectileResponseTimer = 0.5  -- Prevent immediate re-triggering
     
     -- Choose response based on distance and random chance
-    local distX = missile.x - player.x
+    local distX = projectile.x - player.x
     local absDistX = math.abs(distX)
     local r = math.random()
     
@@ -543,7 +566,7 @@ function AIController:startMissileResponse(missile, player, opponent)
         end
     end
     
-    -- Start the missile response sequence
+    -- Start the projectile response sequence
     self:startSequence(responseSequence)
 end
 
