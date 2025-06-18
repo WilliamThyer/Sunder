@@ -244,7 +244,7 @@ function Berserker:processInput(dt, input, otherPlayer)
         self.isMoving  = true
         self.direction = (input.moveX > 0) and 1 or -1
     else
-        -- Even if we cannot “move,” check if we’re shielding so we can flip direction
+        -- Even if we cannot "move," check if we're shielding so we can flip direction
         -- without actually moving our X position:
         if self.isShielding then
             if math.abs(input.moveX) > 0.5 then
@@ -368,10 +368,10 @@ function Berserker:handleAttacks(dt, otherPlayer)
     self:updateShockwaves(dt, otherPlayer)
 end
 
--- spawn one shockwave at the hammer’s tip
+-- spawn one shockwave at the hammer's tip
 function Berserker:spawnShockwave()
     -- create the wave so we know its width:
-    local wave = Shockwave:new(0, 0, self.direction, self.damageMapping["shockWave"])
+    local wave = Shockwave:new(0, 0, self.direction, self.damageMapping["shockWave"], self)
 
     local fw, fh = wave.width, wave.height
 
@@ -392,10 +392,38 @@ function Berserker:updateShockwaves(dt, otherPlayer)
     for i = #self.shockwaves,1,-1 do
         local wave = self.shockwaves[i]
         wave:update(dt)
+        
+        -- Check collision with other player
         if wave.active and wave:checkHit(otherPlayer) then
-            otherPlayer:handleAttackEffects(self, dt, 1, "shockWave")
+            -- Check if the target is countering
+            if otherPlayer.isCountering and otherPlayer.counterActive then
+                -- Only allow counter if defender is facing the shockwave
+                local isFacingShockwave = (otherPlayer.direction == 1 and wave.direction == -1) or 
+                                         (otherPlayer.direction == -1 and wave.direction == 1)
+                if isFacingShockwave then
+                    -- Counter successful - reverse the shockwave
+                    wave:reverseDirection(otherPlayer)
+                    otherPlayer.soundEffects['successfulCounter']:play()
+                    -- Don't deactivate the wave, let it continue in the opposite direction
+                else
+                    -- Counter failed - normal hit
+                    otherPlayer:handleAttackEffects(self, dt, 1, "shockWave")
+                    wave.active = false
+                end
+            else
+                -- Normal hit
+                otherPlayer:handleAttackEffects(self, dt, 1, "shockWave")
+                wave.active = false
+            end
+        end
+        
+        -- Check collision with original sender (if shockwave was countered)
+        if wave.active and wave.sender ~= self and wave:checkHit(self) then
+            -- Shockwave hits its original sender
+            self:handleAttackEffects(wave.sender, dt, 1, "shockWave")
             wave.active = false
         end
+        
         if not wave.active then
             table.remove(self.shockwaves, i)
         end

@@ -4,13 +4,14 @@ local anim8 = require("libraries.anim8")
 local Shockwave = {}
 Shockwave.__index = Shockwave
 
-function Shockwave:new(x, y, direction, damage)
+function Shockwave:new(x, y, direction, damage, sender)
     local instance = setmetatable({}, Shockwave)
     instance.x         = x
     instance.y         = y
     instance.direction = direction
     instance.speed     = 50            -- pixels/sec
     instance.damage    = damage
+    instance.sender    = sender        -- Reference to the player who sent this shockwave
     instance.active    = true
 
     -- load your 2-frame sheet 
@@ -49,8 +50,8 @@ function Shockwave:getHitbox()
     local w = self.width - 1
     local h = self.height - 5
 
-    -- If we’re facing right, draw+hitbox both start at self.x.
-    -- If we’re facing left, the drawn sprite actually spans [self.x - width .. self.x],
+    -- If we're facing right, draw+hitbox both start at self.x.
+    -- If we're facing left, the drawn sprite actually spans [self.x - width .. self.x],
     -- so we must also shift the hitbox left by its own width.
     local hx = (self.direction == 1) and self.x or (self.x - w)
 
@@ -69,6 +70,11 @@ function Shockwave:checkHit(target)
        and hb.x + hb.width > th.x
        and hb.y < th.y + th.height
        and hb.y + hb.height > th.y
+end
+
+function Shockwave:reverseDirection(newSender)
+    self.direction = -self.direction
+    self.sender = newSender
 end
 
 return Shockwave
