@@ -5,7 +5,6 @@ To Do
 - Make 3 more stages. Bottomless pit, platforms, no edges.
 - Game shouldn't crash when controller disconnects.
 - Button remapping?
-- AI needs to take into account shockwave. 
 - AI for berserker.
 - AI for Lancer.
 - AI for Mage.

@@ -286,6 +286,36 @@ function CharacterBase:handleAttackEffects(attacker, dt, knockbackMultiplier, at
     local isUnblockable = (attackType == "heavyAttack") and attacker.isUnblockableHeavy
 
      if not self.isHurt and not self.isInvincible then
+        -- Check for hit stun during attack startup frames
+        local shouldInterruptAttack = false
+        
+        -- Check if player is in the middle of an attack during startup frames
+        if self.isHeavyAttacking and self.heavyAttackTimer > (self.heavyAttackDuration - self.heavyAttackNoDamageDuration) then
+            -- Player is in heavy attack startup frames
+            shouldInterruptAttack = true
+        elseif self.isLightAttacking and self.lightAttackTimer > (self.lightAttackDuration - self.lightAttackNoDamageDuration) then
+            -- Player is in light attack startup frames
+            shouldInterruptAttack = true
+        elseif self.isDownAir and self.downAirTimer > (self.downAirDuration - 0.2) then
+            -- Player is in down air startup frames (assuming 0.2s startup)
+            shouldInterruptAttack = true
+        end
+        
+        -- Interrupt the attack if hit during startup
+        if shouldInterruptAttack then
+            self.isAttacking = false
+            self.isHeavyAttacking = false
+            self.isLightAttacking = false
+            self.isDownAir = false
+            self.heavyAttackTimer = 0
+            self.lightAttackTimer = 0
+            self.downAirTimer = 0
+            self.hasHitHeavy = false
+            self.hasHitLight = false
+            self.hasHitDownAir = false
+            self.shockwaveSpawned = false
+        end
+        
         -- Use normal shield logic **only when the hit is NOT unblockable**
         if (not isUnblockable)
            and self:checkShieldBlock(attacker)
