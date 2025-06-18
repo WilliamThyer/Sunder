@@ -186,7 +186,6 @@ function Mage:draw()
     end
 
     for _, fb in ipairs(self.missiles) do
-        print(fb.x, fb.y)
         fb:draw()
     end
 

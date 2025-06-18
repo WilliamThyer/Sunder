@@ -1,17 +1,17 @@
 local AIController = {}
 AIController.__index = AIController
 
--- A library of “sequences” (aka combos).
+-- A library of "sequences" (aka combos).
 -- Each sequence has a `name` and a list of `steps`.
 -- Each step has:
 --   duration = how long (in seconds) to hold these inputs
 --   input    = table of input flags to apply
 -- 
--- To allow simple “faceOpponent” or “awayFromOpponent,”
--- we’ll use special strings in `moveX` that we interpret in code.
+-- To allow simple "faceOpponent" or "awayFromOpponent,"
+-- we'll use special strings in `moveX` that we interpret in code.
 
 local SEQUENCES = {
-    -- Single-step “Retreat”
+    -- Single-step "Retreat"
     {
       name = "Retreat",
       steps = {
@@ -19,7 +19,7 @@ local SEQUENCES = {
         { duration = 0.2, input = { moveX = "awayFromOpponent" } }
       }
     },
-    -- Single-step “Approach”
+    -- Single-step "Approach"
     {
       name = "Approach",
       steps = {
@@ -166,6 +166,45 @@ local SEQUENCES = {
       }
     },
 
+    ----------------------------------------------------------------------------
+    -- Missile Response Sequences (high priority, can interrupt other sequences)
+    ----------------------------------------------------------------------------
+
+    -- Jump to avoid missile
+    {
+      name = "MissileJump",
+      steps = {
+        { duration = 0.1, input = { jump = true } },
+        { duration = 0.1, input = {} },
+        { duration = 0.1, input = { jump = true } }  -- Double jump
+      }
+    },
+    -- Shield to block missile
+    {
+      name = "MissileShield",
+      steps = {
+        { duration = 0.01, input = { moveX = "faceOpponent" } },  -- Face the missile
+        { duration = 0.5, input = { shield = true } }  -- Hold shield
+      }
+    },
+    -- Counter the missile 
+    {
+      name = "MissileCounter",
+      steps = {
+        { duration = 0.01, input = { moveX = "faceOpponent" } },  -- Face the missile
+        { duration = 0.3, input = { counter = true } }  -- Counter window
+      }
+    },
+    -- Delayed Missile Counter
+    {
+      name = "DelayedMissileCounter",
+      steps = {
+        { duration = 0.01, input = { moveX = "faceOpponent" } },  -- Face the missile
+        { duration = 0.1, input = { } },  -- Wait for the missile to get closer
+        { duration = 0.3, input = { counter = true } }  -- Counter window
+      }
+    },
+
 }
 
 --------------------------------------------------------------------------------
@@ -176,8 +215,12 @@ function AIController:new()
         -- Sequence-related tracking
         activeSequence = nil,  -- The currently executing sequence (table)
         activeSequenceName = nil,
-        stepIndex      = 1,    -- Which step in the sequence we’re on
-        stepTime       = 0,    -- How long we’ve been in the current step
+        stepIndex      = 1,    -- Which step in the sequence we're on
+        stepTime       = 0,    -- How long we've been in the current step
+
+        -- Missile response tracking
+        isRespondingToMissile = false,  -- True if currently in a missile response sequence
+        missileResponseTimer = 0,       -- Time since last missile response (to prevent spam)
 
         -- Stage boundaries, etc.
         stageLeft  = 0,
@@ -206,6 +249,21 @@ function AIController:getInput(dt, player, opponent)
         return input
     end
 
+    -- Update missile response timer
+    if self.missileResponseTimer > 0 then
+        self.missileResponseTimer = self.missileResponseTimer - dt
+    end
+
+    -- Check for incoming missiles first (highest priority)
+    local hasIncomingMissile, missile = self:detectIncomingMissile(player, opponent)
+    if hasIncomingMissile then
+        -- Interrupt current sequence to respond to missile
+        if self.activeSequence and not self.isRespondingToMissile then
+            self:stopSequence()
+        end
+        self:startMissileResponse(missile, player, opponent)
+    end
+
     -- If we are not currently running a sequence, decide 
     if not self.activeSequence then
       self:decideAction(player, opponent)
@@ -220,6 +278,11 @@ end
 -- DECIDE ACTION: A simpler approach using your conditions and picking sequences
 --------------------------------------------------------------------------------
 function AIController:decideAction(player, opponent)
+    -- Don't start new sequences if we're responding to a missile
+    if self.isRespondingToMissile then
+        return
+    end
+
     local distX     = opponent.x - player.x
     local distY     = opponent.y - player.y
     local absDistX  = math.abs(distX)
@@ -234,7 +297,7 @@ function AIController:decideAction(player, opponent)
         self:startSequence("Retreat")
       end
 
-    -- “Retreat”
+    -- "Retreat"
     elseif myStamina < 3 then
       self:startSequence("Retreat")
     
@@ -250,7 +313,7 @@ function AIController:decideAction(player, opponent)
         end
       end
 
-    -- “Approach”
+    -- "Approach"
     elseif absDistX > 40 then
         if r < .8 then -- 80%
             self:startSequence("Approach")
@@ -328,7 +391,7 @@ function AIController:runSequenceLogic(dt, input, player, opponent)
     end
     local step = seq.steps[self.stepIndex]
     if not step then
-        -- No step? We’re done.
+        -- No step? We're done.
         self:stopSequence()
         return
     end
@@ -362,6 +425,11 @@ function AIController:stopSequence()
     self.activeSequenceName = nil
     self.stepIndex      = 1
     self.stepTime       = 0
+    
+    -- If we were responding to a missile, mark that we're done
+    if self.isRespondingToMissile then
+        self.isRespondingToMissile = false
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -383,6 +451,100 @@ function AIController:handleMoveX(mode, input, player, opponent)
     else
         input.moveX = 0
     end
+end
+
+--------------------------------------------------------------------------------
+-- Missile Detection and Response
+--------------------------------------------------------------------------------
+function AIController:detectIncomingMissile(player, opponent)
+    -- If we're already responding to a missile, don't check for new ones
+    if self.isRespondingToMissile then
+        return false
+    end
+    
+    -- If we recently responded to a missile, wait a bit
+    if self.missileResponseTimer > 0 then
+        return false
+    end
+    
+    -- Check if opponent has any active missiles
+    if not opponent.missiles or #opponent.missiles == 0 then
+        return false
+    end
+    
+    -- Find the closest incoming missile
+    local closestMissile = nil
+    local closestDistance = math.huge
+    
+    for _, missile in ipairs(opponent.missiles) do
+        if missile.active then
+          print(missile.x, missile.y, player.x, player.y)
+            -- Calculate distance to missile
+            local distX = missile.x - player.x
+            local distY = missile.y - player.y
+            local distance = math.sqrt(distX * distX + distY * distY)
+            
+            -- Check if missile is incoming (moving toward player)
+            local isIncoming = false
+            if missile.dir == 1 and distX < 0 then  -- Missile moving right, player is to the right
+                isIncoming = true
+            elseif missile.dir == -1 and distX > 0 then  -- Missile moving left, player is to the left
+                isIncoming = true
+            end
+            print('isIncoming', isIncoming)
+            
+            -- Check if missile is close enough to be a threat
+            local isClose = distance < 30  -- Adjust this threshold as needed
+            print('isClose', isClose)
+            
+            if isIncoming and isClose and distance < closestDistance then
+                closestMissile = missile
+                closestDistance = distance
+            end
+        end
+    end
+    
+    return closestMissile ~= nil, closestMissile
+end
+
+function AIController:startMissileResponse(missile, player, opponent)
+    -- Mark that we're responding to a missile
+    self.isRespondingToMissile = true
+    self.missileResponseTimer = 0.5  -- Prevent immediate re-triggering
+    
+    -- Choose response based on distance and random chance
+    local distX = missile.x - player.x
+    local absDistX = math.abs(distX)
+    local r = math.random()
+    
+    local responseSequence = nil
+    
+    if absDistX < 15 then
+        -- Very close - mostly shield, sometimes counter
+        if r < 0.2 then  -- 20% chance to counter
+            responseSequence = "MissileCounter"
+        else
+            responseSequence = "MissileShield"
+        end
+      elseif absDistX < 30 then
+        if r < 0.8 then
+          responseSequence = "DelayedMissileCounter"
+        else
+          responseSequence = "MissileShield"
+        end
+      else
+        -- Further away - mostly jump, sometimes shield
+        if r < 0.3 then  -- 30% chance to shield
+            responseSequence = "MissileShield"
+        elseif r < 0.5 then
+            responseSequence = "MissileJump"
+        else
+          responseSequence = "JumpApproach"
+        end
+    end
+    
+    -- Start the missile response sequence
+    self:startSequence(responseSequence)
 end
 
 return AIController

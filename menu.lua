@@ -126,7 +126,6 @@ function Menu.handlePauseInput(joystick, button)
   if not (GameInfo.gameState == "game_1P" or GameInfo.gameState == "game_2P") then
     return
   end
-  print(Menu.restartMenu)
   if Menu.restartMenu then
     -- if we're in the restart menu, we don't handle pause input
     return
