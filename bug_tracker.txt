@@ -10,6 +10,7 @@ To Do
 - Aerial light attacks for Berserker.
 - Aerial light attacks for Lancer.
 - Aerial light attacks for Mage.
+- Mage aerial heavy attack animation.
 - Sound effects for Berserker.
 - Sounds effects for Lancer.
 - Sounds effects for Mage.

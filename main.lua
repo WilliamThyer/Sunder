@@ -101,7 +101,9 @@ function updateGame(dt)
 
     -- Update each player
     p1:update(dt, p2)
+    -- p1.stamina = 10
     p2:update(dt, p1)
+    -- p2.stamina = 10
 
     map:update(dt)
 end

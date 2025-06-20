@@ -16,7 +16,7 @@ local SEQUENCES = {
       name = "Retreat",
       steps = {
         -- Move away from opponent
-        { duration = 0.2, input = { moveX = "awayFromOpponent" } }
+        { duration = math.random(.1, .3), input = { moveX = "awayFromOpponent" } }
       }
     },
     -- Single-step "Approach"
@@ -24,7 +24,7 @@ local SEQUENCES = {
       name = "Approach",
       steps = {
         -- Move toward opponent
-        { duration = 0.2, input = { moveX = "faceOpponent" } }
+        { duration = math.random(.1, .3), input = { moveX = "faceOpponent" } }
       }
     },
     {
@@ -32,7 +32,7 @@ local SEQUENCES = {
       name = "Wait",
       steps = {
         -- Move toward opponent for 0.8s
-        { duration = 0.1, input = {} }
+        { duration = math.random(.1, .3), input = {} }
       }
     },
     {
@@ -59,7 +59,7 @@ local SEQUENCES = {
     {
       name = "Dash Light Attack",
       steps = {
-        { duration = 0.01, input = { moveX = "faceOpponent" } },
+        { duration = math.random(.05, .1), input = { moveX = "faceOpponent" } },
         { duration = 0.25, input = { dash = true } },
         { duration = 0.01, input = { moveX = "faceOpponent" } },
         { duration = 0.4, input = { lightAttack = true, attack = true } }
@@ -69,8 +69,9 @@ local SEQUENCES = {
     {
       name = "Jump DownAir",
       steps = {
+        { duration = math.random(.1, .2), input = { moveX = "faceOpponent"} },
         { duration = 0.01, input = { jump = true} },
-        { duration = 0.1, input = { moveX = "onOpponent"} },
+        { duration = math.random(.3, .6), input = { moveX = "onOpponent"} },
         { duration = 0.4, input = { down = true, attack = true } }
       }
     },
@@ -84,7 +85,7 @@ local SEQUENCES = {
       name = "ShieldOnly",
       steps = {
         { duration = 0.01, input = { moveX = "faceOpponent" } },
-        { duration = 0.2, input = { shield = true } }
+        { duration = math.random(.5, .8), input = { shield = true } }
       }
     },
     -- Counter + Heavy Attack
@@ -102,7 +103,7 @@ local SEQUENCES = {
       name = "Shield Counter Heavy",
       steps = {
         { duration = 0.01, input = { moveX = "faceOpponent" } },
-        { duration = 0.3, input = { shield = true } },
+        { duration = math.random(.2, .4), input = { shield = true } },
         { duration = 0.01, input = { moveX = "faceOpponent" } },
         { duration = 0.6, input = { counter = true } },
         { duration = 0.01, input = { moveX = "faceOpponent" } },
@@ -115,7 +116,7 @@ local SEQUENCES = {
       steps = {
         { duration = 0.01, input = { moveX = "faceOpponent" } },
         { duration = 0.4, input = { lightAttack = true, attack = true } },
-        { duration = 0.2, input = { moveX = "awayFromOpponent" } },
+        { duration = math.random(.1, .3), input = { moveX = "awayFromOpponent" } },
       }
     },
     -- Light Attack + Shield + Heavy Attack
@@ -124,8 +125,8 @@ local SEQUENCES = {
       steps = {
         { duration = 0.01, input = { moveX = "faceOpponent" } },
         { duration = 0.4, input = { lightAttack = true, attack = true } },
-        { duration = 0.01, input = { moveX = "faceOpponent" } },
-        { duration = 0.2, input = { shield = true } },
+        { duration = math.random(.05, .2), input = { moveX = "faceOpponent" } },
+        { duration = math.random(.1, .4), input = { shield = true } },
         { duration = 0.01, input = { moveX = "faceOpponent" } },
         { duration = 0.5, input = { heavyAttack = true, attack = true } }
       }
@@ -135,10 +136,11 @@ local SEQUENCES = {
       name = "Jump LightAttack",
       steps = {
         { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
-        { duration = 0.15, input = { moveX = "awayFromOpponent" } },
+        { duration = math.random(.1, .2), input = { moveX = "awayFromOpponent" } },
         { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
-        { duration = 0.3, input = { moveX = "faceOpponent" } },
-        { duration = 0.6, input = { lightAttack = true, attack = true } },
+        { duration = math.random(.4, .5), input = { moveX = "faceOpponent" } },
+        { duration = 0.2, input = { lightAttack = true, attack = true } },
+        { duration = 0.4, input = { moveX = "faceOpponent" } },
       }
     },
     -- Jump + Heavy Attack
@@ -146,11 +148,21 @@ local SEQUENCES = {
       name = "Jump HeavyAttack",
       steps = {
         { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
-        { duration = 0.4, input = { moveX = "awayFromOpponent" } },
+        { duration = math.random(.1, .3), input = { moveX = "faceOpponent" } },
+        { duration = 0.2, input = { heavyAttack = true, attack = true } },
+        { duration = 0.5, input = { moveX = "faceOpponent" } },
+      }
+    },
+    -- Double Jump + Heavy Attack
+    {
+      name = "DoubleJump HeavyAttack",
+      steps = {
+        { duration = 0.01, input = { moveX = "awayFromOpponent" , jump = true} },
+        { duration = math.random(.2, .3), input = { moveX = "awayFromOpponent" } },
         { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
-        { duration = 0.25, input = { moveX = "faceOpponent" } },
-        { duration = 0.05, input = { } },
-        { duration = 0.6, input = { heavyAttack = true, attack = true } },
+        { duration = math.random(.3, .5), input = { moveX = "faceOpponent" } },
+        { duration = 0.01, input = { heavyAttack = true, attack = true , moveX = "faceOpponent"} },
+        { duration = 0.5, input = { moveX = "faceOpponent" } },
       }
     },
     -- Jump Away + Down Air
@@ -158,11 +170,12 @@ local SEQUENCES = {
       name = "Jump Away DownAir",
       steps = {
         { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
-        { duration = 0.4, input = { moveX = "awayFromOpponent" } },
+        { duration = math.random(.2, .4), input = { moveX = "awayFromOpponent" } },
+        { duration = 0.1, input = { moveX = "faceOpponent"} },
         { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
-        { duration = 0.25, input = { moveX = "onOpponent" } },
+        { duration = 0.2, input = { moveX = "faceOpponent"} },
+        { duration = math.random(.1, .2), input = { moveX = "onOpponent" } },
         { duration = 0.05, input = { down = true, attack = true } },
-        { duration = 0.1, input = { moveX = "awayFromOpponent"} },
       }
     },
 
@@ -290,7 +303,7 @@ function AIController:decideAction(player, opponent)
     local r = math.random()
 
     -- Avoid downair 
-    if opponent.isDownAir then
+    if opponent.isDownAir and absDistX < 10 then
       if myStamina > 3 and r < .5 then
         self:startSequence("DashAway")
       else 
@@ -298,12 +311,12 @@ function AIController:decideAction(player, opponent)
       end
 
     -- "Retreat"
-    elseif myStamina < 3 then
+    elseif myStamina < 2 then
       self:startSequence("Retreat")
     
     -- Chill
     elseif myStamina < 4 then
-      if r < .3 then
+      if r < .2 then
           self:startSequence("Retreat")
       elseif r < .6 then
           self:startSequence("ShieldOnly")
@@ -324,12 +337,11 @@ function AIController:decideAction(player, opponent)
     -- Mid-range: pick one from
     elseif absDistX > 10 then
         local options = {
-          "Jump Approach",
+          -- "Jump Approach",
           "Dash Light Attack",
           "Approach",
-        --   "Jump HeavyAttack",
+          "Jump HeavyAttack",
           "Jump LightAttack",
-          "LightAttack Shield Heavy",
         }
         local choice = options[math.random(#options)]
         self:startSequence(choice)
@@ -338,7 +350,7 @@ function AIController:decideAction(player, opponent)
     elseif absDistX < 4 and distY > 0 then
         local options = {
           "Jump DownAir",
-        --   "Jump HeavyAttack",
+          "DoubleJump HeavyAttack",
           "Jump Away DownAir"
         }
         local choice = options[math.random(#options)]
@@ -347,15 +359,18 @@ function AIController:decideAction(player, opponent)
     -- Very close (absDistX < 10):
     else 
         local options = {
+          "Approach",
+          "Retreat",
+          "ShieldOnly",
           "ShieldOnly",
           "Counter Heavy",
           "Shield Counter Heavy",
           "LightAttack MoveAway",
           "LightAttack Shield Heavy",
-        --   "Jump LightAttack",
-        --   "Jump DownAir",
+          "Jump LightAttack",
+          "Jump DownAir",
           "Jump HeavyAttack",
-          "Jump Away DownAir"
+          "DoubleJump HeavyAttack",
         }
         local choice = options[math.random(#options)]
         self:startSequence(choice)
@@ -367,6 +382,13 @@ end
 -- Start a particular sequence by name
 --------------------------------------------------------------------------------
 function AIController:startSequence(name)
+  -- local r = math.random()
+  -- if r < 0.2 then
+  --   name = "Dash Light Attack"
+  -- else
+  --   name = "Retreat"
+  -- end
+  print("Starting sequence: " .. name)
     self.activeSequenceName = name
     -- Find the sequence in SEQUENCES
     for _, seq in ipairs(SEQUENCES) do
