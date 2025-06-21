@@ -18,6 +18,7 @@ function Warrior:new(x, y, joystickIndex, world, aiController, colorName)
     local instance = CharacterBase.new(self, x, y)
     setmetatable(instance, Warrior)
 
+    instance.characterType = "Warrior"
     instance.index    = joystickIndex
     instance.joystick = love.joystick.getJoysticks()[joystickIndex]
     instance.world    = world

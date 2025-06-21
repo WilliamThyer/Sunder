@@ -45,6 +45,19 @@ local SEQUENCES = {
       }
     },
     ----------------------------------------------------------------------------
+    -- Character-specific sequences
+    ----------------------------------------------------------------------------
+    
+    -- Heavy Attack
+    {
+      name = "HeavyAttack",
+      steps = {
+        { duration = 0.01, input = { moveX = "faceOpponent" } },
+        { duration = 0.5, input = { heavyAttack = true, attack = true } },
+      }
+    },
+    
+    ----------------------------------------------------------------------------
     -- Mid-range sequences (distX < 40 and distX > 10)
     ----------------------------------------------------------------------------
 
@@ -299,7 +312,7 @@ function AIController:getInput(dt, player, opponent)
 end
 
 --------------------------------------------------------------------------------
--- DECIDE ACTION: A simpler approach using your conditions and picking sequences
+-- DECIDE ACTION: Character-specific logic
 --------------------------------------------------------------------------------
 function AIController:decideAction(player, opponent)
     -- Don't start new sequences if we're responding to a projectile
@@ -312,6 +325,9 @@ function AIController:decideAction(player, opponent)
     local absDistX  = math.abs(distX)
     local myStamina = player.stamina
     local r = math.random()
+    
+    -- Get character type for character-specific logic
+    local characterType = player.characterType
 
     -- Check for opponent attack and respond (high priority)
     if (opponent.isHeavyAttacking and absDistX < 15) or (opponent.isLightAttacking and absDistX < 10) then
@@ -348,18 +364,39 @@ function AIController:decideAction(player, opponent)
         end
       end
 
-    -- "Approach"
+    -- Long range: Character-specific behavior
     elseif absDistX > 40 then
-        if r < .8 then -- 80%
-            self:startSequence("Approach")
-        else -- 20%
-            self:startSequence("Wait")
+        if characterType == "Berserker" or characterType == "Mage" and myStamina >= 3 then
+            if r < 0.4 then
+                self:startSequence("HeavyAttack")
+            elseif r < 0.8 then
+                self:startSequence("Approach")
+            else
+              self:startSequence("Wait")
+            end
+        else
+            -- Other characters approach normally
+            if r < .8 then -- 80%
+                self:startSequence("Approach")
+            else -- 20%
+                self:startSequence("Wait")
+            end
         end
 
     -- Mid-range: pick one from
+
+    -- If lancer, use heavy attack from mid-range
+    elseif characterType == "Lancer" and absDistX > 10 then
+      local options = {
+        "Dash Light Attack",
+        "Approach",
+        "HeavyAttack"
+      }
+      local choice = options[math.random(#options)]
+      self:startSequence(choice)
+
     elseif absDistX > 10 then
         local options = {
-          -- "Jump Approach",
           "Dash Light Attack",
           "Approach",
           "Jump HeavyAttack",

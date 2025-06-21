@@ -11,6 +11,7 @@ function Lancer:new(x, y, joystickIndex, world, aiController, colorName)
     local instance = CharacterBase.new(self, x, y)
     setmetatable(instance, Lancer)
 
+    instance.characterType = 'Lancer'
     instance.index    = joystickIndex
     instance.joystick = love.joystick.getJoysticks()[joystickIndex]
     instance.world    = world

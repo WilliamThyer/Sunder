@@ -19,6 +19,7 @@ function Berserker:new(x, y, joystickIndex, world, aiController, colorName)
     local instance = CharacterBase.new(self, x, y)
     setmetatable(instance, Berserker)
 
+    instance.characterType = 'Berserker'
     instance.index    = joystickIndex
     instance.joystick = love.joystick.getJoysticks()[joystickIndex]
     instance.world    = world

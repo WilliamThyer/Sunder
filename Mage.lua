@@ -12,6 +12,7 @@ function Mage:new(x, y, joystickIndex, world, aiController, colorName)
     local instance = CharacterBase.new(self, x, y)
     setmetatable(instance, Mage)
 
+    instance.characterType = 'Mage'
     instance.index    = joystickIndex
     instance.joystick = love.joystick.getJoysticks()[joystickIndex]
     instance.world    = world
