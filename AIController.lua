@@ -98,6 +98,17 @@ local SEQUENCES = {
         { duration = 0.5, input = { heavyAttack = true, attack = true } }
       }
     },
+    -- Wait + Counter + Heavy Attack
+    {
+      name = "Wait Counter Heavy",
+      steps = {
+        { duration = math.random(.1, .2), input = { } },
+        { duration = 0.01, input = { moveX = "faceOpponent" } },
+        { duration = 0.6, input = { counter = true } },
+        { duration = 0.01, input = { moveX = "faceOpponent" } },
+        { duration = 0.5, input = { heavyAttack = true, attack = true } }
+      }
+    },
     -- Shield + Counter + Heavy Attack
     {
       name = "Shield Counter Heavy",
@@ -302,6 +313,17 @@ function AIController:decideAction(player, opponent)
     local myStamina = player.stamina
     local r = math.random()
 
+    -- Check for opponent attack and respond (high priority)
+    if (opponent.isHeavyAttacking and absDistX < 15) or (opponent.isLightAttacking and absDistX < 10) then
+        if r < 0.5 then  -- 50% chance to counter
+            print("Opponent is heavy attacking, countering")
+            self:startSequence("Wait Counter Heavy")
+        else  -- 50% chance to shield
+            print("Opponent is heavy attacking, shielding")
+            self:startSequence("ShieldOnly")
+        end
+    end
+
     -- Avoid downair 
     if opponent.isDownAir and absDistX < 10 then
       if myStamina > 3 and r < .5 then
@@ -388,7 +410,7 @@ function AIController:startSequence(name)
   -- else
   --   name = "Retreat"
   -- end
-  print("Starting sequence: " .. name)
+  -- print("Starting sequence: " .. name)
     self.activeSequenceName = name
     -- Find the sequence in SEQUENCES
     for _, seq in ipairs(SEQUENCES) do
