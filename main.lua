@@ -54,7 +54,7 @@ end
 function startGame(mode)
     GameInfo.gameState = mode
     world = bump.newWorld(8)
-    map = sti("assets/backgrounds/testNew.lua", {"bump"})
+    map = sti("assets/backgrounds/dungeon.lua", {"bump"})
     map:bump_init(world)
 
     -- read both character *and* color

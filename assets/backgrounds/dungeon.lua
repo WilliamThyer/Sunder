@@ -80,6 +80,58 @@ return {
         }
       }
     },
+    {
+      name = "Underground",
+      firstgid = 2239,
+      class = "",
+      tilewidth = 32,
+      tileheight = 32,
+      spacing = 0,
+      margin = 0,
+      columns = 0,
+      objectalignment = "unspecified",
+      tilerendersize = "tile",
+      fillmode = "stretch",
+      tileoffset = {
+        x = 0,
+        y = 0
+      },
+      grid = {
+        orientation = "orthogonal",
+        width = 32,
+        height = 32
+      },
+      properties = {},
+      wangsets = {},
+      tilecount = 0,
+      tiles = {}
+    },
+    {
+      name = "Overworld",
+      firstgid = 2239,
+      class = "",
+      tilewidth = 32,
+      tileheight = 32,
+      spacing = 0,
+      margin = 0,
+      columns = 0,
+      objectalignment = "unspecified",
+      tilerendersize = "tile",
+      fillmode = "stretch",
+      tileoffset = {
+        x = 0,
+        y = 0
+      },
+      grid = {
+        orientation = "orthogonal",
+        width = 32,
+        height = 32
+      },
+      properties = {},
+      wangsets = {},
+      tilecount = 0,
+      tiles = {}
+    }
   },
   layers = {
     {
@@ -103,7 +155,7 @@ return {
         27, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 28,
         83, 0, 2226, 2227, 0, 0, 0, 0, 0, 0, 0, 0, 0, 71, 21, 85,
         83, 0, 0, 0, 0, 0, 285, 286, 0, 0, 0, 236, 0, 71, 47, 85,
-        83, 0, 0, 271, 0, 0, 311, 177, 0, 0, 0, 0, 543, 151, 0, 85,
+        83, 0, 0, 271, 0, 0, 311, 0, 0, 0, 0, 0, 543, 151, 0, 85,
         83, 0, 0, 297, 0, 0, 0, 0, 0, 0, 0, 0, 486, 0, 0, 85,
         83, 0, 0, 323, 0, 0, 0, 0, 0, 337, 338, 0, 323, 0, 0, 85,
         83, 1499, 1500, 349, 0, 0, 1209, 1210, 0, 0, 0, 0, 349, 1301, 0, 85,

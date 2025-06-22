@@ -1,11 +1,7 @@
 To Do
-- Need to add more recovery frames.
-- Make 3 more stages. Bottomless pit, platforms, no edges.
-- Game shouldn't crash when controller disconnects.
+- Need to add more recovery frames?
+- Make 3 more stages.
 - Button remapping?
-- AI for berserker.
-- AI for Lancer.
-- AI for Mage.
 - Aerial light attacks for Warrior.
 - Aerial light attacks for Berserker.
 - Aerial light attacks for Lancer.
@@ -17,7 +13,8 @@ To Do
 - Color variants for Berserker.
 - Color variants for Lancer.
 - Color variants for Mage.
-- Story mode. Select fighter,. 
+- Story mode.
+- 
 
 
 
