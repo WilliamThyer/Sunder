@@ -70,6 +70,12 @@ function CharacterBase:new(x, y)
     instance.dashSpeed    = 115
     instance.dashVelocity = 0
 
+    -- Charge/Lunge system for special attacks
+    instance.chargeVelocity = 0
+    instance.chargeSpeed = 0
+    instance.chargeDuration = 0
+    instance.chargeTimer = 0
+
     -- Shield
     instance.isShielding = false
 
@@ -456,6 +462,9 @@ function CharacterBase:moveWithBump(dt)
 
     if self.isDashing then
         goalX = self.x + (self.dashVelocity * dt)
+    elseif self.chargeVelocity and self.chargeVelocity ~= 0 then
+        -- Apply charge velocity for lunging attacks
+        goalX = self.x + (self.chargeVelocity * dt)
     elseif self.isMoving and self.canMove then
         local inputX = self.direction
         goalX = self.x + (inputX * self.speed * 2 * dt)

@@ -51,6 +51,10 @@ function Lancer:new(x, y, joystickIndex, world, aiController, colorName)
     instance.downAirTimer             = 0
 
     instance.chargeLaunched = false
+    instance.chargeVelocity = 0
+    instance.chargeSpeed = 200  -- Speed of the lunge
+    instance.chargeDuration = 0.2  -- How long the lunge lasts
+    instance.chargeTimer = 0
 
     instance.damageMapping = {
         lightAttack = 1,
@@ -236,7 +240,7 @@ function Lancer:processInput(dt, input, otherPlayer)
         self.isMoving  = true
         self.direction = (input.moveX > 0) and 1 or -1
     else
-        -- Even if we cannot “move,” check if we’re shielding so we can flip direction
+        -- Even if we cannot "move," check if we're shielding so we can flip direction
         -- without actually moving our X position:
         if self.isShielding then
             if math.abs(input.moveX) > 0.5 then
@@ -322,18 +326,29 @@ end
 
 function Lancer:resetChargeFlags()
     self.chargeLaunched = false
+    self.chargeVelocity = 0
+    self.chargeTimer = 0
 end
 
 function Lancer:handleAttacks(dt, otherPlayer)
     if not otherPlayer then return end
 
-    -- once “wind-up” has passed, shove Lancer forward by 7 pixels (only once)
+    -- once "wind-up" has passed, initiate the lunge (only once)
     if self.isHeavyAttacking
        and not self.chargeLaunched
        and (self.heavyAttackTimer <= self.heavyAttackDuration - self.heavyAttackNoDamageDuration)
     then
-        self.x = self.x + (15 * self.direction)
+        self.chargeVelocity = self.chargeSpeed * self.direction
+        self.chargeTimer = self.chargeDuration
         self.chargeLaunched = true
+    end
+
+    -- Apply charge velocity during the lunge
+    if self.chargeLaunched and self.chargeTimer > 0 then
+        self.chargeTimer = self.chargeTimer - dt
+        if self.chargeTimer <= 0 then
+            self.chargeVelocity = 0
+        end
     end
 
     -- **2) your old melee-hit checks** (unchanged)
