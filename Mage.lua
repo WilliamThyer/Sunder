@@ -51,7 +51,7 @@ function Mage:new(x, y, joystickIndex, world, aiController, colorName)
     instance.heavyAttackHitboxOffset = 0.5
     instance.isUnblockableHeavy = false
 
-    instance.lightAttackDuration      = 0.35
+    instance.lightAttackDuration      = 0.5
     instance.lightAttackNoDamageDuration = 0.175
     instance.lightAttackWidth        = 4
     instance.lightAttackHeight       = 8
@@ -71,7 +71,7 @@ function Mage:new(x, y, joystickIndex, world, aiController, colorName)
         lightAttack = 2,
         heavyAttack = 3,
         downAir     = 1,
-        dash        = 1
+        dash        = 2
     }
 
     instance.hasHitHeavy   = false
@@ -103,7 +103,7 @@ function Mage:new(x, y, joystickIndex, world, aiController, colorName)
     -- flight fields
     instance.isFlying            = false
     instance.flySpeed            = 60          -- pixels per second upward
-    instance.flyStaminaDrainRate = 2           -- stamina per second
+    instance.flyStaminaDrainRate = 3           -- stamina per second
 
     return instance
 end
@@ -112,7 +112,8 @@ end
 -- Fighter–Specific (Mage) Methods
 --------------------------------------------------
 function Mage:initializeAnimations()
-    local file = "assets/sprites/Mage" .. self.colorName .. ".png"
+    local file = "assets/sprites/MageBlueOld.png"
+    -- local file = "assets/sprites/Mage" .. self.colorName .. "Old.png"
     if not love.filesystem.getInfo(file) then
         file = "assets/sprites/MageBlue.png"  -- fallback to default sprite
     end
@@ -128,11 +129,11 @@ function Mage:initializeAnimations()
         move         = anim8.newAnimation(self.grid(1, '1-3'), 0.125),
         jump         = anim8.newAnimation(self.grid(1, '4-6'), .05),
         land         = anim8.newAnimation(self.grid(4, 2), 1),
-        idle         = anim8.newAnimation(self.grid(4, '1-4'), 0.5),
+        idle         = anim8.newAnimation(self.grid(4, '1-8'), 0.15),
         dashStart    = anim8.newAnimation(self.grid(3, '1-3'), 0.075),
         dashEnd      = anim8.newAnimation(self.grid(3, '3-1'), 0.075),
         heavyAttack  = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.1, 0.3, 0.3, 0.05}),
-        lightAttack  = anim8.newAnimation(self.attackGrid(2, '1-3'), {0.2, 0.15, .05}),
+        lightAttack  = anim8.newAnimation(self.attackGrid(2, '1-3'), {0.2, 0.15, .5}),
         downAir      = anim8.newAnimation(self.attackGrid(3, '1-2'), {0.2, 0.8}),
         shield       = anim8.newAnimation(self.grid(2, '1-3'), .1),
         shieldBlock  = anim8.newAnimation(self.grid(2, 4), 1),
@@ -360,11 +361,11 @@ function Mage:processInput(dt, input, otherPlayer)
     if self:canPerformAction("idle") then
         self.isIdle    = true
         self.idleTimer = self.idleTimer + dt
-        if self.idleTimer < .3 then
-            if self.animations and self.animations.idle then
-                self.animations.idle:gotoFrame(1)
-            end
-        end
+        -- if self.idleTimer < .1 then
+            -- if self.animations and self.animations.idle then
+                -- self.animations.idle:gotoFrame(1)
+            -- end
+        -- end
     else
         self.idleTimer = 0
     end
@@ -375,8 +376,13 @@ local baseMoveWithBump = CharacterBase.moveWithBump
 
 function Mage:moveWithBump(dt)
     if self.isFlying then
-        -- drain stamina
-        self.stamina = math.max(0, self.stamina - self.flyStaminaDrainRate * dt)
+        -- drain stamina (and stop flying if you run out)
+        local cost = self.flyStaminaDrainRate * dt
+        if not self:useStamina(cost) then
+            -- ran out of stamina: drop out of hover immediately
+            self.isFlying = false
+            self.isJumping = true       -- enter falling state
+        end
 
         -- compute goal pos: up + any left/right input
         local goalX = self.x
@@ -493,14 +499,21 @@ function Mage:updateAnimation(dt)
         return
     end
 
-    -- 3) falling: show idle animation instead of jump
+    -- 3) light attack while falling
+    if self.isLightAttacking and self.isJumping then
+        self.currentAnim = self.animations.lightAttack
+        self.currentAnim:update(dt)
+        return
+    end
+
+    -- 4) falling: show idle animation instead of jump
     if self.isJumping then
         self.currentAnim = self.animations.idle
         self.currentAnim:update(dt)
         return
     end
 
-    -- 4) everything else uses the base character logic
+    -- 5) everything else uses the base character logic
     base_updateAnimation(self, dt)
 end
 
@@ -525,7 +538,10 @@ function Mage:canPerformAction(action)
             not self.isAttacking and
             not self.isDashing
         ),
+        -- Mage cannot heavy attack in the air (jumping or flying)
         heavyAttack = (
+            not self.isFlying and
+            not self.isJumping and
             not self.isAttacking and
             not self.isShielding and
             not self.isDashing and
@@ -536,7 +552,9 @@ function Mage:canPerformAction(action)
             not self.isLanding and
             self.stamina >= 2
         ),
+        -- Mage can light attack if not flying, and either on ground or jumping (falling)
         lightAttack = (
+            not self.isFlying and
             not self.isAttacking and
             not self.isShielding and
             not self.isDashing and
@@ -556,7 +574,7 @@ function Mage:canPerformAction(action)
             not self.isCountering and
             not self.dashPressedLastFrame and
             not self.isLanding and
-            self.stamina >= 1
+            self.stamina >= 2
         ),
         move = (
             self.canMove and

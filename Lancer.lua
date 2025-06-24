@@ -93,7 +93,8 @@ end
 -- Fighter–Specific (Lancer) Methods
 --------------------------------------------------
 function Lancer:initializeAnimations()
-    local file = "assets/sprites/Lancer" .. self.colorName .. ".png"
+    -- local file = "assets/sprites/Lancer" .. self.colorName .. ".png"
+    local file = "assets/sprites/LancerBlue.png"
     if not love.filesystem.getInfo(file) then
         file = "assets/sprites/LancerBlue.png"  -- fallback to default sprite
     end

@@ -1,22 +1,13 @@
 To Do
-- Need to add more recovery frames?
 - Make 3 more stages.
 - Button remapping?
-- Aerial light attacks for Warrior.
-- Aerial light attacks for Berserker.
-- Aerial light attacks for Lancer.
-- Aerial light attacks for Mage.
-- Mage aerial heavy attack animation.
 - Sound effects for Berserker.
 - Sounds effects for Lancer.
 - Sounds effects for Mage.
 - Color variants for Berserker.
 - Color variants for Lancer.
 - Color variants for Mage.
-- Story mode.
-- 
-
-
+- "Story mode".
 
 SOUND EFFECTS
 Need to make berserker, mage, lancer sound effects.
