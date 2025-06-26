@@ -12,18 +12,18 @@ function M.initialize()
     -- listen for hot-plugs
     love.handlers.joystickadded = function(_, stick)
         if stick then
-            print("InputManager: joystickadded event received for joystick " .. stick:getID())
+            -- print("InputManager: joystickadded event received for joystick " .. stick:getID())
             M.refreshControllers()
         end
     end
     
     love.handlers.joystickremoved = function(_, stick)
         if stick then
-            print("InputManager: joystickremoved event received for joystick " .. stick:getID())
+            -- print("InputManager: joystickremoved event received for joystick " .. stick:getID())
             for i = 1, 2 do
                 if M.joysticks[i] == stick then 
                     M.joysticks[i] = nil 
-                    print("InputManager: Removed joystick " .. stick:getID() .. " from player " .. i)
+                    -- print("InputManager: Removed joystick " .. stick:getID() .. " from player " .. i)
                 end
             end
         end
@@ -59,7 +59,7 @@ function M.refreshControllers()
             for i = 1, 2 do
                 if not M.joysticks[i] then
                     M.joysticks[i] = stick
-                    print("InputManager: Assigned joystick " .. stick:getID() .. " to player " .. i)
+                    -- print("InputManager: Assigned joystick " .. stick:getID() .. " to player " .. i)
                     break
                 end
             end
@@ -110,9 +110,9 @@ function M.get(playerIndex)
         input.shoulderR = js:isGamepadDown("rightshoulder")
         
         -- Debug: print button presses
-        if input.a or input.b or input.x or input.y or input.start or input.back or input.shoulderL or input.shoulderR then
-            print("InputManager: Player " .. playerIndex .. " pressed buttons - A:" .. tostring(input.a) .. " B:" .. tostring(input.b) .. " X:" .. tostring(input.x) .. " Y:" .. tostring(input.y))
-        end
+        -- if input.a or input.b or input.x or input.y or input.start or input.back or input.shoulderL or input.shoulderR then
+            -- print("InputManager: Player " .. playerIndex .. " pressed buttons - A:" .. tostring(input.a) .. " B:" .. tostring(input.b) .. " X:" .. tostring(input.x) .. " Y:" .. tostring(input.y))
+        -- end
     end
     
     return input
