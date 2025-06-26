@@ -14,12 +14,73 @@ local font = love.graphics.newFont("assets/6px-Normal.ttf", 8)
 font:setFilter("nearest", "nearest")
 love.graphics.setFont(font)
 
+-- Keyboard edge detection state
+local keyboardJustPressed = {
+    a = false,
+    b = false,
+    x = false,
+    y = false,
+    start = false,
+    back = false,
+    up = false,
+    down = false,
+    left = false,
+    right = false
+}
+
+-- Update keyboard edge detection
+local function updateKeyboardEdgeDetection()
+    local keyboardMap = InputManager.getKeyboardMapping()
+    
+    -- Check for key presses this frame
+    if love.keyboard.isDown(keyboardMap.a) then
+        keyboardJustPressed.a = true
+    end
+    if love.keyboard.isDown(keyboardMap.b) then
+        keyboardJustPressed.b = true
+    end
+    if love.keyboard.isDown(keyboardMap.x) then
+        keyboardJustPressed.x = true
+    end
+    if love.keyboard.isDown(keyboardMap.y) then
+        keyboardJustPressed.y = true
+    end
+    if love.keyboard.isDown(keyboardMap.start) then
+        keyboardJustPressed.start = true
+    end
+    if love.keyboard.isDown(keyboardMap.back) then
+        keyboardJustPressed.back = true
+    end
+    if love.keyboard.isDown(keyboardMap.up) then
+        keyboardJustPressed.up = true
+    end
+    if love.keyboard.isDown(keyboardMap.down) then
+        keyboardJustPressed.down = true
+    end
+    if love.keyboard.isDown(keyboardMap.left) then
+        keyboardJustPressed.left = true
+    end
+    if love.keyboard.isDown(keyboardMap.right) then
+        keyboardJustPressed.right = true
+    end
+end
+
+-- Clear keyboard edge detection (call this after processing input)
+local function clearKeyboardEdgeDetection()
+    for key, _ in pairs(keyboardJustPressed) do
+        keyboardJustPressed[key] = false
+    end
+end
+
 -- ----------------------------------------------------------------------
 -- Menu logic
 -- ----------------------------------------------------------------------
 function Menu.updateMenu(GameInfo)
     -- Force refresh controllers when in menu to catch any newly connected ones
     InputManager.refreshControllersImmediate()
+    
+    -- Update keyboard edge detection
+    updateKeyboardEdgeDetection()
     
     -- Get input from both controllers
     local input1 = InputManager.get(1)
@@ -46,8 +107,21 @@ function Menu.updateMenu(GameInfo)
     else
         justStates[2] = {}
     end
+    
+    -- Merge keyboard edge detection into justStates for player 1
+    for k,v in pairs(keyboardJustPressed) do
+        if v then
+            justStates[1][k] = true
+        end
+    end
+    -- Optionally, allow keyboard for player 2 as well (uncomment if desired)
+    -- for k,v in pairs(keyboardJustPressed) do
+    --     if v then
+    --         justStates[2][k] = true
+    --     end
+    -- end
 
-    -- Allow either controller to move the selection
+    -- Allow either controller or keyboard to move the selection
     local moveUp = false
     local moveDown = false
     
@@ -55,11 +129,15 @@ function Menu.updateMenu(GameInfo)
         moveUp = true
     elseif js2 and (input2.moveY < -0.5) then
         moveUp = true
+    elseif keyboardJustPressed.up then
+        moveUp = true
     end
     
     if js1 and (input1.moveY > 0.5) then
         moveDown = true
     elseif js2 and (input2.moveY > 0.5) then
+        moveDown = true
+    elseif keyboardJustPressed.down then
         moveDown = true
     end
     
@@ -69,30 +147,42 @@ function Menu.updateMenu(GameInfo)
         GameInfo.selectedOption = 2
     end
 
-    -- Check which controller pressed A first to determine Player 1
+    -- Check which controller or keyboard pressed A first to determine Player 1
     local p1Pressed = justStates[1] and justStates[1]["a"]
     local p2Pressed = justStates[2] and justStates[2]["a"]
     
     if p1Pressed or p2Pressed then
         -- Determine which controller becomes Player 1
         if p1Pressed then
-            -- Controller 1 pressed A first, so they become Player 1
+            -- Controller 1 or keyboard for player 1 pressed A first
             GameInfo.player1Controller = 1
             GameInfo.player2Controller = 2
         else
-            -- Controller 2 pressed A first, so they become Player 1
+            -- Controller 2 or keyboard for player 2 pressed A first
             GameInfo.player1Controller = 2
             GameInfo.player2Controller = 1
         end
         
         if GameInfo.selectedOption == 1 then
             GameInfo.previousMode = "game_1P"
+            GameInfo.keyboardPlayer = 1
         else
             GameInfo.previousMode = "game_2P"
+            -- For 2-player mode, assign keyboard to the player that doesn't have a controller
+            if GameInfo.player1Controller == 1 then
+                -- P1 has controller 1, so assign keyboard to P2
+                GameInfo.keyboardPlayer = 2
+            else
+                -- P1 has controller 2, so assign keyboard to P2
+                GameInfo.keyboardPlayer = 2
+            end
         end
         GameInfo.gameState = "characterselect"
         GameInfo.justEnteredCharacterSelect = true
     end
+    
+    -- Clear keyboard edge detection after processing
+    clearKeyboardEdgeDetection()
 end
 
 -- ----------------------------------------------------------------------
@@ -118,6 +208,12 @@ function Menu.drawMenu(GameInfo)
     love.graphics.setColor(color2)
     love.graphics.printf("2 PLAYERS", 0, 40, GameInfo.gameWidth, "center", 0, 1, 1)
 
+    -- Show keyboard controls if keyboard is enabled
+    if GameInfo.keyboardPlayer == 1 or GameInfo.keyboardPlayer == 2 then
+        love.graphics.setColor(0.7, 0.7, 0.7, 1)
+        love.graphics.printf("Use WASD to move, SPACE to select", 0, 50, GameInfo.gameWidth, "center", 0, 0.8, 0.8)
+    end
+
     love.graphics.setColor(1,1,1,1)  -- reset
 end
 
@@ -138,6 +234,11 @@ function Menu.updateRestartMenu(GameInfo)
     else
         justStates = {}
     end
+    
+    -- Add keyboard edge detection if keyboard is enabled for this player
+    if InputManager.isKeyboardPlayer(humanController) then
+        justStates = keyboardJustPressed
+    end
 
     -- Check for start button press from the human player only
     local startPressed = justStates["start"]
@@ -153,6 +254,9 @@ function Menu.updateRestartMenu(GameInfo)
         GameInfo.gameState = "characterselect"
         GameInfo.justEnteredCharacterSelect = true
     end
+    
+    -- Clear keyboard edge detection after processing
+    clearKeyboardEdgeDetection()
 end
 
 function Menu.drawRestartMenu(players)
@@ -200,6 +304,40 @@ function Menu.handlePauseInput(joystick, button)
     Menu.paused      = false
     Menu.pausePlayer = nil
     GameInfo.gameState               = "characterselect"
+    GameInfo.justEnteredCharacterSelect = true
+  end
+end
+
+-- Handle keyboard pause input
+function Menu.handleKeyboardPauseInput(key)
+  -- only during an actual fight
+  if not (GameInfo.gameState == "game_1P" or GameInfo.gameState == "game_2P") then
+    return
+  end
+  if Menu.restartMenu then
+    -- if we're in the restart menu, we don't handle pause input
+    return
+  end
+
+  local keyboardMap = InputManager.getKeyboardMapping()
+  
+  if key == keyboardMap.start then
+    if not Menu.paused then
+      Menu.paused = true
+      Menu.pausePlayer = "keyboard"
+    elseif Menu.pausePlayer == "keyboard" then
+      Menu.paused = false
+      Menu.pausePlayer = nil
+    end
+  end
+
+  if Menu.paused 
+  and Menu.pausePlayer == "keyboard"
+  and key == keyboardMap.y then
+    -- return to character select
+    Menu.paused = false
+    Menu.pausePlayer = nil
+    GameInfo.gameState = "characterselect"
     GameInfo.justEnteredCharacterSelect = true
   end
 end

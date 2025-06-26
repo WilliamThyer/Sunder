@@ -89,6 +89,58 @@ local controllerAssignments = {
     [2] = nil   -- Player 2's controller index
 }
 
+-- Keyboard edge detection state
+local keyboardJustPressed = {
+    a = false,
+    b = false,
+    x = false,
+    y = false,
+    start = false,
+    back = false,
+    up = false,
+    down = false,
+    left = false,
+    right = false
+}
+
+-- Update keyboard edge detection
+local function updateKeyboardEdgeDetection()
+    local keyboardMap = InputManager.getKeyboardMapping()
+    
+    -- Check for key presses this frame
+    if love.keyboard.isDown(keyboardMap.a) then
+        keyboardJustPressed.a = true
+    end
+    if love.keyboard.isDown(keyboardMap.b) then
+        keyboardJustPressed.b = true
+    end
+    if love.keyboard.isDown(keyboardMap.x) then
+        keyboardJustPressed.x = true
+    end
+    if love.keyboard.isDown(keyboardMap.y) then
+        keyboardJustPressed.y = true
+    end
+    if love.keyboard.isDown(keyboardMap.start) then
+        keyboardJustPressed.start = true
+    end
+    if love.keyboard.isDown(keyboardMap.back) then
+        keyboardJustPressed.back = true
+    end
+    if love.keyboard.isDown(keyboardMap.left) then
+        keyboardJustPressed.left = true
+    end
+    if love.keyboard.isDown(keyboardMap.right) then
+        keyboardJustPressed.right = true
+    end
+end
+
+-- Clear keyboard edge detection (call this after processing input)
+local function clearKeyboardEdgeDetection()
+    for key, _ in pairs(keyboardJustPressed) do
+        keyboardJustPressed[key] = false
+    end
+end
+
 local font = love.graphics.newFont("assets/6px-Normal.ttf", 8)
 font:setFilter("nearest", "nearest")
 love.graphics.setFont(font)
@@ -208,6 +260,9 @@ function CharacterSelect.update(GameInfo)
     -- Force refresh controllers when in character select to catch any newly connected ones
     InputManager.refreshControllersImmediate()
     
+    -- Update keyboard edge detection
+    updateKeyboardEdgeDetection()
+    
     -- 1) If we just entered this screen, reset all selections AND clear any leftover justPressed so no input carries over:
     if GameInfo.justEnteredCharacterSelect then
         for i = 1, 2 do
@@ -223,6 +278,8 @@ function CharacterSelect.update(GameInfo)
         controllerAssignments[2] = nil
         -- Clear all justPressed entries so A/Y presses that opened this screen are ignored:
         justPressed = {}
+        -- Clear keyboard edge detection
+        clearKeyboardEdgeDetection()
         GameInfo.justEnteredCharacterSelect = false
     end
 
@@ -242,23 +299,94 @@ function CharacterSelect.update(GameInfo)
             justStates[i] = {}
         end
     end
+    
+    -- Merge keyboard edge detection into justStates for player 1 only if keyboard is enabled for P1
+    if GameInfo.keyboardPlayer == 1 then
+        for k,v in pairs(keyboardJustPressed) do
+            if v then
+                justStates[1][k] = true
+            end
+        end
+    end
+    -- Also merge keyboard edge detection for player 2 if keyboard is enabled for P2
+    if GameInfo.keyboardPlayer == 2 then
+        for k,v in pairs(keyboardJustPressed) do
+            if v then
+                justStates[2][k] = true
+            end
+        end
+    end
 
     -- 3) Build `input1` and `input2` tables to feed into updateCharacter():
     local function makeInput(i)
         local baseInput = InputManager.get(i)
         local just = justStates[i]
-        return {
-            select      = (just["a"]     == true),
-            back        = (just["b"]     == true),
-            start       = (just["start"] == true),
-            changeColor = (just["y"]     == true),
-            moveX       = baseInput.moveX,
-            moveY       = baseInput.moveY,
-            a           = baseInput.a,
-            b           = baseInput.b,
-            y           = baseInput.y,
-            start       = baseInput.start
-        }
+        -- Merge keyboard input for player 1 only if keyboard is enabled for P1
+        if i == 1 and GameInfo.keyboardPlayer == 1 then
+            local kb = InputManager.getKeyboardInput()
+            -- Combine axes (favor nonzero, or sum if both pressed)
+            local moveX = baseInput.moveX ~= 0 and baseInput.moveX or kb.moveX
+            if baseInput.moveX ~= 0 and kb.moveX ~= 0 then
+                moveX = baseInput.moveX + kb.moveX
+                if moveX > 1 then moveX = 1 elseif moveX < -1 then moveX = -1 end
+            end
+            local moveY = baseInput.moveY ~= 0 and baseInput.moveY or kb.moveY
+            if baseInput.moveY ~= 0 and kb.moveY ~= 0 then
+                moveY = baseInput.moveY + kb.moveY
+                if moveY > 1 then moveY = 1 elseif moveY < -1 then moveY = -1 end
+            end
+            return {
+                select      = (just["a"]     == true) or (just["a"]     == true),
+                back        = (just["b"]     == true) or (just["b"]     == true),
+                start       = (just["start"] == true) or (just["start"] == true),
+                changeColor = (just["y"]     == true) or (just["y"]     == true),
+                moveX       = moveX,
+                moveY       = moveY,
+                a           = baseInput.a or kb.a,
+                b           = baseInput.b or kb.b,
+                y           = baseInput.y or kb.y,
+                start       = baseInput.start or kb.start
+            }
+        elseif i == 2 and GameInfo.keyboardPlayer == 2 then
+            -- Merge keyboard input for player 2 if keyboard is enabled for P2
+            local kb = InputManager.getKeyboardInput()
+            -- Combine axes (favor nonzero, or sum if both pressed)
+            local moveX = baseInput.moveX ~= 0 and baseInput.moveX or kb.moveX
+            if baseInput.moveX ~= 0 and kb.moveX ~= 0 then
+                moveX = baseInput.moveX + kb.moveX
+                if moveX > 1 then moveX = 1 elseif moveX < -1 then moveX = -1 end
+            end
+            local moveY = baseInput.moveY ~= 0 and baseInput.moveY or kb.moveY
+            if baseInput.moveY ~= 0 and kb.moveY ~= 0 then
+                moveY = baseInput.moveY + kb.moveY
+                if moveY > 1 then moveY = 1 elseif moveY < -1 then moveY = -1 end
+            end
+            return {
+                select      = (just["a"]     == true),
+                back        = (just["b"]     == true),
+                start       = (just["start"] == true),
+                changeColor = (just["y"]     == true),
+                moveX       = moveX,
+                moveY       = moveY,
+                a           = baseInput.a or kb.a,
+                b           = baseInput.b or kb.b,
+                y           = baseInput.y or kb.y,
+                start       = baseInput.start or kb.start
+            }
+        else
+            return {
+                select      = (just["a"]     == true),
+                back        = (just["b"]     == true),
+                start       = (just["start"] == true),
+                changeColor = (just["y"]     == true),
+                moveX       = baseInput.moveX,
+                moveY       = baseInput.moveY,
+                a           = baseInput.a,
+                b           = baseInput.b,
+                y           = baseInput.y,
+                start       = baseInput.start
+            }
+        end
     end
 
     -- 4) Handle controller assignment based on first input
@@ -286,24 +414,30 @@ function CharacterSelect.update(GameInfo)
         -- Handle "B" globally: 
         --   If P2 is locked, unlock P2; elseif P1 is locked, unlock P1; else exit to menu.
         local p1Controller = controllerAssignments[1]
+        local p1Input
         if p1Controller then
-            local input1 = makeInput(p1Controller)
-            if input1.back then
-                if playerSelections[2].locked then
-                    playerSelections[2].locked = false
-                elseif playerSelections[1].locked then
-                    playerSelections[1].locked = false
-                else
-                    GameInfo.gameState = "menu"
-                    return
-                end
-            end
-
-            -- If P1 is not yet locked, update P1; otherwise update P2 with the same joystick.
-            if not playerSelections[1].locked then
-                CharacterSelect.updateCharacter(input1, 1, dt)
+            p1Input = makeInput(p1Controller)
+        else
+            p1Input = makeInput(1)
+        end
+        
+        if p1Input and p1Input.back then
+            if playerSelections[2].locked then
+                playerSelections[2].locked = false
+            elseif playerSelections[1].locked then
+                playerSelections[1].locked = false
             else
-                CharacterSelect.updateCharacter(input1, 2, dt)
+                GameInfo.gameState = "menu"
+                return
+            end
+        end
+
+        -- If P1 is not yet locked, update P1; otherwise update P2 with the same input.
+        if p1Input then
+            if not playerSelections[1].locked then
+                CharacterSelect.updateCharacter(p1Input, 1, dt)
+            else
+                CharacterSelect.updateCharacter(p1Input, 2, dt)
             end
         end
 
@@ -312,9 +446,15 @@ function CharacterSelect.update(GameInfo)
         -- Handle input for each assigned controller
         for playerIndex = 1, 2 do
             local controllerIndex = controllerAssignments[playerIndex]
+            local input
+            
             if controllerIndex then
-                local input = makeInput(controllerIndex)
-                
+                input = makeInput(controllerIndex)
+            else
+                input = makeInput(playerIndex)
+            end
+            
+            if input then
                 -- If player is unlocked and presses B, exit to menu
                 if (not playerSelections[playerIndex].locked) and input.back then
                     GameInfo.gameState = "menu"
@@ -331,12 +471,17 @@ function CharacterSelect.update(GameInfo)
         local startPressed = false
         for playerIndex = 1, 2 do
             local controllerIndex = controllerAssignments[playerIndex]
+            local input
+            
             if controllerIndex then
-                local input = makeInput(controllerIndex)
-                if input.start then
-                    startPressed = true
-                    break
-                end
+                input = makeInput(controllerIndex)
+            else
+                input = makeInput(playerIndex)
+            end
+            
+            if input and input.start then
+                startPressed = true
+                break
             end
         end
         
@@ -344,6 +489,9 @@ function CharacterSelect.update(GameInfo)
             CharacterSelect.beginGame(GameInfo)
         end
     end
+    
+    -- Clear keyboard edge detection after processing
+    clearKeyboardEdgeDetection()
 end
 
 -----------------------------------------------------
@@ -540,6 +688,12 @@ function CharacterSelect.draw(GameInfo)
           0, gameHeight - 43,
           gameWidth, "center", 0, 1, 1
         )
+    end
+    
+    -- Show keyboard controls if keyboard is enabled
+    if GameInfo.keyboardPlayer == 1 or GameInfo.keyboardPlayer == 2 then
+        love.graphics.setColor(0.7, 0.7, 0.7, 1)
+        love.graphics.printf("WASD: Move, SPACE: Select, K: Change Color, ESC: Back", 0, gameHeight - 20, gameWidth, "center", 0, 0.7, 0.7)
     end
 end
 
