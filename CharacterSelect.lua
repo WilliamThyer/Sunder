@@ -83,6 +83,12 @@ local playerSelections = {
     [2] = { cursor = 1, locked = false, moveCooldown = 0, colorIndex = 2, colorChangeCooldown = 0, inputDelay = 0 }
 }
 
+-- Controller assignment tracking
+local controllerAssignments = {
+    [1] = nil,  -- Player 1's controller index
+    [2] = nil   -- Player 2's controller index
+}
+
 local font = love.graphics.newFont("assets/6px-Normal.ttf", 8)
 font:setFilter("nearest", "nearest")
 love.graphics.setFont(font)
@@ -108,6 +114,39 @@ local function cycleColor(playerIndex)
         playerSelections[playerIndex].colorIndex ~=
         playerSelections[otherIndex].colorIndex
     ) or (attempts >= maxAttempts)
+end
+
+-----------------------------------------------------
+-- Helper: Assign controller to player if not already assigned
+-----------------------------------------------------
+local function assignControllerToPlayer(controllerIndex, playerIndex)
+    -- Check if this controller is already assigned
+    for p = 1, 2 do
+        if controllerAssignments[p] == controllerIndex then
+            return false  -- Controller already assigned
+        end
+    end
+    
+    -- Check if this player already has a controller
+    if controllerAssignments[playerIndex] then
+        return false  -- Player already has a controller
+    end
+    
+    -- Assign the controller to this player
+    controllerAssignments[playerIndex] = controllerIndex
+    return true
+end
+
+-----------------------------------------------------
+-- Helper: Get the player index for a given controller
+-----------------------------------------------------
+local function getPlayerForController(controllerIndex)
+    for playerIndex = 1, 2 do
+        if controllerAssignments[playerIndex] == controllerIndex then
+            return playerIndex
+        end
+    end
+    return nil
 end
 
 -----------------------------------------------------
@@ -179,11 +218,13 @@ function CharacterSelect.update(GameInfo)
             playerSelections[i].colorChangeCooldown = 0.5  -- Increased delay to prevent carryover
             playerSelections[i].inputDelay = 0.3  -- 300ms delay to prevent input carryover
         end
+        -- Reset controller assignments
+        controllerAssignments[1] = nil
+        controllerAssignments[2] = nil
         -- Clear all justPressed entries so A/Y presses that opened this screen are ignored:
         justPressed = {}
         GameInfo.justEnteredCharacterSelect = false
     end
-
 
     local isOnePlayer = (GameInfo.previousMode == "game_1P")
     local dt = love.timer.getDelta()
@@ -220,58 +261,86 @@ function CharacterSelect.update(GameInfo)
         }
     end
 
-    -- Use the controller assignment from GameInfo, or fall back to default if not set
-    local p1Controller = GameInfo.player1Controller or 1
-    local p2Controller = GameInfo.player2Controller or 2
-    
-    local input1 = makeInput(p1Controller)
-    local input2 = makeInput(p2Controller)
-
-    -- 4) One-Player Logic:
-    if isOnePlayer then
-        -- Handle "B" globally: 
-        --   If P2 is locked, unlock P2; elseif P1 is locked, unlock P1; else exit to menu.
-        if input1.back then
-            if playerSelections[2].locked then
-                playerSelections[2].locked = false
-            elseif playerSelections[1].locked then
-                playerSelections[1].locked = false
-            else
-                GameInfo.gameState = "menu"
-                return
+    -- 4) Handle controller assignment based on first input
+    for controllerIndex = 1, 2 do
+        local js = InputManager.getJoystick(controllerIndex)
+        if js then
+            local input = makeInput(controllerIndex)
+            local playerIndex = getPlayerForController(controllerIndex)
+            
+            -- If this controller has any input and isn't assigned yet, assign it
+            if not playerIndex and (input.moveX ~= 0 or input.moveY ~= 0 or input.a or input.b or input.y or input.start) then
+                -- Find the first available player slot
+                for p = 1, 2 do
+                    if not controllerAssignments[p] then
+                        assignControllerToPlayer(controllerIndex, p)
+                        break
+                    end
+                end
             end
-        end
-
-        -- If P1 is not yet locked, update P1; otherwise update P2 with the same joystick.
-        if not playerSelections[1].locked then
-            CharacterSelect.updateCharacter(input1, 1, dt)
-        else
-            CharacterSelect.updateCharacter(input1, 2, dt)
-        end
-
-    -- 5) Two-Player Logic:
-    else
-        -- If P1 is unlocked and presses B, exit to menu; same for P2.
-        if (not playerSelections[1].locked) and input1.back then
-            GameInfo.gameState = "menu"
-            return
-        end
-        if (not playerSelections[2].locked) and input2.back then
-            GameInfo.gameState = "menu"
-            return
-        end
-
-        if InputManager.hasController(p1Controller) then
-            CharacterSelect.updateCharacter(input1, 1, dt)
-        end
-        if InputManager.hasController(p2Controller) then
-            CharacterSelect.updateCharacter(input2, 2, dt)
         end
     end
 
-    -- 6) Start game when both players are locked and any START was just pressed.
+    -- 5) One-Player Logic:
+    if isOnePlayer then
+        -- Handle "B" globally: 
+        --   If P2 is locked, unlock P2; elseif P1 is locked, unlock P1; else exit to menu.
+        local p1Controller = controllerAssignments[1]
+        if p1Controller then
+            local input1 = makeInput(p1Controller)
+            if input1.back then
+                if playerSelections[2].locked then
+                    playerSelections[2].locked = false
+                elseif playerSelections[1].locked then
+                    playerSelections[1].locked = false
+                else
+                    GameInfo.gameState = "menu"
+                    return
+                end
+            end
+
+            -- If P1 is not yet locked, update P1; otherwise update P2 with the same joystick.
+            if not playerSelections[1].locked then
+                CharacterSelect.updateCharacter(input1, 1, dt)
+            else
+                CharacterSelect.updateCharacter(input1, 2, dt)
+            end
+        end
+
+    -- 6) Two-Player Logic:
+    else
+        -- Handle input for each assigned controller
+        for playerIndex = 1, 2 do
+            local controllerIndex = controllerAssignments[playerIndex]
+            if controllerIndex then
+                local input = makeInput(controllerIndex)
+                
+                -- If player is unlocked and presses B, exit to menu
+                if (not playerSelections[playerIndex].locked) and input.back then
+                    GameInfo.gameState = "menu"
+                    return
+                end
+                
+                CharacterSelect.updateCharacter(input, playerIndex, dt)
+            end
+        end
+    end
+
+    -- 7) Start game when both players are locked and any START was just pressed.
     if playerSelections[1].locked and playerSelections[2].locked then
-        if input1.start or input2.start then
+        local startPressed = false
+        for playerIndex = 1, 2 do
+            local controllerIndex = controllerAssignments[playerIndex]
+            if controllerIndex then
+                local input = makeInput(controllerIndex)
+                if input.start then
+                    startPressed = true
+                    break
+                end
+            end
+        end
+        
+        if startPressed then
             CharacterSelect.beginGame(GameInfo)
         end
     end
@@ -286,6 +355,10 @@ function CharacterSelect.beginGame(GameInfo)
 
     GameInfo.player1Color = colorNames[playerSelections[1].colorIndex]
     GameInfo.player2Color = colorNames[playerSelections[2].colorIndex]
+
+    -- Set the controller assignments in GameInfo for the game
+    GameInfo.player1Controller = controllerAssignments[1]
+    GameInfo.player2Controller = controllerAssignments[2]
 
     GameInfo.gameState = GameInfo.previousMode
     startGame(GameInfo.gameState)

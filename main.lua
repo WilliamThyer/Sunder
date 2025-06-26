@@ -73,14 +73,15 @@ function startGame(mode)
     if mode == "game_1P" then
         local ai = AIController:new()
         players = {
-            -- signature now: Player:new(character, color, x, y, joystick, world, controller)
-            Player:new(p1Char, p1Color, 20, 49, p1Controller, world, nil),
-            Player:new(p2Char, p2Color, 100, 49, p2Controller, world, ai)
+            -- signature now: Player:new(character, color, x, y, playerIndex, world, aiController)
+            -- Note: playerIndex is 1 for left side UI, 2 for right side UI
+            Player:new(p1Char, p1Color, 20, 49, 1, world, nil),
+            Player:new(p2Char, p2Color, 100, 49, 2, world, ai)
         }
     else
         players = {
-            Player:new(p1Char, p1Color, 20, 49, p1Controller, world, nil),
-            Player:new(p2Char, p2Color, 100, 49, p2Controller, world, nil)
+            Player:new(p1Char, p1Color, 20, 49, 1, world, nil),
+            Player:new(p2Char, p2Color, 100, 49, 2, world, nil)
         }
     end
 
@@ -140,7 +141,15 @@ function love.update(dt)
         CharacterSelect.update(GameInfo)
     else
         updateGame(dt)
-        if players[1].isDead or players[2].isDead then
+        -- Always show restart menu when either player dies in 1P or 2P mode
+        local shouldShowRestart = false
+        if GameInfo.gameState == "game_1P" then
+            shouldShowRestart = players[1].isDead or players[2].isDead
+        else
+            shouldShowRestart = players[1].isDead or players[2].isDead
+        end
+        
+        if shouldShowRestart then
             Menu.updateRestartMenu(GameInfo)
         end
     end
@@ -160,7 +169,15 @@ function love.draw()
             player:draw()
         end
 
-        if players[1].isDead or players[2].isDead then
+        -- Always show restart menu when either player dies in 1P or 2P mode
+        local shouldShowRestart = false
+        if GameInfo.gameState == "game_1P" then
+            shouldShowRestart = players[1].isDead or players[2].isDead
+        else
+            shouldShowRestart = players[1].isDead or players[2].isDead
+        end
+        
+        if shouldShowRestart then
             Menu.restartMenu = true
             Menu.drawRestartMenu(players)
         end

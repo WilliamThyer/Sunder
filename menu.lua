@@ -122,35 +122,26 @@ function Menu.drawMenu(GameInfo)
 end
 
 function Menu.updateRestartMenu(GameInfo)
-    -- Get input from both controllers
-    local input1 = InputManager.get(1)
-    local input2 = InputManager.get(2)
+    -- Get input from the human player only (Player 1)
+    local humanController = GameInfo.player1Controller or 1
+    local input = InputManager.get(humanController)
     
-    -- Get joystick objects for edge detection
-    local js1 = InputManager.getJoystick(1)
-    local js2 = InputManager.getJoystick(2)
+    -- Get joystick object for edge detection
+    local js = InputManager.getJoystick(humanController)
     
     -- Copy and consume justPressed for edge detection
     local justStates = {}
-    if js1 then
-        local jid1 = js1:getID()
-        justStates[1] = justPressed[jid1] or {}
-        justPressed[jid1] = nil
+    if js then
+        local jid = js:getID()
+        justStates = justPressed[jid] or {}
+        justPressed[jid] = nil
     else
-        justStates[1] = {}
-    end
-    
-    if js2 then
-        local jid2 = js2:getID()
-        justStates[2] = justPressed[jid2] or {}
-        justPressed[jid2] = nil
-    else
-        justStates[2] = {}
+        justStates = {}
     end
 
-    -- Check for start button press from either controller
-    local startPressed = (justStates[1] and justStates[1]["start"]) or (justStates[2] and justStates[2]["start"])
-    local yPressed = (justStates[1] and justStates[1]["y"]) or (justStates[2] and justStates[2]["y"])
+    -- Check for start button press from the human player only
+    local startPressed = justStates["start"]
+    local yPressed = justStates["y"]
 
     -- Confirm selection with 'start' on controller
     if startPressed then

@@ -6,7 +6,7 @@ local Mage     = require("Mage")
 local Player      = {}
 Player.__index    = Player
 
-function Player:new(characterType, colorName, x, y, joystickIndex, world, aiController)
+function Player:new(characterType, colorName, x, y, playerIndex, world, aiController)
       local fighterClass
 
     if characterType == "Berserk" then
@@ -21,7 +21,7 @@ function Player:new(characterType, colorName, x, y, joystickIndex, world, aiCont
     end
 
     local fighterInstance =
-        fighterClass:new(x, y, joystickIndex, world, aiController, colorName)
+        fighterClass:new(x, y, playerIndex, world, aiController, colorName)
 
     local instance = { base = fighterInstance }
 
@@ -84,7 +84,16 @@ function Player:getPlayerInput(dt, otherPlayer)
     
     -- Use InputManager to get input for this player
     local InputManager = require("InputManager")
-    local input = InputManager.get(self.joystickIndex or 1)
+    
+    -- Get the correct controller index based on player position
+    local controllerIndex
+    if self.index == 1 then
+        controllerIndex = GameInfo.player1Controller or 1
+    else
+        controllerIndex = GameInfo.player2Controller or 2
+    end
+    
+    local input = InputManager.get(controllerIndex)
     
     -- Convert InputManager format to the format expected by processInput
     return {
