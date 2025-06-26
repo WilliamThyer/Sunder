@@ -14,6 +14,7 @@ local Player = require("Player")
 local AIController = require("AIController")
 local Menu = require("Menu")
 local CharacterSelect = require("CharacterSelect")
+local InputManager = require("InputManager")
 
 local displayWidth, displayHeight = love.window.getDesktopDimensions()
 
@@ -34,8 +35,10 @@ local world, map
 local players = {}
 
 function love.load()
+    -- Initialize InputManager
+    InputManager.initialize()
+    
     -- For pixel art
-
     push:setupScreen(
         GameInfo.gameWidth,
         GameInfo.gameHeight,
@@ -62,18 +65,22 @@ function startGame(mode)
     local p2Char  = GameInfo.player2Character or "Warrior"
     local p1Color = GameInfo.player1Color     or "Blue"
     local p2Color = GameInfo.player2Color     or "Blue"
+    
+    -- Use the controller assignment from GameInfo, or fall back to default if not set
+    local p1Controller = GameInfo.player1Controller or 1
+    local p2Controller = GameInfo.player2Controller or 2
 
     if mode == "game_1P" then
         local ai = AIController:new()
         players = {
             -- signature now: Player:new(character, color, x, y, joystick, world, controller)
-            Player:new(p1Char, p1Color, 20, 49, 1, world, nil),
-            Player:new(p2Char, p2Color, 100, 49, 2, world, ai)
+            Player:new(p1Char, p1Color, 20, 49, p1Controller, world, nil),
+            Player:new(p2Char, p2Color, 100, 49, p2Controller, world, ai)
         }
     else
         players = {
-            Player:new(p1Char, p1Color, 20, 49, 1, world, nil),
-            Player:new(p2Char, p2Color, 100, 49, 2, world, nil)
+            Player:new(p1Char, p1Color, 20, 49, p1Controller, world, nil),
+            Player:new(p2Char, p2Color, 100, 49, p2Controller, world, nil)
         }
     end
 
@@ -83,7 +90,7 @@ function startGame(mode)
 end
 
 function love.gamepadpressed(joystick, button)
-    -- 1) Mark “button was pressed this frame” for edge-detection:
+    -- 1) Mark "button was pressed this frame" for edge-detection:
     local jid = joystick:getID()
     justPressed[jid] = justPressed[jid] or {}
     justPressed[jid][button] = true
@@ -98,17 +105,34 @@ function updateGame(dt)
     if #players < 2 then return end
 
     local p1, p2 = players[1], players[2]
+    
+    -- Use the controller assignment from GameInfo, or fall back to default if not set
+    local p1Controller = GameInfo.player1Controller or 1
+    local p2Controller = GameInfo.player2Controller or 2
 
-    -- Update each player
-    p1:update(dt, p2)
+    -- Get input from InputManager for human players
+    local p1Input = InputManager.get(p1Controller)
+    local p2Input = InputManager.get(p2Controller)
+
+    -- Update each player with their input (only pass input to human players)
+    p1:update(dt, p2, p1Input)
     -- p1.stamina = 10
-    p2:update(dt, p1)
+    
+    -- Only pass input to P2 if they don't have an AI controller
+    if p2.aiController then
+        p2:update(dt, p1, nil)  -- Let AI controller handle input
+    else
+        p2:update(dt, p1, p2Input)
+    end
     -- p2.stamina = 10
 
     map:update(dt)
 end
 
 function love.update(dt)
+    -- Update InputManager for periodic controller detection
+    InputManager.update(dt)
+    
     if Menu.paused then return end
     if GameInfo.gameState == "menu" then
         Menu.updateMenu(GameInfo)

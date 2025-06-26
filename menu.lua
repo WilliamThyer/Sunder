@@ -7,50 +7,84 @@ Menu.restartMenu = false
 love.graphics.setDefaultFilter("nearest","nearest")
 
 local push = require("libraries.push")
+local InputManager = require("InputManager")
 
 -- local font = love.graphics.newFont("assets/Minecraftia-Regular.ttf", 8)
 local font = love.graphics.newFont("assets/6px-Normal.ttf", 8)
 font:setFilter("nearest", "nearest")
 love.graphics.setFont(font)
 
-local function getJoystickInput(joystick)
-    if joystick then
-        return {
-            select = joystick:isGamepadDown("a"),
-            back = joystick:isGamepadDown("b"),
-            start = joystick:isGamepadDown("start"),
-            moveY = joystick:getGamepadAxis("lefty") or 0,
-            moveX = joystick:getGamepadAxis("leftx") or 0
-        }
-    else
-        -- return empty dict if no joystick
-        return {
-            select = false,
-            back = false,
-            start = false,
-            moveY = 0,
-            moveX = 0
-        }
-    end
-end
-
 -- ----------------------------------------------------------------------
 -- Menu logic
 -- ----------------------------------------------------------------------
 function Menu.updateMenu(GameInfo)
-    local joysticks = love.joystick.getJoysticks()
-    local input = getJoystickInput(joysticks[1])
-    local input2 = getJoystickInput(joysticks[2])
+    -- Force refresh controllers when in menu to catch any newly connected ones
+    InputManager.refreshControllersImmediate()
+    
+    -- Get input from both controllers
+    local input1 = InputManager.get(1)
+    local input2 = InputManager.get(2)
+    
+    -- Get joystick objects for edge detection
+    local js1 = InputManager.getJoystick(1)
+    local js2 = InputManager.getJoystick(2)
+    
+    -- Copy and consume justPressed for edge detection
+    local justStates = {}
+    if js1 then
+        local jid1 = js1:getID()
+        justStates[1] = justPressed[jid1] or {}
+        justPressed[jid1] = nil
+    else
+        justStates[1] = {}
+    end
+    
+    if js2 then
+        local jid2 = js2:getID()
+        justStates[2] = justPressed[jid2] or {}
+        justPressed[jid2] = nil
+    else
+        justStates[2] = {}
+    end
 
-    -- Move selection if axis is pressed up or down
-    if input.moveY < -0.5 then
+    -- Allow either controller to move the selection
+    local moveUp = false
+    local moveDown = false
+    
+    if js1 and (input1.moveY < -0.5) then
+        moveUp = true
+    elseif js2 and (input2.moveY < -0.5) then
+        moveUp = true
+    end
+    
+    if js1 and (input1.moveY > 0.5) then
+        moveDown = true
+    elseif js2 and (input2.moveY > 0.5) then
+        moveDown = true
+    end
+    
+    if moveUp then
         GameInfo.selectedOption = 1
-    elseif input.moveY > 0.5 then
+    elseif moveDown then
         GameInfo.selectedOption = 2
     end
 
-    -- Confirm selection with controller
-    if input.select or input2.select then
+    -- Check which controller pressed A first to determine Player 1
+    local p1Pressed = justStates[1] and justStates[1]["a"]
+    local p2Pressed = justStates[2] and justStates[2]["a"]
+    
+    if p1Pressed or p2Pressed then
+        -- Determine which controller becomes Player 1
+        if p1Pressed then
+            -- Controller 1 pressed A first, so they become Player 1
+            GameInfo.player1Controller = 1
+            GameInfo.player2Controller = 2
+        else
+            -- Controller 2 pressed A first, so they become Player 1
+            GameInfo.player1Controller = 2
+            GameInfo.player2Controller = 1
+        end
+        
         if GameInfo.selectedOption == 1 then
             GameInfo.previousMode = "game_1P"
         else
@@ -59,7 +93,6 @@ function Menu.updateMenu(GameInfo)
         GameInfo.gameState = "characterselect"
         GameInfo.justEnteredCharacterSelect = true
     end
-    
 end
 
 -- ----------------------------------------------------------------------
@@ -89,14 +122,42 @@ function Menu.drawMenu(GameInfo)
 end
 
 function Menu.updateRestartMenu(GameInfo)
-    local joystick = love.joystick.getJoysticks()[1]
+    -- Get input from both controllers
+    local input1 = InputManager.get(1)
+    local input2 = InputManager.get(2)
+    
+    -- Get joystick objects for edge detection
+    local js1 = InputManager.getJoystick(1)
+    local js2 = InputManager.getJoystick(2)
+    
+    -- Copy and consume justPressed for edge detection
+    local justStates = {}
+    if js1 then
+        local jid1 = js1:getID()
+        justStates[1] = justPressed[jid1] or {}
+        justPressed[jid1] = nil
+    else
+        justStates[1] = {}
+    end
+    
+    if js2 then
+        local jid2 = js2:getID()
+        justStates[2] = justPressed[jid2] or {}
+        justPressed[jid2] = nil
+    else
+        justStates[2] = {}
+    end
+
+    -- Check for start button press from either controller
+    local startPressed = (justStates[1] and justStates[1]["start"]) or (justStates[2] and justStates[2]["start"])
+    local yPressed = (justStates[1] and justStates[1]["y"]) or (justStates[2] and justStates[2]["y"])
 
     -- Confirm selection with 'start' on controller
-    if joystick:isGamepadDown("start") then
+    if startPressed then
         Menu.restartMenu = false
         startGame(GameInfo.gameState)
     -- Press Y to go back to character select
-    elseif joystick:isGamepadDown("y") then
+    elseif yPressed then
         Menu.restartMenu = false
         GameInfo.gameState = "characterselect"
         GameInfo.justEnteredCharacterSelect = true

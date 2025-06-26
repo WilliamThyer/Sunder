@@ -47,15 +47,25 @@ function Player:new(characterType, colorName, x, y, joystickIndex, world, aiCont
     return instance
 end
 
-function Player:update(dt, otherPlayer)
-    -- Because we changed the instance’s metatable to Player,
-    -- we can now refer to self’s methods or data. If you want
-    -- to invoke the baseClass version of update (Warrior or Berserker)
-    -- you’d call something like `Warrior.update(self, dt, otherPlayer)`
-    -- or `getmetatable(self):update(dt, otherPlayer)` if needed.
-    --
-    -- But if the base class has no `update()`, then just do your usual:
-    local input = self:getPlayerInput(dt, otherPlayer)
+function Player:update(dt, otherPlayer, input)
+    -- If input is provided, convert it to the expected format; otherwise get it from the controller
+    if input then
+        -- Convert InputManager format to the format expected by processInput
+        input = {
+            jump        = input.x,
+            lightAttack = input.a,
+            heavyAttack = input.b,
+            attack      = (input.a or input.b),
+            dash        = input.shoulderR,
+            shield      = input.shoulderL,
+            moveX       = input.moveX,
+            down        = input.moveY > 0.5,
+            counter     = input.y
+        }
+    else
+        input = self:getPlayerInput(dt, otherPlayer)
+    end
+    
     self:processInput(dt, input)
     self:moveWithBump(dt)
     self:handleAttacks(dt, otherPlayer)
@@ -71,29 +81,22 @@ function Player:getPlayerInput(dt, otherPlayer)
     if self.aiController then
         return self.aiController:getInput(dt, self, otherPlayer)
     end
-    if not self.joystick then
-        return {
-            heavyAttack = false,
-            lightAttack = false,
-            jump        = false,
-            dash        = false,
-            shield      = false,
-            moveX       = 0,
-            down        = false,
-            counter     = false,
-            attack      = false,
-        }
-    end
+    
+    -- Use InputManager to get input for this player
+    local InputManager = require("InputManager")
+    local input = InputManager.get(self.joystickIndex or 1)
+    
+    -- Convert InputManager format to the format expected by processInput
     return {
-        jump        = self.joystick:isGamepadDown("x"),
-        lightAttack = self.joystick:isGamepadDown("a"),
-        heavyAttack = self.joystick:isGamepadDown("b"),
-        attack      = (self.joystick:isGamepadDown("a") or self.joystick:isGamepadDown("b")),
-        dash        = self.joystick:isGamepadDown("rightshoulder"),
-        shield      = self.joystick:isGamepadDown("leftshoulder"),
-        moveX       = self.joystick:getGamepadAxis("leftx") or 0,
-        down        = (self.joystick:getGamepadAxis("lefty") or 0) > 0.5,
-        counter     = self.joystick:isGamepadDown("y")
+        jump        = input.x,
+        lightAttack = input.a,
+        heavyAttack = input.b,
+        attack      = (input.a or input.b),
+        dash        = input.shoulderR,
+        shield      = input.shoulderL,
+        moveX       = input.moveX,
+        down        = input.moveY > 0.5,
+        counter     = input.y
     }
 end
 

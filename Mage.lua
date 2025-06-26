@@ -14,7 +14,6 @@ function Mage:new(x, y, joystickIndex, world, aiController, colorName)
 
     instance.characterType = 'Mage'
     instance.index    = joystickIndex
-    instance.joystick = love.joystick.getJoysticks()[joystickIndex]
     instance.world    = world
     instance.aiController = aiController
 

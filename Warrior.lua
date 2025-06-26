@@ -20,7 +20,6 @@ function Warrior:new(x, y, joystickIndex, world, aiController, colorName)
 
     instance.characterType = "Warrior"
     instance.index    = joystickIndex
-    instance.joystick = love.joystick.getJoysticks()[joystickIndex]
     instance.world    = world
     instance.aiController = aiController
     instance.colorName        = colorName or "Blue"
@@ -187,7 +186,7 @@ function Warrior:processInput(dt, input, otherPlayer)
         self.isMoving  = true
         self.direction = (input.moveX > 0) and 1 or -1
     else
-        -- Even if we cannot “move,” check if we’re shielding so we can flip direction
+        -- Even if we cannot "move," check if we're shielding so we can flip direction
         -- without actually moving our X position:
         if self.isShielding then
             if math.abs(input.moveX) > 0.5 then

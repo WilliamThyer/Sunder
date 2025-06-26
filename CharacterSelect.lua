@@ -1,11 +1,12 @@
 -- CharacterSelect.lua
 -- Uses a global `justPressed[jid][button] = true` populated in love.gamepadpressed.
--- Edge‐detection (“was pressed this frame”) comes from consuming `justPressed`.
+-- Edge‐detection ("was pressed this frame") comes from consuming `justPressed`.
 
 local CharacterSelect = {}
 CharacterSelect.__index = CharacterSelect
 
 local push = require("libraries.push")
+local InputManager = require("InputManager")
 love.graphics.setDefaultFilter("nearest", "nearest")
 
 -- === Predefined colors for players ===
@@ -75,9 +76,11 @@ local mageQuad = love.graphics.newQuad(
 --   moveCooldown: to prevent too-fast joystick scrolling
 --   prevY, prevSelect, prevBack, prevStart: (no longer needed here)
 --   colorIndex: which color (1..4) is chosen
+--   colorChangeCooldown: to prevent rapid color cycling
+--   inputDelay: to prevent input carryover from menu
 local playerSelections = {
-    [1] = { cursor = 1, locked = false, moveCooldown = 0, colorIndex = 1 },
-    [2] = { cursor = 1, locked = false, moveCooldown = 0, colorIndex = 2 }
+    [1] = { cursor = 1, locked = false, moveCooldown = 0, colorIndex = 1, colorChangeCooldown = 0, inputDelay = 0 },
+    [2] = { cursor = 1, locked = false, moveCooldown = 0, colorIndex = 2, colorChangeCooldown = 0, inputDelay = 0 }
 }
 
 local font = love.graphics.newFont("assets/6px-Normal.ttf", 8)
@@ -108,17 +111,19 @@ local function cycleColor(playerIndex)
 end
 
 -----------------------------------------------------
--- Update a single player’s selection given the `input` table
+-- Update a single player's selection given the `input` table
 --   `input` fields (all booleans except moveX/moveY):
---     select      = true if “A was pressed this frame”
---     back        = true if “B was pressed this frame”
---     start       = true if “START was pressed this frame”
---     changeColor = true if “Y was pressed this frame”
+--     select      = true if "A was pressed this frame"
+--     back        = true if "B was pressed this frame"
+--     start       = true if "START was pressed this frame"
+--     changeColor = true if "Y was pressed this frame"
 --     moveX, moveY = current axis values for left stick
 -----------------------------------------------------
 function CharacterSelect.updateCharacter(input, playerIndex, dt)
     local ps = playerSelections[playerIndex]
     ps.moveCooldown = math.max(0, ps.moveCooldown - dt)
+    ps.colorChangeCooldown = math.max(0, ps.colorChangeCooldown - dt)
+    ps.inputDelay = math.max(0, ps.inputDelay - dt)
 
     -- 1) Move cursor left/right if not locked
     if (not ps.locked) and ps.moveCooldown <= 0 then
@@ -137,18 +142,19 @@ function CharacterSelect.updateCharacter(input, playerIndex, dt)
         end
     end
 
-    -- 2) Y (changeColor) toggles through available colors (only if not locked)
-    if input.changeColor then
+    -- 2) Y (changeColor) toggles through available colors (only if not locked and input delay is over)
+    if input.y and ps.colorChangeCooldown <= 0 and ps.inputDelay <= 0 then
         cycleColor(playerIndex)
+        ps.colorChangeCooldown = 0.2  -- 200ms cooldown
     end
 
     -- 3) If not locked, A (select) locks in character. If already locked, B (back) unlocks.
     if not ps.locked then
-        if input.select then
+        if input.a and ps.inputDelay <= 0 then
             ps.locked = true
         end
     else
-        if input.back then
+        if input.b then
             ps.locked = false
         end
     end
@@ -160,6 +166,9 @@ end
 --   which gets cleared each frame after consumption.
 -----------------------------------------------------
 function CharacterSelect.update(GameInfo)
+    -- Force refresh controllers when in character select to catch any newly connected ones
+    InputManager.refreshControllersImmediate()
+    
     -- 1) If we just entered this screen, reset all selections AND clear any leftover justPressed so no input carries over:
     if GameInfo.justEnteredCharacterSelect then
         for i = 1, 2 do
@@ -167,24 +176,23 @@ function CharacterSelect.update(GameInfo)
             playerSelections[i].cursor       = 1
             playerSelections[i].moveCooldown = 0
             playerSelections[i].colorIndex   = (i == 1) and 1 or 2
+            playerSelections[i].colorChangeCooldown = 0.5  -- Increased delay to prevent carryover
+            playerSelections[i].inputDelay = 0.3  -- 300ms delay to prevent input carryover
         end
         -- Clear all justPressed entries so A/Y presses that opened this screen are ignored:
-        for jid, _ in pairs(justPressed) do
-            justPressed[jid] = nil
-        end
+        justPressed = {}
         GameInfo.justEnteredCharacterSelect = false
     end
 
 
     local isOnePlayer = (GameInfo.previousMode == "game_1P")
-    local joysticks   = love.joystick.getJoysticks()
     local dt = love.timer.getDelta()
 
     -- 2) For edge detection, copy and consume `justPressed` for each joystick index (1 & 2).
-    --    After this, justPressed[jid] is nil, so it won’t fire twice next frame.
+    --    After this, justPressed[jid] is nil, so it won't fire twice next frame.
     local justStates = {}
     for i = 1, 2 do
-        local js = joysticks[i]
+        local js = InputManager.getJoystick(i)
         if js then
             local jid = js:getID()
             justStates[i] = justPressed[jid] or {}
@@ -196,24 +204,32 @@ function CharacterSelect.update(GameInfo)
 
     -- 3) Build `input1` and `input2` tables to feed into updateCharacter():
     local function makeInput(i)
-        local js = joysticks[i]
+        local baseInput = InputManager.get(i)
         local just = justStates[i]
         return {
             select      = (just["a"]     == true),
             back        = (just["b"]     == true),
             start       = (just["start"] == true),
             changeColor = (just["y"]     == true),
-            moveX       = js and (js:getGamepadAxis("leftx") or 0) or 0,
-            moveY       = js and (js:getGamepadAxis("lefty") or 0) or 0
+            moveX       = baseInput.moveX,
+            moveY       = baseInput.moveY,
+            a           = baseInput.a,
+            b           = baseInput.b,
+            y           = baseInput.y,
+            start       = baseInput.start
         }
     end
 
-    local input1 = makeInput(1)
-    local input2 = makeInput(2)
+    -- Use the controller assignment from GameInfo, or fall back to default if not set
+    local p1Controller = GameInfo.player1Controller or 1
+    local p2Controller = GameInfo.player2Controller or 2
+    
+    local input1 = makeInput(p1Controller)
+    local input2 = makeInput(p2Controller)
 
     -- 4) One-Player Logic:
     if isOnePlayer then
-        -- Handle “B” globally: 
+        -- Handle "B" globally: 
         --   If P2 is locked, unlock P2; elseif P1 is locked, unlock P1; else exit to menu.
         if input1.back then
             if playerSelections[2].locked then
@@ -245,10 +261,10 @@ function CharacterSelect.update(GameInfo)
             return
         end
 
-        if joysticks[1] then
+        if InputManager.hasController(p1Controller) then
             CharacterSelect.updateCharacter(input1, 1, dt)
         end
-        if joysticks[2] then
+        if InputManager.hasController(p2Controller) then
             CharacterSelect.updateCharacter(input2, 2, dt)
         end
     end
@@ -417,14 +433,14 @@ function CharacterSelect.draw(GameInfo)
         )
     end
 
-    -- === Draw each player’s cursor below the character boxes ===
+    -- === Draw each player's cursor below the character boxes ===
     local cursorY     = startY + charBoxHeight + 7
     local arrowSize   = 5
     local charSpacing = charBoxPadding
 
     for playerIndex = 1, 2 do
         if isOnePlayer and playerIndex == 2 and (not playerSelections[1].locked) then
-            -- Hide CPU’s cursor until P1 locks
+            -- Hide CPU's cursor until P1 locks
         else
             local cs = playerSelections[playerIndex]
             local cursorIndex = cs.cursor
@@ -444,7 +460,7 @@ function CharacterSelect.draw(GameInfo)
         end
     end
 
-    -- If both locked, prompt “Press START to begin!”
+    -- If both locked, prompt "Press START to begin!"
     if playerSelections[1].locked and playerSelections[2].locked then
         love.graphics.printf(
           "Press start to begin!",
