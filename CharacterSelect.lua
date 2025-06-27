@@ -446,21 +446,19 @@ function CharacterSelect.update(GameInfo)
         -- Handle input for each assigned controller
         for playerIndex = 1, 2 do
             local controllerIndex = controllerAssignments[playerIndex]
-            local input
-            
+            local input = nil
+            -- Only allow input if controller or keyboard is assigned to this player
             if controllerIndex then
                 input = makeInput(controllerIndex)
-            else
+            elseif GameInfo.keyboardPlayer == playerIndex then
                 input = makeInput(playerIndex)
             end
-            
             if input then
                 -- If player is unlocked and presses B, exit to menu
                 if (not playerSelections[playerIndex].locked) and input.back then
                     GameInfo.gameState = "menu"
                     return
                 end
-                
                 CharacterSelect.updateCharacter(input, playerIndex, dt)
             end
         end
@@ -471,20 +469,17 @@ function CharacterSelect.update(GameInfo)
         local startPressed = false
         for playerIndex = 1, 2 do
             local controllerIndex = controllerAssignments[playerIndex]
-            local input
-            
+            local input = nil
             if controllerIndex then
                 input = makeInput(controllerIndex)
-            else
+            elseif GameInfo.keyboardPlayer == playerIndex then
                 input = makeInput(playerIndex)
             end
-            
             if input and input.start then
                 startPressed = true
                 break
             end
         end
-        
         if startPressed then
             CharacterSelect.beginGame(GameInfo)
         end
