@@ -20,13 +20,18 @@ local displayWidth, displayHeight = love.window.getDesktopDimensions()
 
 -- Game info stored in a global table
 GameInfo = {
-    gameState = "menu",       -- "menu", "game_1P", or "game_2P"
+    gameState = "inputassign",       -- NEW: "inputassign", "menu", "characterselect", "game_1P", "game_2P"
     selectedOption = 1,       -- which menu option is highlighted
     gameWidth = 128,          -- internal virtual width
     gameHeight = 72,          -- internal virtual height
     displayWidth = displayWidth,
     displayHeight = displayHeight,
-    justEnteredCharacterSelect = false
+    justEnteredCharacterSelect = false,
+    p1InputType = nil,        -- "keyboard" or joystick ID
+    p2InputType = nil,        -- "keyboard" or joystick ID
+    p2Assigned = false,       -- For 2P mode: has P2 picked input yet?
+    keyboardPlayer = nil,     -- 1 or 2, which player is using keyboard
+    previousMode = nil        -- Track previous mode for char select
 }
 
 -- track if a button was pressed this frame
@@ -34,6 +39,11 @@ justPressed = {}
 
 local world, map
 local players = {}
+
+-- Add at the top, after GameInfo definition:
+local inputAssignSpaceReleased = true
+local inputAssignStartReleased = {}
+local blockMenuSpaceUntilRelease = false
 
 function love.load()
     -- Initialize InputManager
@@ -103,7 +113,16 @@ end
 
 function love.keypressed(key)
     -- Forward keyboard input to Menu for pause functionality
-    Menu.handleKeyboardPauseInput(key)
+    local keyboardMap1 = InputManager.getKeyboardMapping(1)
+    local keyboardMap2 = InputManager.getKeyboardMapping(2)
+    if key == keyboardMap1.start or key == keyboardMap1.y then
+        Menu.handleKeyboardPauseInput(key, 1)
+    elseif key == keyboardMap2.start or key == keyboardMap2.y then
+        Menu.handleKeyboardPauseInput(key, 2)
+    else
+        -- fallback for legacy or menu
+        Menu.handleKeyboardPauseInput(key)
+    end
 end
 
 -- Update the game (1P or 2P)
@@ -121,57 +140,54 @@ function updateGame(dt)
     local p1Input = InputManager.get(p1Controller)
     local p2Input = InputManager.get(p2Controller)
     
-    -- Merge keyboard input for P1 only if keyboard is enabled for P1
-    local keyboardInput = InputManager.getKeyboardInput()
-    if keyboardInput and GameInfo.keyboardPlayer == 1 then
+    -- Merge keyboard input for P1 if P1 is using keyboard
+    if GameInfo.p1InputType == "keyboard" then
+        local kb1 = InputManager.getKeyboardInput(1)
         -- Combine axes (favor nonzero, or sum if both pressed)
-        local moveX = p1Input.moveX ~= 0 and p1Input.moveX or keyboardInput.moveX
-        if p1Input.moveX ~= 0 and keyboardInput.moveX ~= 0 then
-            moveX = p1Input.moveX + keyboardInput.moveX
+        local moveX = p1Input.moveX ~= 0 and p1Input.moveX or kb1.moveX
+        if p1Input.moveX ~= 0 and kb1.moveX ~= 0 then
+            moveX = p1Input.moveX + kb1.moveX
             if moveX > 1 then moveX = 1 elseif moveX < -1 then moveX = -1 end
         end
-        local moveY = p1Input.moveY ~= 0 and p1Input.moveY or keyboardInput.moveY
-        if p1Input.moveY ~= 0 and keyboardInput.moveY ~= 0 then
-            moveY = p1Input.moveY + keyboardInput.moveY
+        local moveY = p1Input.moveY ~= 0 and p1Input.moveY or kb1.moveY
+        if p1Input.moveY ~= 0 and kb1.moveY ~= 0 then
+            moveY = p1Input.moveY + kb1.moveY
             if moveY > 1 then moveY = 1 elseif moveY < -1 then moveY = -1 end
         end
-        
         p1Input.moveX = moveX
         p1Input.moveY = moveY
-        p1Input.a = p1Input.a or keyboardInput.a
-        p1Input.b = p1Input.b or keyboardInput.b
-        p1Input.x = p1Input.x or keyboardInput.x
-        p1Input.y = p1Input.y or keyboardInput.y
-        p1Input.start = p1Input.start or keyboardInput.start
-        p1Input.back = p1Input.back or keyboardInput.back
-        p1Input.shoulderL = p1Input.shoulderL or keyboardInput.shoulderL
-        p1Input.shoulderR = p1Input.shoulderR or keyboardInput.shoulderR
+        p1Input.a = p1Input.a or kb1.a
+        p1Input.b = p1Input.b or kb1.b
+        p1Input.x = p1Input.x or kb1.x
+        p1Input.y = p1Input.y or kb1.y
+        p1Input.start = p1Input.start or kb1.start
+        p1Input.back = p1Input.back or kb1.back
+        p1Input.shoulderL = p1Input.shoulderL or kb1.shoulderL
+        p1Input.shoulderR = p1Input.shoulderR or kb1.shoulderR
     end
-    
-    -- Merge keyboard input for P2 only if keyboard is enabled for P2
-    if GameInfo.KeyboardPlayer == 2 and keyboardInput then
-        -- Combine axes (favor nonzero, or sum if both pressed)
-        local moveX = p2Input.moveX ~= 0 and p2Input.moveX or keyboardInput.moveX
-        if p2Input.moveX ~= 0 and keyboardInput.moveX ~= 0 then
-            moveX = p2Input.moveX + keyboardInput.moveX
+    -- Merge keyboard input for P2 if P2 is using keyboard
+    if GameInfo.p2InputType == "keyboard" then
+        local kb2 = InputManager.getKeyboardInput(2)
+        local moveX = p2Input.moveX ~= 0 and p2Input.moveX or kb2.moveX
+        if p2Input.moveX ~= 0 and kb2.moveX ~= 0 then
+            moveX = p2Input.moveX + kb2.moveX
             if moveX > 1 then moveX = 1 elseif moveX < -1 then moveX = -1 end
         end
-        local moveY = p2Input.moveY ~= 0 and p2Input.moveY or keyboardInput.moveY
-        if p2Input.moveY ~= 0 and keyboardInput.moveY ~= 0 then
-            moveY = p2Input.moveY + keyboardInput.moveY
+        local moveY = p2Input.moveY ~= 0 and p2Input.moveY or kb2.moveY
+        if p2Input.moveY ~= 0 and kb2.moveY ~= 0 then
+            moveY = p2Input.moveY + kb2.moveY
             if moveY > 1 then moveY = 1 elseif moveY < -1 then moveY = -1 end
         end
-        
         p2Input.moveX = moveX
         p2Input.moveY = moveY
-        p2Input.a = p2Input.a or keyboardInput.a
-        p2Input.b = p2Input.b or keyboardInput.b
-        p2Input.x = p2Input.x or keyboardInput.x
-        p2Input.y = p2Input.y or keyboardInput.y
-        p2Input.start = p2Input.start or keyboardInput.start
-        p2Input.back = p2Input.back or keyboardInput.back
-        p2Input.shoulderL = p2Input.shoulderL or keyboardInput.shoulderL
-        p2Input.shoulderR = p2Input.shoulderR or keyboardInput.shoulderR
+        p2Input.a = p2Input.a or kb2.a
+        p2Input.b = p2Input.b or kb2.b
+        p2Input.x = p2Input.x or kb2.x
+        p2Input.y = p2Input.y or kb2.y
+        p2Input.start = p2Input.start or kb2.start
+        p2Input.back = p2Input.back or kb2.back
+        p2Input.shoulderL = p2Input.shoulderL or kb2.shoulderL
+        p2Input.shoulderR = p2Input.shoulderR or kb2.shoulderR
     end
 
     -- Update each player with their input (only pass input to human players)
@@ -192,8 +208,52 @@ end
 function love.update(dt)
     -- Update InputManager for periodic controller detection
     InputManager.update(dt)
-    
+
     if Menu.paused then return end
+    if GameInfo.gameState == "inputassign" then
+        -- Input assignment screen: P1 chooses input
+        -- Listen for controller Start or Spacebar (edge detection)
+        for _, js in ipairs(love.joystick.getJoysticks()) do
+            local jid = js:getID()
+            inputAssignStartReleased[jid] = inputAssignStartReleased[jid] ~= false
+            if not js:isGamepadDown("start") then
+                inputAssignStartReleased[jid] = true
+            end
+            if js:isGamepadDown("start") and inputAssignStartReleased[jid] then
+                GameInfo.p1InputType = js:getID()
+                GameInfo.keyboardPlayer = nil
+                GameInfo.gameState = "menu"
+                inputAssignSpaceReleased = false
+                inputAssignStartReleased[jid] = false
+                justPressed[jid] = nil
+                blockMenuSpaceUntilRelease = false
+                return
+            end
+        end
+        if not love.keyboard.isDown("space") then
+            inputAssignSpaceReleased = true
+            blockMenuSpaceUntilRelease = false
+        end
+        if love.keyboard.isDown("space") and inputAssignSpaceReleased then
+            GameInfo.p1InputType = "keyboard"
+            GameInfo.keyboardPlayer = 1
+            GameInfo.gameState = "menu"
+            inputAssignSpaceReleased = false
+            blockMenuSpaceUntilRelease = true
+            for _, js in ipairs(love.joystick.getJoysticks()) do
+                justPressed[js:getID()] = nil
+            end
+            return
+        end
+        return
+    end
+    -- Block menu Space input until released after assignment
+    if GameInfo.gameState == "menu" and blockMenuSpaceUntilRelease then
+        if not love.keyboard.isDown("space") then
+            blockMenuSpaceUntilRelease = false
+        end
+        return
+    end
     if GameInfo.gameState == "menu" then
         Menu.updateMenu(GameInfo)
     elseif GameInfo.gameState == "characterselect" then
@@ -207,7 +267,6 @@ function love.update(dt)
         else
             shouldShowRestart = players[1].isDead or players[2].isDead
         end
-        
         if shouldShowRestart then
             Menu.updateRestartMenu(GameInfo)
         end
@@ -217,17 +276,27 @@ end
 function love.draw()
     push:start()
 
+    if GameInfo.gameState == "inputassign" then
+        -- Draw input assignment screen
+        love.graphics.clear(0, 0, 0, 1)
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.printf(
+            "Press Start (controller) or Space (keyboard) to begin",
+            0, GameInfo.gameHeight / 2 - 8,
+            GameInfo.gameWidth, "center"
+        )
+        push:finish()
+        return
+    end
     if GameInfo.gameState == "menu" then
         Menu.drawMenu(GameInfo)
     elseif GameInfo.gameState == "characterselect" then
         CharacterSelect.draw(GameInfo)
     else
         if map then map:draw(0, 0, 1, 1) end
-
         for _, player in ipairs(players) do
             player:draw()
         end
-
         -- Always show restart menu when either player dies in 1P or 2P mode
         local shouldShowRestart = false
         if GameInfo.gameState == "game_1P" then
@@ -235,7 +304,6 @@ function love.draw()
         else
             shouldShowRestart = players[1].isDead or players[2].isDead
         end
-        
         if shouldShowRestart then
             Menu.restartMenu = true
             Menu.drawRestartMenu(players)

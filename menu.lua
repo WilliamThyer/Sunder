@@ -30,39 +30,41 @@ local keyboardJustPressed = {
 
 -- Update keyboard edge detection
 local function updateKeyboardEdgeDetection()
-    local keyboardMap = InputManager.getKeyboardMapping()
+    local keyboardMap1 = InputManager.getKeyboardMapping(1)
+    local keyboardMap2 = InputManager.getKeyboardMapping(2)
     
-    -- Check for key presses this frame
-    if love.keyboard.isDown(keyboardMap.a) then
+    -- Check for key presses this frame for P1
+    if love.keyboard.isDown(keyboardMap1.a) then
         keyboardJustPressed.a = true
     end
-    if love.keyboard.isDown(keyboardMap.b) then
+    if love.keyboard.isDown(keyboardMap1.b) then
         keyboardJustPressed.b = true
     end
-    if love.keyboard.isDown(keyboardMap.x) then
+    if love.keyboard.isDown(keyboardMap1.x) then
         keyboardJustPressed.x = true
     end
-    if love.keyboard.isDown(keyboardMap.y) then
+    if love.keyboard.isDown(keyboardMap1.y) then
         keyboardJustPressed.y = true
     end
-    if love.keyboard.isDown(keyboardMap.start) then
+    if love.keyboard.isDown(keyboardMap1.start) then
         keyboardJustPressed.start = true
     end
-    if love.keyboard.isDown(keyboardMap.back) then
+    if love.keyboard.isDown(keyboardMap1.back) then
         keyboardJustPressed.back = true
     end
-    if love.keyboard.isDown(keyboardMap.up) then
+    if love.keyboard.isDown(keyboardMap1.up) then
         keyboardJustPressed.up = true
     end
-    if love.keyboard.isDown(keyboardMap.down) then
+    if love.keyboard.isDown(keyboardMap1.down) then
         keyboardJustPressed.down = true
     end
-    if love.keyboard.isDown(keyboardMap.left) then
+    if love.keyboard.isDown(keyboardMap1.left) then
         keyboardJustPressed.left = true
     end
-    if love.keyboard.isDown(keyboardMap.right) then
+    if love.keyboard.isDown(keyboardMap1.right) then
         keyboardJustPressed.right = true
     end
+    -- Optionally, add similar checks for P2 if you want edge detection for both
 end
 
 -- Clear keyboard edge detection (call this after processing input)
@@ -157,25 +159,28 @@ function Menu.updateMenu(GameInfo)
             -- Controller 1 or keyboard for player 1 pressed A first
             GameInfo.player1Controller = 1
             GameInfo.player2Controller = 2
+            -- Set input types based on InputManager assignment
+            GameInfo.p1InputType = InputManager.getJoystick(1) and InputManager.getJoystick(1):getID() or "keyboard"
+            GameInfo.p2InputType = InputManager.getJoystick(2) and InputManager.getJoystick(2):getID() or "keyboard"
         else
             -- Controller 2 or keyboard for player 2 pressed A first
             GameInfo.player1Controller = 2
             GameInfo.player2Controller = 1
+            GameInfo.p1InputType = InputManager.getJoystick(2) and InputManager.getJoystick(2):getID() or "keyboard"
+            GameInfo.p2InputType = InputManager.getJoystick(1) and InputManager.getJoystick(1):getID() or "keyboard"
         end
-        
         if GameInfo.selectedOption == 1 then
             GameInfo.previousMode = "game_1P"
             GameInfo.keyboardPlayer = 1
+            -- For 1P, clear P2 assignment
+            GameInfo.p2InputType = nil
+            GameInfo.p2Assigned = false
         else
             GameInfo.previousMode = "game_2P"
-            -- For 2-player mode, assign keyboard to the player that doesn't have a controller
-            if GameInfo.player1Controller == 1 then
-                -- P1 has controller 1, so assign keyboard to P2
-                GameInfo.keyboardPlayer = 2
-            else
-                -- P1 has controller 2, so assign keyboard to P2
-                GameInfo.keyboardPlayer = 2
-            end
+            -- For 2P, reset P2 assignment and do not set keyboardPlayer
+            GameInfo.p2InputType = nil
+            GameInfo.p2Assigned = false
+            GameInfo.keyboardPlayer = nil
         end
         GameInfo.gameState = "characterselect"
         GameInfo.justEnteredCharacterSelect = true
@@ -236,7 +241,11 @@ function Menu.updateRestartMenu(GameInfo)
     end
     
     -- Add keyboard edge detection if keyboard is enabled for this player
-    if InputManager.isKeyboardPlayer(humanController) then
+    local isKeyboard = false
+    if (humanController == 1 and GameInfo.p1InputType == "keyboard") or (humanController == 2 and GameInfo.p2InputType == "keyboard") then
+        isKeyboard = true
+    end
+    if isKeyboard then
         justStates = keyboardJustPressed
     end
 
@@ -309,7 +318,7 @@ function Menu.handlePauseInput(joystick, button)
 end
 
 -- Handle keyboard pause input
-function Menu.handleKeyboardPauseInput(key)
+function Menu.handleKeyboardPauseInput(key, playerIndex)
   -- only during an actual fight
   if not (GameInfo.gameState == "game_1P" or GameInfo.gameState == "game_2P") then
     return
@@ -319,20 +328,20 @@ function Menu.handleKeyboardPauseInput(key)
     return
   end
 
-  local keyboardMap = InputManager.getKeyboardMapping()
+  local keyboardMap = InputManager.getKeyboardMapping(playerIndex or 1)
   
   if key == keyboardMap.start then
     if not Menu.paused then
       Menu.paused = true
-      Menu.pausePlayer = "keyboard"
-    elseif Menu.pausePlayer == "keyboard" then
+      Menu.pausePlayer = playerIndex or "keyboard"
+    elseif Menu.pausePlayer == (playerIndex or "keyboard") then
       Menu.paused = false
       Menu.pausePlayer = nil
     end
   end
 
   if Menu.paused 
-  and Menu.pausePlayer == "keyboard"
+  and Menu.pausePlayer == (playerIndex or "keyboard")
   and key == keyboardMap.y then
     -- return to character select
     Menu.paused = false
