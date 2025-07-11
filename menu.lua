@@ -3,6 +3,8 @@ Menu.__index = Menu
 Menu.paused      = false
 Menu.pausePlayer = nil
 Menu.restartMenu = false
+Menu.restartMenuOpenedAt = nil -- Timestamp when restart menu was opened
+Menu.restartMenuInputDelay = 0.5 -- Seconds to wait before accepting input
 
 love.graphics.setDefaultFilter("nearest","nearest")
 
@@ -154,14 +156,6 @@ function Menu.updateMenu(GameInfo)
     local p2Pressed = justStates[2] and justStates[2]["a"]
     
     if p1Pressed or p2Pressed then
-        -- Determine which controller becomes Player 1
-        if p1Pressed then
-            GameInfo.player1Controller = 1
-            GameInfo.player2Controller = 2
-        else
-            GameInfo.player1Controller = 2
-            GameInfo.player2Controller = 1
-        end
         if GameInfo.selectedOption == 1 then
             GameInfo.previousMode = "game_1P"
             GameInfo.keyboardPlayer = 1
@@ -214,47 +208,78 @@ function Menu.drawMenu(GameInfo)
 end
 
 function Menu.updateRestartMenu(GameInfo)
-    -- Get input from the human player only (Player 1)
-    local humanController = GameInfo.player1Controller or 1
-    local input = InputManager.get(humanController)
-    
-    -- Get joystick object for edge detection
-    local js = InputManager.getJoystick(humanController)
-    
-    -- Copy and consume justPressed for edge detection
-    local justStates = {}
-    if js then
-        local jid = js:getID()
-        justStates = justPressed[jid] or {}
-        justPressed[jid] = nil
-    else
-        justStates = {}
+    -- Wait for input delay
+    if not Menu.restartMenuOpenedAt then
+        Menu.restartMenuOpenedAt = love.timer.getTime()
+        return
     end
-    
-    -- Add keyboard edge detection if keyboard is enabled for this player
-    local isKeyboard = false
-    if (humanController == 1 and GameInfo.p1InputType == "keyboard") or (humanController == 2 and GameInfo.p2InputType == "keyboard") then
-        isKeyboard = true
-    end
-    if isKeyboard then
-        justStates = keyboardJustPressed
+    local now = love.timer.getTime()
+    if now - Menu.restartMenuOpenedAt < Menu.restartMenuInputDelay then
+        return
     end
 
-    -- Check for start button press from the human player only
-    local startPressed = justStates["start"]
-    local yPressed = justStates["y"]
+    local isTwoPlayer = (GameInfo.gameState == "game_2P")
+    local startPressed, yPressed = false, false
+
+    if isTwoPlayer then
+        -- Check both players
+        for idx = 1, 2 do
+            local input = InputManager.get(idx)
+            local js = InputManager.getJoystick(idx)
+            local justStates = {}
+            if js then
+                local jid = js:getID()
+                justStates = justPressed[jid] or {}
+                justPressed[jid] = nil
+            else
+                justStates = {}
+            end
+            local isKeyboard = false
+            if (idx == 1 and GameInfo.p1InputType == "keyboard") or (idx == 2 and GameInfo.p2InputType == "keyboard") then
+                isKeyboard = true
+            end
+            if isKeyboard then
+                justStates = keyboardJustPressed
+            end
+            startPressed = startPressed or justStates["start"]
+            yPressed = yPressed or justStates["y"]
+        end
+    else
+        -- 1P mode: Only P1 (the human) can input
+        local humanController = GameInfo.player1Controller or 1
+        local input = InputManager.get(humanController)
+        local js = InputManager.getJoystick(humanController)
+        local justStates = {}
+        if js then
+            local jid = js:getID()
+            justStates = justPressed[jid] or {}
+            justPressed[jid] = nil
+        else
+            justStates = {}
+        end
+        local isKeyboard = false
+        if (humanController == 1 and GameInfo.p1InputType == "keyboard") or (humanController == 2 and GameInfo.p2InputType == "keyboard") then
+            isKeyboard = true
+        end
+        if isKeyboard then
+            justStates = keyboardJustPressed
+        end
+        startPressed = justStates["start"]
+        yPressed = justStates["y"]
+    end
 
     -- Confirm selection with 'start' on controller
     if startPressed then
         Menu.restartMenu = false
+        Menu.restartMenuOpenedAt = nil
         startGame(GameInfo.gameState)
     -- Press Y to go back to character select
     elseif yPressed then
         Menu.restartMenu = false
+        Menu.restartMenuOpenedAt = nil
         GameInfo.gameState = "characterselect"
         GameInfo.justEnteredCharacterSelect = true
     end
-    
     -- Clear keyboard edge detection after processing
     clearKeyboardEdgeDetection()
 end

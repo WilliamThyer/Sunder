@@ -102,6 +102,8 @@ function startGame(mode)
 end
 
 function love.gamepadpressed(joystick, button)
+    -- Debug: print which joystick/button was pressed
+    print("[DEBUG] gamepadpressed: joystick ID=", joystick:getID(), "button=", button)
     -- 1) Mark "button was pressed this frame" for edge-detection:
     local jid = joystick:getID()
     justPressed[jid] = justPressed[jid] or {}
@@ -211,21 +213,21 @@ function love.update(dt)
 
     if Menu.paused then return end
     if GameInfo.gameState == "inputassign" then
+        -- Debug: print all detected joysticks and their IDs
+        print("[DEBUG] Detected joysticks:")
+        for _, js in ipairs(love.joystick.getJoysticks()) do
+            print("  Joystick: ", js:getID(), js:getName())
+        end
         -- Input assignment screen: P1 chooses input
-        -- Listen for controller Start or Spacebar (edge detection)
+        -- Listen for controller Start (edge detection) or Spacebar (keyboard)
         for _, js in ipairs(love.joystick.getJoysticks()) do
             local jid = js:getID()
-            inputAssignStartReleased[jid] = inputAssignStartReleased[jid] ~= false
-            if not js:isGamepadDown("start") then
-                inputAssignStartReleased[jid] = true
-            end
-            if js:isGamepadDown("start") and inputAssignStartReleased[jid] then
+            if justPressed[jid] and justPressed[jid]["start"] then
                 GameInfo.p1InputType = js:getID()
+                GameInfo.player1Controller = js:getID()
                 GameInfo.keyboardPlayer = nil
                 GameInfo.gameState = "menu"
-                inputAssignSpaceReleased = false
-                inputAssignStartReleased[jid] = false
-                justPressed[jid] = nil
+                justPressed[jid]["start"] = nil
                 blockMenuSpaceUntilRelease = false
                 return
             end
@@ -268,7 +270,14 @@ function love.update(dt)
             shouldShowRestart = players[1].isDead or players[2].isDead
         end
         if shouldShowRestart then
-            Menu.updateRestartMenu(GameInfo)
+            Menu.restartMenu = true
+            if not Menu.restartMenuOpenedAt then
+                Menu.restartMenuOpenedAt = love.timer.getTime() -- Reset input delay timer only once
+            end
+            Menu.drawRestartMenu(players)
+        end
+        if Menu.paused then
+            Menu.drawPauseOverlay()
         end
     end
 end
@@ -306,6 +315,9 @@ function love.draw()
         end
         if shouldShowRestart then
             Menu.restartMenu = true
+            if not Menu.restartMenuOpenedAt then
+                Menu.restartMenuOpenedAt = love.timer.getTime() -- Reset input delay timer only once
+            end
             Menu.drawRestartMenu(players)
         end
         if Menu.paused then

@@ -278,9 +278,12 @@ function CharacterSelect.update(GameInfo)
             playerSelections[i].colorChangeCooldown = 0.5  -- Increased delay to prevent carryover
             playerSelections[i].inputDelay = 0.3  -- 300ms delay to prevent input carryover
         end
-        -- Reset controller assignments
-        controllerAssignments[1] = nil
-        controllerAssignments[2] = nil
+        -- Only reset P2 controller assignment in 2P mode
+        local isOnePlayer = (GameInfo.previousMode == "game_1P")
+        if not isOnePlayer then
+            GameInfo.p2InputType = nil
+            controllerAssignments[2] = nil
+        end
         -- Clear all justPressed entries so A/Y presses that opened this screen are ignored:
         justPressed = {}
         -- Clear keyboard edge detection
@@ -295,10 +298,12 @@ function CharacterSelect.update(GameInfo)
     CharacterSelect._p2KpenterReleased = CharacterSelect._p2KpenterReleased ~= false
     CharacterSelect._p2ReturnReleased = CharacterSelect._p2ReturnReleased ~= false
     if not isOnePlayer and not isP2Assigned() then
-        -- Allow P2 to assign controller or keyboard
+        -- Allow P2 to assign controller or keyboard ONLY with Start (controller) or Enter (keyboard)
         for _, js in ipairs(love.joystick.getJoysticks()) do
-            if js:isGamepadDown("start") and (GameInfo.p1InputType ~= js:getID()) then
+            local jid = js:getID()
+            if (justPressed[jid] and justPressed[jid]["start"]) and (GameInfo.p1InputType ~= js:getID()) then
                 GameInfo.p2InputType = js:getID()
+                justPressed[jid]["start"] = nil
                 break
             end
         end
@@ -313,6 +318,7 @@ function CharacterSelect.update(GameInfo)
             CharacterSelect._p2KpenterReleased = false
             CharacterSelect._p2ReturnReleased = false
         end
+        -- Do not process any other input for P2 until assigned
     end
     -- Unassign P2 if back is pressed and not locked
     if not isOnePlayer and isP2Assigned() and not playerSelections[2].locked then
