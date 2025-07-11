@@ -388,7 +388,11 @@ function CharacterSelect.update(GameInfo)
     if isOnePlayer then
         -- Keyboard B
         if GameInfo.p1InputType == "keyboard" and keyboardJustPressed.b then
-            if playerSelections[1].locked then
+            if playerSelections[2].locked then
+                playerSelections[2].locked = false
+                clearKeyboardEdgeDetection()
+                return
+            elseif playerSelections[1].locked then
                 playerSelections[1].locked = false
                 clearKeyboardEdgeDetection()
                 return
@@ -400,7 +404,10 @@ function CharacterSelect.update(GameInfo)
         end
         -- Controller B (edge-detection)
         if GameInfo.p1InputType ~= "keyboard" and justStates[1] and justStates[1].b then
-            if playerSelections[1].locked then
+            if playerSelections[2].locked then
+                playerSelections[2].locked = false
+                return
+            elseif playerSelections[1].locked then
                 playerSelections[1].locked = false
                 return
             else
