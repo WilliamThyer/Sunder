@@ -20,6 +20,183 @@ local keyboardMaps = {
     }
 }
 
+-- Custom mappings for each player (overrides default mappings)
+local customMappings = {
+    [1] = nil,  -- nil means use default, otherwise contains custom mapping
+    [2] = nil
+}
+
+-- Default controller mappings (for reference)
+local defaultControllerMappings = {
+    a = "a",
+    b = "b", 
+    x = "x",
+    y = "y",
+    start = "start",
+    back = "back",
+    shoulderL = "leftshoulder",
+    shoulderR = "rightshoulder"
+}
+
+-- Get the effective keyboard mapping for a player (custom or default)
+function M.getEffectiveKeyboardMapping(playerIndex)
+    if customMappings[playerIndex] then
+        return customMappings[playerIndex]
+    else
+        return keyboardMaps[playerIndex]
+    end
+end
+
+-- Set custom keyboard mapping for a player
+function M.setCustomKeyboardMapping(playerIndex, mapping)
+    customMappings[playerIndex] = mapping
+end
+
+-- Reset custom mapping for a player (use default)
+function M.resetCustomKeyboardMapping(playerIndex)
+    customMappings[playerIndex] = nil
+end
+
+-- Get custom mapping for a player (returns nil if using default)
+function M.getCustomKeyboardMapping(playerIndex)
+    return customMappings[playerIndex]
+end
+
+-- Check if a player has custom mapping
+function M.hasCustomMapping(playerIndex)
+    return customMappings[playerIndex] ~= nil
+end
+
+-- Custom controller mappings for each player
+local customControllerMappings = {
+    [1] = nil,  -- nil means use default, otherwise contains custom mapping
+    [2] = nil
+}
+
+-- Get the effective controller mapping for a player (custom or default)
+function M.getEffectiveControllerMapping(playerIndex)
+    if customControllerMappings[playerIndex] then
+        return customControllerMappings[playerIndex]
+    else
+        return defaultControllerMappings
+    end
+end
+
+-- Set custom controller mapping for a player
+function M.setCustomControllerMapping(playerIndex, mapping)
+    customControllerMappings[playerIndex] = mapping
+end
+
+-- Reset custom controller mapping for a player (use default)
+function M.resetCustomControllerMapping(playerIndex)
+    customControllerMappings[playerIndex] = nil
+end
+
+-- Get custom controller mapping for a player (returns nil if using default)
+function M.getCustomControllerMapping(playerIndex)
+    return customControllerMappings[playerIndex]
+end
+
+-- Check if a player has custom controller mapping
+function M.hasCustomControllerMapping(playerIndex)
+    return customControllerMappings[playerIndex] ~= nil
+end
+
+-- Get all currently pressed buttons on a controller (for remapping)
+function M.getPressedButtons(controllerID)
+    local pressedButtons = {}
+    local js = M.joysticks[controllerID]
+    
+    if js then
+        -- Check all possible gamepad buttons
+        local buttons = {"a", "b", "x", "y", "start", "back", "leftshoulder", "rightshoulder", "leftstick", "rightstick"}
+        for _, button in ipairs(buttons) do
+            if js:isGamepadDown(button) then
+                table.insert(pressedButtons, button)
+            end
+        end
+    end
+    
+    return pressedButtons
+end
+
+-- Get all currently pressed keys on keyboard (for remapping)
+function M.getPressedKeys()
+    local pressedKeys = {}
+    local keys = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+                  "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+                  "space", "return", "escape", "tab", "lshift", "rshift", "lctrl", "rctrl", "lalt", "ralt",
+                  "up", "down", "left", "right", "kp0", "kp1", "kp2", "kp3", "kp4", "kp5", "kp6", "kp7", "kp8", "kp9",
+                  "kpenter", "kp+", "kp-", "kp*", "kp/", "kp.", "kp=",
+                  "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12"}
+    
+    for _, key in ipairs(keys) do
+        if love.keyboard.isDown(key) then
+            table.insert(pressedKeys, key)
+        end
+    end
+    
+    return pressedKeys
+end
+
+-- Get controller input with custom mapping support
+function M.getControllerInput(controllerID, playerIndex)
+    local input = {
+        moveX  = 0,
+        moveY  = 0,
+        a      = false,
+        b      = false,
+        x      = false,
+        y      = false,
+        start  = false,
+        back   = false,
+        shoulderL = false,
+        shoulderR = false,
+    }
+    
+    local js = M.joysticks[controllerID]
+    if js then
+        local lx, ly = js:getGamepadAxis("leftx"), js:getGamepadAxis("lefty")
+        if math.abs(lx) > M.deadzone then input.moveX = lx end
+        if math.abs(ly) > M.deadzone then input.moveY = ly end
+        
+        local mapping = M.getEffectiveControllerMapping(playerIndex)
+        input.a = mapping.a and js:isGamepadDown(mapping.a)
+        input.b = mapping.b and js:isGamepadDown(mapping.b)
+        input.x = mapping.x and js:isGamepadDown(mapping.x)
+        input.y = mapping.y and js:isGamepadDown(mapping.y)
+        input.start = mapping.start and js:isGamepadDown(mapping.start)
+        input.back = mapping.back and js:isGamepadDown(mapping.back)
+        input.shoulderL = mapping.shoulderL and js:isGamepadDown(mapping.shoulderL)
+        input.shoulderR = mapping.shoulderR and js:isGamepadDown(mapping.shoulderR)
+    end
+    
+    return input
+end
+
+-- Check if a button/key is already mapped to another action
+function M.isButtonAlreadyMapped(playerIndex, inputType, newButton, excludeAction)
+    local mapping = nil
+    
+    if inputType == "keyboard" then
+        mapping = M.getEffectiveKeyboardMapping(playerIndex)
+    else
+        mapping = M.getEffectiveControllerMapping(playerIndex)
+    end
+    
+    if not mapping then return false end
+    
+    for actionKey, mappedButton in pairs(mapping) do
+        if actionKey ~= excludeAction and mappedButton == newButton then
+            return true
+        end
+    end
+    
+    return false
+end
+
+
+
 function M.initialize()
     M.refreshControllers()
     
@@ -42,7 +219,7 @@ end
 
 -- Get keyboard input for a given player (1 or 2)
 function M.getKeyboardInput(playerIndex)
-    local map = keyboardMaps[playerIndex]
+    local map = M.getEffectiveKeyboardMapping(playerIndex)
     local input = {
         moveX  = 0,
         moveY  = 0,
@@ -56,22 +233,22 @@ function M.getKeyboardInput(playerIndex)
         shoulderR = false,
     }
     if not map then return input end
-    if love.keyboard.isDown(map.left) then input.moveX = input.moveX - 1 end
-    if love.keyboard.isDown(map.right) then input.moveX = input.moveX + 1 end
-    if love.keyboard.isDown(map.up) then input.moveY = input.moveY - 1 end
-    if love.keyboard.isDown(map.down) then input.moveY = input.moveY + 1 end
+    if map.left and love.keyboard.isDown(map.left) then input.moveX = input.moveX - 1 end
+    if map.right and love.keyboard.isDown(map.right) then input.moveX = input.moveX + 1 end
+    if map.up and love.keyboard.isDown(map.up) then input.moveY = input.moveY - 1 end
+    if map.down and love.keyboard.isDown(map.down) then input.moveY = input.moveY + 1 end
     if input.moveX ~= 0 and input.moveY ~= 0 then
         input.moveX = input.moveX * 0.707
         input.moveY = input.moveY * 0.707
     end
-    input.a = love.keyboard.isDown(map.a)
-    input.b = love.keyboard.isDown(map.b)
-    input.x = love.keyboard.isDown(map.x)
-    input.y = love.keyboard.isDown(map.y)
-    input.start = love.keyboard.isDown(map.start)
-    input.back = love.keyboard.isDown(map.back)
-    input.shoulderL = love.keyboard.isDown(map.shoulderL)
-    input.shoulderR = love.keyboard.isDown(map.shoulderR)
+    input.a = map.a and love.keyboard.isDown(map.a)
+    input.b = map.b and love.keyboard.isDown(map.b)
+    input.x = map.x and love.keyboard.isDown(map.x)
+    input.y = map.y and love.keyboard.isDown(map.y)
+    input.start = map.start and love.keyboard.isDown(map.start)
+    input.back = map.back and love.keyboard.isDown(map.back)
+    input.shoulderL = map.shoulderL and love.keyboard.isDown(map.shoulderL)
+    input.shoulderR = map.shoulderR and love.keyboard.isDown(map.shoulderR)
     return input
 end
 
@@ -107,41 +284,26 @@ function M.update(dt)
 end
 
 -- Get input for a specific controller (by joystick ID or "keyboard")
-function M.get(controllerID)
-    local input = {
-        moveX  = 0,
-        moveY  = 0,
-        a      = false,
-        b      = false,
-        x      = false,
-        y      = false,
-        start  = false,
-        back   = false,
-        shoulderL = false,
-        shoulderR = false,
-    }
-    
+function M.get(controllerID, playerIndex)
     if controllerID == "keyboard" then
         -- This shouldn't happen, but handle it gracefully
-        return input
+        return {
+            moveX  = 0,
+            moveY  = 0,
+            a      = false,
+            b      = false,
+            x      = false,
+            y      = false,
+            start  = false,
+            back   = false,
+            shoulderL = false,
+            shoulderR = false,
+        }
     end
     
-    local js = M.joysticks[controllerID]
-    if js then
-        local lx, ly = js:getGamepadAxis("leftx"), js:getGamepadAxis("lefty")
-        if math.abs(lx) > M.deadzone then input.moveX = lx end
-        if math.abs(ly) > M.deadzone then input.moveY = ly end
-        input.a = js:isGamepadDown("a")
-        input.b = js:isGamepadDown("b")
-        input.x = js:isGamepadDown("x")
-        input.y = js:isGamepadDown("y")
-        input.start = js:isGamepadDown("start")
-        input.back = js:isGamepadDown("back")
-        input.shoulderL = js:isGamepadDown("leftshoulder")
-        input.shoulderR = js:isGamepadDown("rightshoulder")
-    end
-    
-    return input
+    -- Use default player index if not provided (for backward compatibility)
+    playerIndex = playerIndex or 1
+    return M.getControllerInput(controllerID, playerIndex)
 end
 
 -- Get joystick object by ID
@@ -159,7 +321,7 @@ end
 
 -- Get keyboard mapping for display purposes
 function M.getKeyboardMapping(playerIndex)
-    return keyboardMaps[playerIndex]
+    return M.getEffectiveKeyboardMapping(playerIndex)
 end
 
 return M 

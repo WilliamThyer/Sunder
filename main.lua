@@ -142,7 +142,7 @@ function updateGame(dt)
     if GameInfo.p1InputType == "keyboard" then
         p1Input = InputManager.getKeyboardInput(1)
     else
-        p1Input = InputManager.get(GameInfo.player1Controller)
+        p1Input = InputManager.get(GameInfo.player1Controller, 1)
     end
     
     -- Handle P2 input
@@ -154,7 +154,7 @@ function updateGame(dt)
         if GameInfo.p2InputType == "keyboard" then
             p2Input = InputManager.getKeyboardInput(2)
         else
-            p2Input = InputManager.get(GameInfo.player2Controller)
+            p2Input = InputManager.get(GameInfo.player2Controller, 2)
         end
     end
 

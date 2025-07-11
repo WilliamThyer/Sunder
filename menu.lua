@@ -94,7 +94,7 @@ function Menu.updateMenu(GameInfo)
     if GameInfo.p1InputType == "keyboard" then
         p1Input = InputManager.getKeyboardInput(1)
     else
-        p1Input = InputManager.get(GameInfo.player1Controller)
+        p1Input = InputManager.get(GameInfo.player1Controller, 1)
     end
     
     -- For menu navigation, we can use any available controller or keyboard

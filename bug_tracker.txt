@@ -9,7 +9,6 @@ To Do
 - Color variants for Mage.
 - "Story mode".
 
- I want to update the controller logic so that you can also use a keyboard. Base mapping is left = a, right =d, shield = s, jump = w. Heavy=k, light=j, counter=h, dash =space. 
 
 SOUND EFFECTS
 Need to make berserker, mage, lancer sound effects.

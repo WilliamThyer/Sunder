@@ -88,6 +88,44 @@ local playerSelections = {
     [2] = { cursor = 1, locked = false, moveCooldown = 0, colorIndex = 2, colorChangeCooldown = 0, inputDelay = 0 }
 }
 
+-- Remap menu state
+local remapState = {
+    active = false,
+    playerIndex = nil,
+    selectedAction = 1,
+    remapping = false,
+    remapCooldown = 0,
+    lastPressedButtons = {},
+    lastPressedKeys = {}
+}
+
+-- Actions that can be remapped
+local remappableActions = {
+    { name = "Light Attack/Select", key = "a" },
+    { name = "Heavy Attack/Back", key = "b" },
+    { name = "Jump", key = "y" },
+    { name = "Counter", key = "x" },
+    { name = "Dash", key = "shoulderL" },
+    { name = "Shield", key = "shoulderR" },
+    { name = "Left", key = "left" },
+    { name = "Right", key = "right" }
+}
+
+-- Get remappable actions for a specific player (keyboard players get left/right, controllers don't)
+local function getRemappableActionsForPlayer(playerIndex)
+    local inputType = (playerIndex == 1) and GameInfo.p1InputType or GameInfo.p2InputType
+    local actions = {}
+    
+    for i, action in ipairs(remappableActions) do
+        -- Skip left/right for controller players
+        if inputType == "keyboard" or (action.key ~= "left" and action.key ~= "right") then
+            table.insert(actions, action)
+        end
+    end
+    
+    return actions
+end
+
 -- Controller assignment tracking
 local controllerAssignments = {
     [1] = nil,  -- Player 1's controller index
@@ -113,28 +151,28 @@ local function updateKeyboardEdgeDetection()
     local keyboardMap = InputManager.getKeyboardMapping(1)
     
     -- Check for key presses this frame
-    if love.keyboard.isDown(keyboardMap.a) then
+    if keyboardMap.a and love.keyboard.isDown(keyboardMap.a) then
         keyboardJustPressed.a = true
     end
-    if love.keyboard.isDown(keyboardMap.b) then
+    if keyboardMap.b and love.keyboard.isDown(keyboardMap.b) then
         keyboardJustPressed.b = true
     end
-    if love.keyboard.isDown(keyboardMap.x) then
+    if keyboardMap.x and love.keyboard.isDown(keyboardMap.x) then
         keyboardJustPressed.x = true
     end
-    if love.keyboard.isDown(keyboardMap.y) then
+    if keyboardMap.y and love.keyboard.isDown(keyboardMap.y) then
         keyboardJustPressed.y = true
     end
-    if love.keyboard.isDown(keyboardMap.start) then
+    if keyboardMap.start and love.keyboard.isDown(keyboardMap.start) then
         keyboardJustPressed.start = true
     end
-    if love.keyboard.isDown(keyboardMap.back) then
+    if keyboardMap.back and love.keyboard.isDown(keyboardMap.back) then
         keyboardJustPressed.back = true
     end
-    if love.keyboard.isDown(keyboardMap.left) then
+    if keyboardMap.left and love.keyboard.isDown(keyboardMap.left) then
         keyboardJustPressed.left = true
     end
-    if love.keyboard.isDown(keyboardMap.right) then
+    if keyboardMap.right and love.keyboard.isDown(keyboardMap.right) then
         keyboardJustPressed.right = true
     end
 end
@@ -207,6 +245,158 @@ local function getPlayerForController(controllerIndex)
 end
 
 -----------------------------------------------------
+-- Remap menu functions
+-----------------------------------------------------
+
+-- Start remap menu for a player
+local function startRemapMenu(playerIndex)
+    remapState.active = true
+    remapState.playerIndex = playerIndex
+    remapState.selectedAction = 1
+    remapState.remapping = false
+    remapState.remapCooldown = 0
+    remapState.lastPressedButtons = {}
+    remapState.lastPressedKeys = {}
+end
+
+-- Exit remap menu
+local function exitRemapMenu()
+    remapState.active = false
+    remapState.playerIndex = nil
+    remapState.selectedAction = 1
+    remapState.remapping = false
+end
+
+-- Update remap menu
+local function updateRemapMenu(dt)
+    if not remapState.active then return end
+    
+    remapState.remapCooldown = math.max(0, remapState.remapCooldown - dt)
+    
+    local playerIndex = remapState.playerIndex
+    local inputType = (playerIndex == 1) and GameInfo.p1InputType or GameInfo.p2InputType
+    
+    if remapState.remapping then
+        -- In remapping mode, wait for a new button press
+        local newButton = nil
+        
+        if inputType == "keyboard" then
+            local currentKeys = InputManager.getPressedKeys()
+            for _, key in ipairs(currentKeys) do
+                local found = false
+                for _, lastKey in ipairs(remapState.lastPressedKeys) do
+                    if key == lastKey then
+                        found = true
+                        break
+                    end
+                end
+                if not found then
+                    newButton = key
+                    break
+                end
+            end
+            remapState.lastPressedKeys = currentKeys
+        else
+            local currentButtons = InputManager.getPressedButtons(inputType)
+            for _, button in ipairs(currentButtons) do
+                local found = false
+                for _, lastButton in ipairs(remapState.lastPressedButtons) do
+                    if button == lastButton then
+                        found = true
+                        break
+                    end
+                end
+                if not found then
+                    newButton = button
+                    break
+                end
+            end
+            remapState.lastPressedButtons = currentButtons
+        end
+        
+        if newButton and remapState.remapCooldown <= 0 then
+            -- Map the new button to the selected action
+            local playerActions = getRemappableActionsForPlayer(playerIndex)
+            local actionKey = playerActions[remapState.selectedAction].key
+            
+            if inputType == "keyboard" then
+                local currentMapping = InputManager.getCustomKeyboardMapping(playerIndex) or InputManager.getKeyboardMapping(playerIndex)
+                
+                -- Clear any existing mapping for this button
+                for existingKey, existingButton in pairs(currentMapping) do
+                    if existingButton == newButton then
+                        currentMapping[existingKey] = nil
+                    end
+                end
+                
+                currentMapping[actionKey] = newButton
+                InputManager.setCustomKeyboardMapping(playerIndex, currentMapping)
+            else
+                local currentMapping = InputManager.getCustomControllerMapping(playerIndex) or InputManager.getEffectiveControllerMapping(playerIndex)
+                
+                -- Clear any existing mapping for this button
+                for existingKey, existingButton in pairs(currentMapping) do
+                    if existingButton == newButton then
+                        currentMapping[existingKey] = nil
+                    end
+                end
+                
+                currentMapping[actionKey] = newButton
+                InputManager.setCustomControllerMapping(playerIndex, currentMapping)
+            end
+            
+            remapState.remapping = false
+            remapState.remapCooldown = 0.2
+        end
+    else
+        -- In selection mode, handle navigation
+        local input = nil
+        if inputType == "keyboard" then
+            input = InputManager.getKeyboardInput(playerIndex)
+        else
+            input = InputManager.get(inputType, playerIndex)
+        end
+        
+        if input then
+            -- Navigate with up/down
+            local playerActions = getRemappableActionsForPlayer(playerIndex)
+            if input.moveY < -0.5 and remapState.remapCooldown <= 0 then
+                remapState.selectedAction = remapState.selectedAction - 1
+                if remapState.selectedAction < 1 then
+                    remapState.selectedAction = #playerActions
+                end
+                remapState.remapCooldown = 0.2
+            elseif input.moveY > 0.5 and remapState.remapCooldown <= 0 then
+                remapState.selectedAction = remapState.selectedAction + 1
+                if remapState.selectedAction > #playerActions then
+                    remapState.selectedAction = 1
+                end
+                remapState.remapCooldown = 0.2
+            end
+            
+            -- Enter remap mode with A
+            if input.a and remapState.remapCooldown <= 0 then
+                remapState.remapping = true
+                remapState.remapCooldown = 0.2
+                
+                -- Initialize last pressed buttons/keys
+                if inputType == "keyboard" then
+                    remapState.lastPressedKeys = InputManager.getPressedKeys()
+                else
+                    remapState.lastPressedButtons = InputManager.getPressedButtons(inputType)
+                end
+            end
+            
+            -- Exit with B
+            if input.b and remapState.remapCooldown <= 0 then
+                exitRemapMenu()
+                remapState.remapCooldown = 0.2
+            end
+        end
+    end
+end
+
+-----------------------------------------------------
 -- Update a single player's selection given the `input` table
 --   `input` fields (all booleans except moveX/moveY):
 --     select      = true if "A was pressed this frame"
@@ -267,6 +457,16 @@ function CharacterSelect.update(GameInfo)
     
     -- Update keyboard edge detection
     updateKeyboardEdgeDetection()
+    
+    -- Update remap menu if active
+    local dt = love.timer.getDelta()
+    updateRemapMenu(dt)
+    
+    -- If remap menu is active, only process remap menu input
+    if remapState.active then
+        clearKeyboardEdgeDetection()
+        return
+    end
     
     -- 1) If we just entered this screen, reset all selections AND clear any leftover justPressed so no input carries over:
     if GameInfo.justEnteredCharacterSelect then
@@ -362,7 +562,7 @@ function CharacterSelect.update(GameInfo)
             local jid = js:getID()
             justStates[1] = justPressed[jid] or {}
             justPressed[jid] = nil
-            p1Input = InputManager.get(GameInfo.player1Controller)
+            p1Input = InputManager.get(GameInfo.player1Controller, 1)
         end
     end
     -- P2 edge detection
@@ -382,14 +582,14 @@ function CharacterSelect.update(GameInfo)
             local jid = js:getID()
             justStates[2] = justPressed[jid] or {}
             justPressed[jid] = nil
-            p2Input = InputManager.get(GameInfo.player2Controller)
+            p2Input = InputManager.get(GameInfo.player2Controller, 2)
         end
     end
 
     -- 1P mode: handle B for deselect or exit
     if isOnePlayer then
         -- Keyboard B
-        if GameInfo.p1InputType == "keyboard" and keyboardJustPressed.b then
+        if GameInfo.p1InputType == "keyboard" and keyboardJustPressed.b and not remapState.active then
             if playerSelections[2].locked then
                 playerSelections[2].locked = false
                 clearKeyboardEdgeDetection()
@@ -405,7 +605,7 @@ function CharacterSelect.update(GameInfo)
             end
         end
         -- Controller B (edge-detection)
-        if GameInfo.p1InputType ~= "keyboard" and justStates[1] and justStates[1].b then
+        if GameInfo.p1InputType ~= "keyboard" and justStates[1] and justStates[1].b and not remapState.active then
             if playerSelections[2].locked then
                 playerSelections[2].locked = false
                 return
@@ -419,7 +619,7 @@ function CharacterSelect.update(GameInfo)
         end
     end
     -- 2P mode: handle P2 B for deselect or unassign
-    if not isOnePlayer and isP2Assigned() and GameInfo.p2InputType == "keyboard" then
+    if not isOnePlayer and isP2Assigned() and GameInfo.p2InputType == "keyboard" and not remapState.active then
         local kb = InputManager.getKeyboardInput(2)
         if kb.b then
             if playerSelections[2].locked then
@@ -434,7 +634,7 @@ function CharacterSelect.update(GameInfo)
             end
         end
     end
-    if not isOnePlayer and isP2Assigned() and GameInfo.p2InputType and GameInfo.p2InputType ~= "keyboard" then
+    if not isOnePlayer and isP2Assigned() and GameInfo.p2InputType and GameInfo.p2InputType ~= "keyboard" and not remapState.active then
         for _, js in ipairs(love.joystick.getJoysticks()) do
             if js:getID() == GameInfo.p2InputType and js:isGamepadDown("b") then
                 if playerSelections[2].locked then
@@ -455,6 +655,13 @@ function CharacterSelect.update(GameInfo)
     if isOnePlayer then
         if not playerSelections[1].locked then
             if p1Input then
+                -- Check for X button to enter remap menu (edge detection)
+                if p1Input.x and not remapState.active and justStates[1] and justStates[1].x then
+                    startRemapMenu(1)
+                    clearKeyboardEdgeDetection()
+                    return
+                end
+                
                 CharacterSelect.updateCharacter({
                     a = p1Input.a, b = false, y = p1Input.y, start = p1Input.start,
                     moveX = p1Input.moveX, moveY = p1Input.moveY
@@ -462,6 +669,13 @@ function CharacterSelect.update(GameInfo)
             end
         else
             if p1Input then
+                -- Check for X button to enter remap menu (edge detection)
+                if p1Input.x and not remapState.active and justStates[1] and justStates[1].x then
+                    startRemapMenu(2)
+                    clearKeyboardEdgeDetection()
+                    return
+                end
+                
                 CharacterSelect.updateCharacter({
                     a = p1Input.a, b = false, y = p1Input.y, start = p1Input.start,
                     moveX = p1Input.moveX, moveY = p1Input.moveY
@@ -470,12 +684,26 @@ function CharacterSelect.update(GameInfo)
         end
     else
         if p1Input then
+            -- Check for X button to enter remap menu (edge detection)
+            if p1Input.x and not remapState.active and justStates[1] and justStates[1].x then
+                startRemapMenu(1)
+                clearKeyboardEdgeDetection()
+                return
+            end
+            
             CharacterSelect.updateCharacter({
                 a = p1Input.a, b = false, y = p1Input.y, start = p1Input.start,
                 moveX = p1Input.moveX, moveY = p1Input.moveY
             }, 1, dt)
         end
         if GameInfo.p2InputType and p2Input then
+            -- Check for X button to enter remap menu (edge detection)
+            if p2Input.x and not remapState.active and justStates[2] and justStates[2].x then
+                startRemapMenu(2)
+                clearKeyboardEdgeDetection()
+                return
+            end
+            
             CharacterSelect.updateCharacter({
                 a = p2Input.a, b = false, y = p2Input.y, start = p2Input.start,
                 moveX = p2Input.moveX, moveY = p2Input.moveY
@@ -497,7 +725,7 @@ function CharacterSelect.update(GameInfo)
     -- 2P mode: allow P1 to deselect or return to menu
     if not isOnePlayer then
         -- P1: Deselect if locked, else return to menu
-        if GameInfo.p1InputType == "keyboard" and keyboardJustPressed.b then
+        if GameInfo.p1InputType == "keyboard" and keyboardJustPressed.b and not remapState.active then
             if playerSelections[1].locked then
                 playerSelections[1].locked = false
                 clearKeyboardEdgeDetection()
@@ -508,7 +736,7 @@ function CharacterSelect.update(GameInfo)
                 return
             end
         end
-        if GameInfo.p1InputType ~= "keyboard" and justStates[1] and justStates[1].b then
+        if GameInfo.p1InputType ~= "keyboard" and justStates[1] and justStates[1].b and not remapState.active then
             if playerSelections[1].locked then
                 playerSelections[1].locked = false
                 return
@@ -518,7 +746,7 @@ function CharacterSelect.update(GameInfo)
             end
         end
         -- P2: Deselect if locked, else unassign controller (one action per press)
-        if GameInfo.p2InputType == "keyboard" and keyboardJustPressed.b then
+        if GameInfo.p2InputType == "keyboard" and keyboardJustPressed.b and not remapState.active then
             if playerSelections[2].locked then
                 playerSelections[2].locked = false
                 clearKeyboardEdgeDetection()
@@ -530,7 +758,7 @@ function CharacterSelect.update(GameInfo)
                 return
             end
         end
-        if GameInfo.p2InputType and GameInfo.p2InputType ~= "keyboard" and justStates[2] and justStates[2].b then
+        if GameInfo.p2InputType and GameInfo.p2InputType ~= "keyboard" and justStates[2] and justStates[2].b and not remapState.active then
             if playerSelections[2].locked then
                 playerSelections[2].locked = false
                 return
@@ -756,6 +984,79 @@ function CharacterSelect.draw(GameInfo)
         love.graphics.setColor(0.7, 0.7, 0.7, 1)
         love.graphics.printf("P1: WASD/Space, P2: Arrows/Keypad0, K/L: Color, Shift: Back", 0, gameHeight - 20, gameWidth, "center", 0, 0.7, 0.7)
     end
+    
+    -- Show remap prompt
+    love.graphics.setColor(0.8, 0.8, 0.8, 1)
+    love.graphics.printf("Press X to remap controls", 0, gameHeight - 35, gameWidth, "center", 0, 0.8, 0.8)
+    
+    -- Draw remap menu if active
+    if remapState.active then
+        drawRemapMenu(GameInfo)
+    end
+end
+
+-----------------------------------------------------
+-- Draw the remap menu
+-----------------------------------------------------
+function drawRemapMenu(GameInfo)
+    local gameWidth = GameInfo.gameWidth
+    local gameHeight = GameInfo.gameHeight
+    
+    -- Draw semi-transparent background
+    love.graphics.setColor(0, 0, 0, 0.8)
+    love.graphics.rectangle("fill", 0, 0, gameWidth, gameHeight)
+    
+    -- Draw menu box
+    love.graphics.setColor(1, 1, 1, 1)
+    local menuWidth = 80
+    local menuHeight = 60
+    local menuX = (gameWidth - menuWidth) / 2
+    local menuY = (gameHeight - menuHeight) / 2
+    love.graphics.rectangle("line", menuX, menuY, menuWidth, menuHeight)
+    
+    -- Draw title
+    local playerText = "Player " .. remapState.playerIndex .. " Remap"
+    love.graphics.printf(playerText, menuX, menuY - 10, menuWidth, "center")
+    
+    -- Draw action list
+    local startY = menuY + 10
+    local lineHeight = 6
+    local playerActions = getRemappableActionsForPlayer(remapState.playerIndex)
+    
+    for i, action in ipairs(playerActions) do
+        local y = startY + (i - 1) * lineHeight
+        local color = (i == remapState.selectedAction) and {1, 1, 0, 1} or {1, 1, 1, 1}
+        love.graphics.setColor(color[1], color[2], color[3], color[4])
+        
+        local text = action.name
+        if remapState.remapping and i == remapState.selectedAction then
+            text = text .. " [Press Button]"
+        else
+            -- Show current mapping
+            local playerIndex = remapState.playerIndex
+            local inputType = (playerIndex == 1) and GameInfo.p1InputType or GameInfo.p2InputType
+            local currentMapping = nil
+            
+            if inputType == "keyboard" then
+                currentMapping = InputManager.getEffectiveKeyboardMapping(playerIndex)
+            else
+                currentMapping = InputManager.getEffectiveControllerMapping(playerIndex)
+            end
+            
+            if currentMapping and currentMapping[action.key] then
+                text = text .. ": " .. currentMapping[action.key]
+            end
+        end
+        
+        love.graphics.printf(text, menuX + 2, y, menuWidth - 4, "left")
+    end
+    
+    -- Draw instructions
+    love.graphics.setColor(0.7, 0.7, 0.7, 1)
+    local instructionY = menuY + menuHeight + 5
+    love.graphics.printf("Up/Down: Select, A: Remap, B: Exit", menuX, instructionY, menuWidth, "center")
+    
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 return CharacterSelect

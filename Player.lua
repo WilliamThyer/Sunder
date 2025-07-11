@@ -93,7 +93,7 @@ function Player:getPlayerInput(dt, otherPlayer)
         controllerIndex = GameInfo.player2Controller or 2
     end
     
-    local input = InputManager.get(controllerIndex)
+            local input = InputManager.get(controllerIndex, self.playerIndex)
     
     -- Convert InputManager format to the format expected by processInput
     return {
