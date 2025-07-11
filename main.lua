@@ -274,6 +274,7 @@ function love.update(dt)
             if not Menu.restartMenuOpenedAt then
                 Menu.restartMenuOpenedAt = love.timer.getTime() -- Reset input delay timer only once
             end
+            Menu.updateRestartMenu(GameInfo)
             Menu.drawRestartMenu(players)
         end
         if Menu.paused then

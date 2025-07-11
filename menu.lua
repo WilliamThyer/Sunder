@@ -218,15 +218,19 @@ function Menu.updateRestartMenu(GameInfo)
         return
     end
 
+    -- Update keyboard edge detection
+    updateKeyboardEdgeDetection()
+
     local isTwoPlayer = (GameInfo.gameState == "game_2P")
     local startPressed, yPressed = false, false
 
     if isTwoPlayer then
-        -- Check both players
+        -- 2P mode: Either player can input
         for idx = 1, 2 do
             local input = InputManager.get(idx)
             local js = InputManager.getJoystick(idx)
             local justStates = {}
+            
             if js then
                 local jid = js:getID()
                 justStates = justPressed[jid] or {}
@@ -234,38 +238,45 @@ function Menu.updateRestartMenu(GameInfo)
             else
                 justStates = {}
             end
+            
+            -- Check if this player is using keyboard
             local isKeyboard = false
             if (idx == 1 and GameInfo.p1InputType == "keyboard") or (idx == 2 and GameInfo.p2InputType == "keyboard") then
                 isKeyboard = true
             end
+            
             if isKeyboard then
-                justStates = keyboardJustPressed
+                -- Use keyboard edge detection for this player
+                startPressed = startPressed or keyboardJustPressed["start"]
+                yPressed = yPressed or keyboardJustPressed["y"]
+            else
+                -- Use controller edge detection for this player
+                startPressed = startPressed or justStates["start"]
+                yPressed = yPressed or justStates["y"]
             end
-            startPressed = startPressed or justStates["start"]
-            yPressed = yPressed or justStates["y"]
         end
     else
-        -- 1P mode: Only P1 (the human) can input
-        local humanController = GameInfo.player1Controller or 1
-        local input = InputManager.get(humanController)
-        local js = InputManager.getJoystick(humanController)
+        -- 1P mode: Only P1 (the human player) can input
+        local p1Input = InputManager.get(1)
+        local js1 = InputManager.getJoystick(1)
         local justStates = {}
-        if js then
-            local jid = js:getID()
+        
+        if js1 then
+            local jid = js1:getID()
             justStates = justPressed[jid] or {}
             justPressed[jid] = nil
         else
             justStates = {}
         end
-        local isKeyboard = false
-        if (humanController == 1 and GameInfo.p1InputType == "keyboard") or (humanController == 2 and GameInfo.p2InputType == "keyboard") then
-            isKeyboard = true
+        
+        -- Check if P1 is using keyboard
+        if GameInfo.p1InputType == "keyboard" then
+            startPressed = keyboardJustPressed["start"]
+            yPressed = keyboardJustPressed["y"]
+        else
+            startPressed = justStates["start"]
+            yPressed = justStates["y"]
         end
-        if isKeyboard then
-            justStates = keyboardJustPressed
-        end
-        startPressed = justStates["start"]
-        yPressed = justStates["y"]
     end
 
     -- Confirm selection with 'start' on controller
@@ -280,6 +291,7 @@ function Menu.updateRestartMenu(GameInfo)
         GameInfo.gameState = "characterselect"
         GameInfo.justEnteredCharacterSelect = true
     end
+    
     -- Clear keyboard edge detection after processing
     clearKeyboardEdgeDetection()
 end
