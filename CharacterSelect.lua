@@ -282,6 +282,7 @@ function CharacterSelect.update(GameInfo)
         local isOnePlayer = (GameInfo.previousMode == "game_1P")
         if not isOnePlayer then
             GameInfo.p2InputType = nil
+            GameInfo.player2Controller = nil
             controllerAssignments[2] = nil
         end
         -- Clear all justPressed entries so A/Y presses that opened this screen are ignored:
@@ -303,6 +304,7 @@ function CharacterSelect.update(GameInfo)
             local jid = js:getID()
             if (justPressed[jid] and justPressed[jid]["start"]) and (GameInfo.p1InputType ~= js:getID()) then
                 GameInfo.p2InputType = js:getID()
+                GameInfo.player2Controller = js:getID()
                 justPressed[jid]["start"] = nil
                 break
             end
@@ -315,6 +317,7 @@ function CharacterSelect.update(GameInfo)
         end
         if (love.keyboard.isDown("kpenter") and CharacterSelect._p2KpenterReleased) or (love.keyboard.isDown("return") and CharacterSelect._p2ReturnReleased) then
             GameInfo.p2InputType = "keyboard"
+            GameInfo.player2Controller = "keyboard"
             CharacterSelect._p2KpenterReleased = false
             CharacterSelect._p2ReturnReleased = false
         end
@@ -335,6 +338,7 @@ function CharacterSelect.update(GameInfo)
         end
         if unassign then
             GameInfo.p2InputType = nil
+            GameInfo.player2Controller = nil
             return
         end
     end
@@ -353,13 +357,12 @@ function CharacterSelect.update(GameInfo)
         end
         p1Input = InputManager.getKeyboardInput(1)
     else
-        for _, js in ipairs(love.joystick.getJoysticks()) do
-            if js:getID() == GameInfo.p1InputType then
-                local jid = js:getID()
-                justStates[1] = justPressed[jid] or {}
-                justPressed[jid] = nil
-                p1Input = InputManager.get(1)
-            end
+        local js = InputManager.getJoystick(GameInfo.player1Controller)
+        if js then
+            local jid = js:getID()
+            justStates[1] = justPressed[jid] or {}
+            justPressed[jid] = nil
+            p1Input = InputManager.get(GameInfo.player1Controller)
         end
     end
     -- P2 edge detection
@@ -374,13 +377,12 @@ function CharacterSelect.update(GameInfo)
         end
         p2Input = InputManager.getKeyboardInput(2)
     elseif GameInfo.p2InputType then
-        for _, js in ipairs(love.joystick.getJoysticks()) do
-            if js:getID() == GameInfo.p2InputType then
-                local jid = js:getID()
-                justStates[2] = justPressed[jid] or {}
-                justPressed[jid] = nil
-                p2Input = InputManager.get(2)
-            end
+        local js = InputManager.getJoystick(GameInfo.player2Controller)
+        if js then
+            local jid = js:getID()
+            justStates[2] = justPressed[jid] or {}
+            justPressed[jid] = nil
+            p2Input = InputManager.get(GameInfo.player2Controller)
         end
     end
 
@@ -426,6 +428,7 @@ function CharacterSelect.update(GameInfo)
                 return
             else
                 GameInfo.p2InputType = nil
+                GameInfo.player2Controller = nil
                 clearKeyboardEdgeDetection()
                 return
             end
@@ -440,6 +443,7 @@ function CharacterSelect.update(GameInfo)
                     return
                 else
                     GameInfo.p2InputType = nil
+                    GameInfo.player2Controller = nil
                     clearKeyboardEdgeDetection()
                     return
                 end
@@ -521,6 +525,7 @@ function CharacterSelect.update(GameInfo)
                 return
             elseif not playerSelections[2].locked then
                 GameInfo.p2InputType = nil
+                GameInfo.player2Controller = nil
                 clearKeyboardEdgeDetection()
                 return
             end
@@ -531,6 +536,7 @@ function CharacterSelect.update(GameInfo)
                 return
             elseif not playerSelections[2].locked then
                 GameInfo.p2InputType = nil
+                GameInfo.player2Controller = nil
                 return
             end
         end
@@ -549,9 +555,8 @@ function CharacterSelect.beginGame(GameInfo)
     GameInfo.player1Color = colorNames[playerSelections[1].colorIndex]
     GameInfo.player2Color = colorNames[playerSelections[2].colorIndex]
 
-    -- Set the controller assignments in GameInfo for the game
-    GameInfo.player1Controller = GameInfo.p1InputType
-    GameInfo.player2Controller = GameInfo.p2InputType
+    -- The controller assignments are already set in GameInfo from the input assignment process
+    -- No need to override them here
 
     GameInfo.gameState = GameInfo.previousMode
     startGame(GameInfo.gameState)

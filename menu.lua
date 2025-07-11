@@ -86,13 +86,24 @@ function Menu.updateMenu(GameInfo)
     -- Update keyboard edge detection
     updateKeyboardEdgeDetection()
     
-    -- Get input from both controllers
-    local input1 = InputManager.get(1)
-    local input2 = InputManager.get(2)
+    -- Get input from the correct controllers based on GameInfo assignments
+    local p1Input = nil
+    local p2Input = nil
     
+    -- Handle P1 input
+    if GameInfo.p1InputType == "keyboard" then
+        p1Input = InputManager.getKeyboardInput(1)
+    else
+        p1Input = InputManager.get(GameInfo.player1Controller)
+    end
+    
+    -- For menu navigation, we can use any available controller or keyboard
     -- Get joystick objects for edge detection
-    local js1 = InputManager.getJoystick(1)
-    local js2 = InputManager.getJoystick(2)
+    local js1 = InputManager.getJoystick(GameInfo.player1Controller)
+    local js2 = nil
+    if GameInfo.p2InputType and GameInfo.p2InputType ~= "keyboard" then
+        js2 = InputManager.getJoystick(GameInfo.player2Controller)
+    end
     
     -- Copy and consume justPressed for edge detection
     local justStates = {}
@@ -118,28 +129,22 @@ function Menu.updateMenu(GameInfo)
             justStates[1][k] = true
         end
     end
-    -- Optionally, allow keyboard for player 2 as well (uncomment if desired)
-    -- for k,v in pairs(keyboardJustPressed) do
-    --     if v then
-    --         justStates[2][k] = true
-    --     end
-    -- end
 
     -- Allow either controller or keyboard to move the selection
     local moveUp = false
     local moveDown = false
     
-    if js1 and (input1.moveY < -0.5) then
+    if js1 and (p1Input.moveY < -0.5) then
         moveUp = true
-    elseif js2 and (input2.moveY < -0.5) then
+    elseif js2 and (p2Input and p2Input.moveY < -0.5) then
         moveUp = true
     elseif keyboardJustPressed.up then
         moveUp = true
     end
     
-    if js1 and (input1.moveY > 0.5) then
+    if js1 and (p1Input.moveY > 0.5) then
         moveDown = true
-    elseif js2 and (input2.moveY > 0.5) then
+    elseif js2 and (p2Input and p2Input.moveY > 0.5) then
         moveDown = true
     elseif keyboardJustPressed.down then
         moveDown = true
@@ -160,10 +165,12 @@ function Menu.updateMenu(GameInfo)
             GameInfo.previousMode = "game_1P"
             GameInfo.keyboardPlayer = 1
             GameInfo.p2InputType = nil
+            GameInfo.player2Controller = nil
             GameInfo.p2Assigned = false
         else
             GameInfo.previousMode = "game_2P"
             GameInfo.p2InputType = nil
+            GameInfo.player2Controller = nil
             GameInfo.p2Assigned = false
             GameInfo.keyboardPlayer = nil
         end
@@ -226,56 +233,53 @@ function Menu.updateRestartMenu(GameInfo)
 
     if isTwoPlayer then
         -- 2P mode: Either player can input
-        for idx = 1, 2 do
-            local input = InputManager.get(idx)
-            local js = InputManager.getJoystick(idx)
-            local justStates = {}
-            
-            if js then
-                local jid = js:getID()
-                justStates = justPressed[jid] or {}
+        -- Check P1 input
+        if GameInfo.p1InputType == "keyboard" then
+            startPressed = startPressed or keyboardJustPressed["start"]
+            yPressed = yPressed or keyboardJustPressed["y"]
+        else
+            local js1 = InputManager.getJoystick(GameInfo.player1Controller)
+            if js1 then
+                local jid = js1:getID()
+                local justStates = justPressed[jid] or {}
                 justPressed[jid] = nil
-            else
-                justStates = {}
+                startPressed = startPressed or justStates["start"]
+                yPressed = yPressed or justStates["y"]
             end
-            
-            -- Check if this player is using keyboard
-            local isKeyboard = false
-            if (idx == 1 and GameInfo.p1InputType == "keyboard") or (idx == 2 and GameInfo.p2InputType == "keyboard") then
-                isKeyboard = true
-            end
-            
-            if isKeyboard then
-                -- Use keyboard edge detection for this player
-                startPressed = startPressed or keyboardJustPressed["start"]
-                yPressed = yPressed or keyboardJustPressed["y"]
-            else
-                -- Use controller edge detection for this player
+        end
+        
+        -- Check P2 input
+        if GameInfo.p2InputType == "keyboard" then
+            startPressed = startPressed or keyboardJustPressed["start"]
+            yPressed = yPressed or keyboardJustPressed["y"]
+        else
+            local js2 = InputManager.getJoystick(GameInfo.player2Controller)
+            if js2 then
+                local jid = js2:getID()
+                local justStates = justPressed[jid] or {}
+                justPressed[jid] = nil
                 startPressed = startPressed or justStates["start"]
                 yPressed = yPressed or justStates["y"]
             end
         end
     else
         -- 1P mode: Only P1 (the human player) can input
-        local p1Input = InputManager.get(1)
-        local js1 = InputManager.getJoystick(1)
-        local justStates = {}
-        
-        if js1 then
-            local jid = js1:getID()
-            justStates = justPressed[jid] or {}
-            justPressed[jid] = nil
-        else
-            justStates = {}
-        end
-        
-        -- Check if P1 is using keyboard
+        -- Check keyboard input for P1
         if GameInfo.p1InputType == "keyboard" then
             startPressed = keyboardJustPressed["start"]
             yPressed = keyboardJustPressed["y"]
-        else
-            startPressed = justStates["start"]
-            yPressed = justStates["y"]
+        end
+        
+        -- Check controller input for P1 (if P1 is using a controller)
+        if GameInfo.p1InputType ~= "keyboard" and GameInfo.player1Controller then
+            local js1 = InputManager.getJoystick(GameInfo.player1Controller)
+            if js1 then
+                local jid = js1:getID()
+                local justStates = justPressed[jid] or {}
+                justPressed[jid] = nil
+                startPressed = startPressed or justStates["start"]
+                yPressed = yPressed or justStates["y"]
+            end
         end
     end
 

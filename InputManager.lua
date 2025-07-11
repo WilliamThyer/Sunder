@@ -1,6 +1,6 @@
 -- InputManager.lua
 local M = {
-    joysticks = {},    -- [playerIndex] = joystick object or nil
+    joysticks = {},    -- [joystickID] = joystick object (changed from [playerIndex])
     deadzone  = 0.3,
     lastRefresh = 0,   -- Track when we last refreshed controller detection
     refreshInterval = 1.0, -- Check for new controllers every second
@@ -34,12 +34,8 @@ function M.initialize()
     love.handlers.joystickremoved = function(_, stick)
         if stick then
             -- print("InputManager: joystickremoved event received for joystick " .. stick:getID())
-            for i = 1, 2 do
-                if M.joysticks[i] == stick then 
-                    M.joysticks[i] = nil 
-                    -- print("InputManager: Removed joystick " .. stick:getID() .. " from player " .. i)
-                end
-            end
+            M.joysticks[stick:getID()] = nil
+            -- print("InputManager: Removed joystick " .. stick:getID())
         end
     end
 end
@@ -93,26 +89,9 @@ function M.refreshControllers()
     -- Get all currently connected joysticks
     local allJoysticks = love.joystick.getJoysticks()
     
-    -- Check for any new joysticks that aren't already assigned
+    -- Store joysticks by their ID instead of automatically assigning to player slots
     for _, stick in ipairs(allJoysticks) do
-        local alreadyAssigned = false
-        for i = 1, 2 do
-            if M.joysticks[i] == stick then
-                alreadyAssigned = true
-                break
-            end
-        end
-        
-        -- If this joystick isn't assigned, assign it to the first available slot
-        if not alreadyAssigned then
-            for i = 1, 2 do
-                if not M.joysticks[i] then
-                    M.joysticks[i] = stick
-                    -- print("InputManager: Assigned joystick " .. stick:getID() .. " to player " .. i)
-                    break
-                end
-            end
-        end
+        M.joysticks[stick:getID()] = stick
     end
 end
 
@@ -127,9 +106,8 @@ function M.update(dt)
     M.refreshControllers()
 end
 
--- Update get to use keyboard config if assigned
-function M.get(playerIndex)
-    local js = M.joysticks[playerIndex]
+-- Get input for a specific controller (by joystick ID or "keyboard")
+function M.get(controllerID)
     local input = {
         moveX  = 0,
         moveY  = 0,
@@ -142,6 +120,13 @@ function M.get(playerIndex)
         shoulderL = false,
         shoulderR = false,
     }
+    
+    if controllerID == "keyboard" then
+        -- This shouldn't happen, but handle it gracefully
+        return input
+    end
+    
+    local js = M.joysticks[controllerID]
     if js then
         local lx, ly = js:getGamepadAxis("leftx"), js:getGamepadAxis("lefty")
         if math.abs(lx) > M.deadzone then input.moveX = lx end
@@ -155,45 +140,21 @@ function M.get(playerIndex)
         input.shoulderL = js:isGamepadDown("leftshoulder")
         input.shoulderR = js:isGamepadDown("rightshoulder")
     end
-    -- Use keyboard config if assigned
-    if GameInfo and GameInfo["p"..playerIndex.."InputType"] == "keyboard" then
-        local kb = M.getKeyboardInput(playerIndex)
-        -- Combine axes (favor nonzero, or sum if both pressed)
-        local moveX = input.moveX ~= 0 and input.moveX or kb.moveX
-        if input.moveX ~= 0 and kb.moveX ~= 0 then
-            moveX = input.moveX + kb.moveX
-            if moveX > 1 then moveX = 1 elseif moveX < -1 then moveX = -1 end
-        end
-        local moveY = input.moveY ~= 0 and input.moveY or kb.moveY
-        if input.moveY ~= 0 and kb.moveY ~= 0 then
-            moveY = input.moveY + kb.moveY
-            if moveY > 1 then moveY = 1 elseif moveY < -1 then moveY = -1 end
-        end
-        input.moveX = moveX
-        input.moveY = moveY
-        input.a = input.a or kb.a
-        input.b = input.b or kb.b
-        input.x = input.x or kb.x
-        input.y = input.y or kb.y
-        input.start = input.start or kb.start
-        input.back = input.back or kb.back
-        input.shoulderL = input.shoulderL or kb.shoulderL
-        input.shoulderR = input.shoulderR or kb.shoulderR
-    end
+    
     return input
 end
 
--- Update getJoystick to never return nil for keyboard
-function M.getJoystick(playerIndex)
-    return M.joysticks[playerIndex]
+-- Get joystick object by ID
+function M.getJoystick(joystickID)
+    return M.joysticks[joystickID]
 end
 
--- Update hasController to always return true if either joystick or keyboard is assigned
-function M.hasController(playerIndex)
-    if GameInfo and GameInfo["p"..playerIndex.."InputType"] == "keyboard" then
+-- Check if a controller is available
+function M.hasController(controllerID)
+    if controllerID == "keyboard" then
         return true
     end
-    return M.joysticks[playerIndex] ~= nil
+    return M.joysticks[controllerID] ~= nil
 end
 
 -- Get keyboard mapping for display purposes

@@ -134,62 +134,28 @@ function updateGame(dt)
 
     local p1, p2 = players[1], players[2]
     
-    -- Use the controller assignment from GameInfo, or fall back to default if not set
-    local p1Controller = GameInfo.player1Controller or 1
-    local p2Controller = GameInfo.player2Controller or 2
-
-    -- Get input from InputManager for human players
-    local p1Input = InputManager.get(p1Controller)
-    local p2Input = InputManager.get(p2Controller)
+    -- Get input from the correct controllers based on GameInfo assignments
+    local p1Input = nil
+    local p2Input = nil
     
-    -- Merge keyboard input for P1 if P1 is using keyboard
+    -- Handle P1 input
     if GameInfo.p1InputType == "keyboard" then
-        local kb1 = InputManager.getKeyboardInput(1)
-        -- Combine axes (favor nonzero, or sum if both pressed)
-        local moveX = p1Input.moveX ~= 0 and p1Input.moveX or kb1.moveX
-        if p1Input.moveX ~= 0 and kb1.moveX ~= 0 then
-            moveX = p1Input.moveX + kb1.moveX
-            if moveX > 1 then moveX = 1 elseif moveX < -1 then moveX = -1 end
-        end
-        local moveY = p1Input.moveY ~= 0 and p1Input.moveY or kb1.moveY
-        if p1Input.moveY ~= 0 and kb1.moveY ~= 0 then
-            moveY = p1Input.moveY + kb1.moveY
-            if moveY > 1 then moveY = 1 elseif moveY < -1 then moveY = -1 end
-        end
-        p1Input.moveX = moveX
-        p1Input.moveY = moveY
-        p1Input.a = p1Input.a or kb1.a
-        p1Input.b = p1Input.b or kb1.b
-        p1Input.x = p1Input.x or kb1.x
-        p1Input.y = p1Input.y or kb1.y
-        p1Input.start = p1Input.start or kb1.start
-        p1Input.back = p1Input.back or kb1.back
-        p1Input.shoulderL = p1Input.shoulderL or kb1.shoulderL
-        p1Input.shoulderR = p1Input.shoulderR or kb1.shoulderR
+        p1Input = InputManager.getKeyboardInput(1)
+    else
+        p1Input = InputManager.get(GameInfo.player1Controller)
     end
-    -- Merge keyboard input for P2 if P2 is using keyboard
-    if GameInfo.p2InputType == "keyboard" then
-        local kb2 = InputManager.getKeyboardInput(2)
-        local moveX = p2Input.moveX ~= 0 and p2Input.moveX or kb2.moveX
-        if p2Input.moveX ~= 0 and kb2.moveX ~= 0 then
-            moveX = p2Input.moveX + kb2.moveX
-            if moveX > 1 then moveX = 1 elseif moveX < -1 then moveX = -1 end
+    
+    -- Handle P2 input
+    if GameInfo.gameState == "game_1P" then
+        -- In 1P mode, P2 is AI controlled, so no input needed
+        p2Input = nil
+    else
+        -- In 2P mode, get P2 input
+        if GameInfo.p2InputType == "keyboard" then
+            p2Input = InputManager.getKeyboardInput(2)
+        else
+            p2Input = InputManager.get(GameInfo.player2Controller)
         end
-        local moveY = p2Input.moveY ~= 0 and p2Input.moveY or kb2.moveY
-        if p2Input.moveY ~= 0 and kb2.moveY ~= 0 then
-            moveY = p2Input.moveY + kb2.moveY
-            if moveY > 1 then moveY = 1 elseif moveY < -1 then moveY = -1 end
-        end
-        p2Input.moveX = moveX
-        p2Input.moveY = moveY
-        p2Input.a = p2Input.a or kb2.a
-        p2Input.b = p2Input.b or kb2.b
-        p2Input.x = p2Input.x or kb2.x
-        p2Input.y = p2Input.y or kb2.y
-        p2Input.start = p2Input.start or kb2.start
-        p2Input.back = p2Input.back or kb2.back
-        p2Input.shoulderL = p2Input.shoulderL or kb2.shoulderL
-        p2Input.shoulderR = p2Input.shoulderR or kb2.shoulderR
     end
 
     -- Update each player with their input (only pass input to human players)
