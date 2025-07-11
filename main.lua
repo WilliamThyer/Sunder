@@ -29,6 +29,7 @@ GameInfo = {
     justEnteredCharacterSelect = false
 }
 
+-- track if a button was pressed this frame
 justPressed = {}
 
 local world, map
