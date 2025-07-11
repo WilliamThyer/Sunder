@@ -156,28 +156,19 @@ function Menu.updateMenu(GameInfo)
     if p1Pressed or p2Pressed then
         -- Determine which controller becomes Player 1
         if p1Pressed then
-            -- Controller 1 or keyboard for player 1 pressed A first
             GameInfo.player1Controller = 1
             GameInfo.player2Controller = 2
-            -- Set input types based on InputManager assignment
-            GameInfo.p1InputType = InputManager.getJoystick(1) and InputManager.getJoystick(1):getID() or "keyboard"
-            GameInfo.p2InputType = InputManager.getJoystick(2) and InputManager.getJoystick(2):getID() or "keyboard"
         else
-            -- Controller 2 or keyboard for player 2 pressed A first
             GameInfo.player1Controller = 2
             GameInfo.player2Controller = 1
-            GameInfo.p1InputType = InputManager.getJoystick(2) and InputManager.getJoystick(2):getID() or "keyboard"
-            GameInfo.p2InputType = InputManager.getJoystick(1) and InputManager.getJoystick(1):getID() or "keyboard"
         end
         if GameInfo.selectedOption == 1 then
             GameInfo.previousMode = "game_1P"
             GameInfo.keyboardPlayer = 1
-            -- For 1P, clear P2 assignment
             GameInfo.p2InputType = nil
             GameInfo.p2Assigned = false
         else
             GameInfo.previousMode = "game_2P"
-            -- For 2P, reset P2 assignment and do not set keyboardPlayer
             GameInfo.p2InputType = nil
             GameInfo.p2Assigned = false
             GameInfo.keyboardPlayer = nil

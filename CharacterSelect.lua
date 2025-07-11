@@ -477,6 +477,52 @@ function CharacterSelect.update(GameInfo)
         end
     end
 
+    -- 2P mode: allow P1 to deselect or return to menu
+    if not isOnePlayer then
+        -- P1: Deselect if locked, else return to menu
+        if GameInfo.p1InputType == "keyboard" and keyboardJustPressed.b then
+            if playerSelections[1].locked then
+                playerSelections[1].locked = false
+                clearKeyboardEdgeDetection()
+                return
+            else
+                GameInfo.gameState = "menu"
+                clearKeyboardEdgeDetection()
+                return
+            end
+        end
+        if GameInfo.p1InputType ~= "keyboard" and justStates[1] and justStates[1].b then
+            if playerSelections[1].locked then
+                playerSelections[1].locked = false
+                return
+            else
+                GameInfo.gameState = "menu"
+                return
+            end
+        end
+        -- P2: Deselect if locked, else unassign controller (one action per press)
+        if GameInfo.p2InputType == "keyboard" and keyboardJustPressed.b then
+            if playerSelections[2].locked then
+                playerSelections[2].locked = false
+                clearKeyboardEdgeDetection()
+                return
+            elseif not playerSelections[2].locked then
+                GameInfo.p2InputType = nil
+                clearKeyboardEdgeDetection()
+                return
+            end
+        end
+        if GameInfo.p2InputType and GameInfo.p2InputType ~= "keyboard" and justStates[2] and justStates[2].b then
+            if playerSelections[2].locked then
+                playerSelections[2].locked = false
+                return
+            elseif not playerSelections[2].locked then
+                GameInfo.p2InputType = nil
+                return
+            end
+        end
+    end
+
     clearKeyboardEdgeDetection()
 end
 
