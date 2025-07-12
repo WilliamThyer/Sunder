@@ -148,7 +148,7 @@ local keyboardJustPressed = {
 
 -- Update keyboard edge detection
 local function updateKeyboardEdgeDetection()
-    local keyboardMap = InputManager.getKeyboardMapping(1)
+    local keyboardMap = InputManager.getDefaultKeyboardMapping(1)
     
     -- Check for key presses this frame
     if keyboardMap.a and love.keyboard.isDown(keyboardMap.a) then
@@ -349,12 +349,12 @@ local function updateRemapMenu(dt)
             remapState.remapCooldown = 0.2
         end
     else
-        -- In selection mode, handle navigation
+        -- In selection mode, handle navigation (use default mappings for remap menu navigation)
         local input = nil
         if inputType == "keyboard" then
-            input = InputManager.getKeyboardInput(playerIndex)
+            input = InputManager.getDefaultKeyboardInput(playerIndex)
         else
-            input = InputManager.get(inputType, playerIndex)
+            input = InputManager.getDefault(inputType, playerIndex)
         end
         
         if input then
@@ -527,7 +527,7 @@ function CharacterSelect.update(GameInfo)
     if not isOnePlayer and isP2Assigned() and not playerSelections[2].locked then
         local unassign = false
         if GameInfo.p2InputType == "keyboard" then
-            local kb = InputManager.getKeyboardInput(2)
+            local kb = InputManager.getDefaultKeyboardInput(2)
             if kb.b then unassign = true end
         else
             for _, js in ipairs(love.joystick.getJoysticks()) do
@@ -548,41 +548,41 @@ function CharacterSelect.update(GameInfo)
     for i = 1, 2 do
         justStates[i] = {}
     end
-    -- P1 edge detection
+    -- P1 edge detection (use default mappings for character select navigation)
     local p1Input = nil
     if GameInfo.p1InputType == "keyboard" then
-        local kb = InputManager.getKeyboardInput(1)
+        local kb = InputManager.getDefaultKeyboardInput(1)
         for k,v in pairs(keyboardJustPressed) do
             if v then justStates[1][k] = true end
         end
-        p1Input = InputManager.getKeyboardInput(1)
+        p1Input = InputManager.getDefaultKeyboardInput(1)
     else
         local js = InputManager.getJoystick(GameInfo.player1Controller)
         if js then
             local jid = js:getID()
             justStates[1] = justPressed[jid] or {}
             justPressed[jid] = nil
-            p1Input = InputManager.get(GameInfo.player1Controller, 1)
+            p1Input = InputManager.getDefault(GameInfo.player1Controller, 1)
         end
     end
-    -- P2 edge detection
+    -- P2 edge detection (use default mappings for character select navigation)
     local p2Input = nil
     if isOnePlayer then
         p2Input = p1Input
         justStates[2] = justStates[1]
     elseif GameInfo.p2InputType == "keyboard" then
-        local kb = InputManager.getKeyboardInput(2)
+        local kb = InputManager.getDefaultKeyboardInput(2)
         for k,v in pairs(keyboardJustPressed) do
             if v then justStates[2][k] = true end
         end
-        p2Input = InputManager.getKeyboardInput(2)
+        p2Input = InputManager.getDefaultKeyboardInput(2)
     elseif GameInfo.p2InputType then
         local js = InputManager.getJoystick(GameInfo.player2Controller)
         if js then
             local jid = js:getID()
             justStates[2] = justPressed[jid] or {}
             justPressed[jid] = nil
-            p2Input = InputManager.get(GameInfo.player2Controller, 2)
+            p2Input = InputManager.getDefault(GameInfo.player2Controller, 2)
         end
     end
 
@@ -620,7 +620,7 @@ function CharacterSelect.update(GameInfo)
     end
     -- 2P mode: handle P2 B for deselect or unassign
     if not isOnePlayer and isP2Assigned() and GameInfo.p2InputType == "keyboard" and not remapState.active then
-        local kb = InputManager.getKeyboardInput(2)
+        local kb = InputManager.getDefaultKeyboardInput(2)
         if kb.b then
             if playerSelections[2].locked then
                 playerSelections[2].locked = false
@@ -651,7 +651,7 @@ function CharacterSelect.update(GameInfo)
         end
     end
 
-    -- P1 always has input
+    -- P1 always has input (use default mappings for character select navigation)
     if isOnePlayer then
         if not playerSelections[1].locked then
             if p1Input then

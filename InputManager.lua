@@ -43,7 +43,22 @@ function M.getEffectiveKeyboardMapping(playerIndex)
     if customMappings[playerIndex] then
         return customMappings[playerIndex]
     else
-        return keyboardMaps[playerIndex]
+        -- Return a copy of default mappings to prevent modification of the original
+        local defaultMap = keyboardMaps[playerIndex]
+        return {
+            left = defaultMap.left,
+            right = defaultMap.right,
+            up = defaultMap.up,
+            down = defaultMap.down,
+            a = defaultMap.a,
+            b = defaultMap.b,
+            x = defaultMap.x,
+            y = defaultMap.y,
+            start = defaultMap.start,
+            back = defaultMap.back,
+            shoulderL = defaultMap.shoulderL,
+            shoulderR = defaultMap.shoulderR
+        }
     end
 end
 
@@ -78,7 +93,17 @@ function M.getEffectiveControllerMapping(playerIndex)
     if customControllerMappings[playerIndex] then
         return customControllerMappings[playerIndex]
     else
-        return defaultControllerMappings
+        -- Return a copy of default mappings to prevent modification of the original
+        return {
+            a = defaultControllerMappings.a,
+            b = defaultControllerMappings.b,
+            x = defaultControllerMappings.x,
+            y = defaultControllerMappings.y,
+            start = defaultControllerMappings.start,
+            back = defaultControllerMappings.back,
+            shoulderL = defaultControllerMappings.shoulderL,
+            shoulderR = defaultControllerMappings.shoulderR
+        }
     end
 end
 
@@ -322,6 +347,91 @@ end
 -- Get keyboard mapping for display purposes
 function M.getKeyboardMapping(playerIndex)
     return M.getEffectiveKeyboardMapping(playerIndex)
+end
+
+-- Get default keyboard mapping (ignores custom mappings)
+function M.getDefaultKeyboardMapping(playerIndex)
+    return keyboardMaps[playerIndex]
+end
+
+-- Get default keyboard input (ignores custom mappings)
+function M.getDefaultKeyboardInput(playerIndex)
+    local map = keyboardMaps[playerIndex]
+    local input = {
+        moveX  = 0,
+        moveY  = 0,
+        a      = false,
+        b      = false,
+        x      = false,
+        y      = false,
+        start  = false,
+        back   = false,
+        shoulderL = false,
+        shoulderR = false,
+    }
+    if not map then return input end
+    if map.left and love.keyboard.isDown(map.left) then input.moveX = input.moveX - 1 end
+    if map.right and love.keyboard.isDown(map.right) then input.moveX = input.moveX + 1 end
+    if map.up and love.keyboard.isDown(map.up) then input.moveY = input.moveY - 1 end
+    if map.down and love.keyboard.isDown(map.down) then input.moveY = input.moveY + 1 end
+    if input.moveX ~= 0 and input.moveY ~= 0 then
+        input.moveX = input.moveX * 0.707
+        input.moveY = input.moveY * 0.707
+    end
+    input.a = map.a and love.keyboard.isDown(map.a)
+    input.b = map.b and love.keyboard.isDown(map.b)
+    input.x = map.x and love.keyboard.isDown(map.x)
+    input.y = map.y and love.keyboard.isDown(map.y)
+    input.start = map.start and love.keyboard.isDown(map.start)
+    input.back = map.back and love.keyboard.isDown(map.back)
+    input.shoulderL = map.shoulderL and love.keyboard.isDown(map.shoulderL)
+    input.shoulderR = map.shoulderR and love.keyboard.isDown(map.shoulderR)
+    return input
+end
+
+-- Get default controller input (ignores custom mappings)
+function M.getDefaultControllerInput(controllerID, playerIndex)
+    local input = {
+        moveX  = 0,
+        moveY  = 0,
+        a      = false,
+        b      = false,
+        x      = false,
+        y      = false,
+        start  = false,
+        back   = false,
+        shoulderL = false,
+        shoulderR = false,
+    }
+    
+    local js = M.joysticks[controllerID]
+    if js then
+        local lx, ly = js:getGamepadAxis("leftx"), js:getGamepadAxis("lefty")
+        if math.abs(lx) > M.deadzone then input.moveX = lx end
+        if math.abs(ly) > M.deadzone then input.moveY = ly end
+        
+        local mapping = defaultControllerMappings
+        input.a = mapping.a and js:isGamepadDown(mapping.a)
+        input.b = mapping.b and js:isGamepadDown(mapping.b)
+        input.x = mapping.x and js:isGamepadDown(mapping.x)
+        input.y = mapping.y and js:isGamepadDown(mapping.y)
+        input.start = mapping.start and js:isGamepadDown(mapping.start)
+        input.back = mapping.back and js:isGamepadDown(mapping.back)
+        input.shoulderL = mapping.shoulderL and js:isGamepadDown(mapping.shoulderL)
+        input.shoulderR = mapping.shoulderR and js:isGamepadDown(mapping.shoulderR)
+    end
+    
+    return input
+end
+
+-- Get default input (ignores custom mappings)
+function M.getDefault(controllerID, playerIndex)
+    if controllerID == "keyboard" then
+        return M.getDefaultKeyboardInput(playerIndex)
+    end
+    
+    playerIndex = playerIndex or 1
+    return M.getDefaultControllerInput(controllerID, playerIndex)
 end
 
 return M 

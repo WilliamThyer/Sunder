@@ -102,8 +102,8 @@ function startGame(mode)
 end
 
 function love.gamepadpressed(joystick, button)
-    -- Debug: print which joystick/button was pressed
-    print("[DEBUG] gamepadpressed: joystick ID=", joystick:getID(), "button=", button)
+    -- -- Debug: print which joystick/button was pressed
+    -- print("[DEBUG] gamepadpressed: joystick ID=", joystick:getID(), "button=", button)
     -- 1) Mark "button was pressed this frame" for edge-detection:
     local jid = joystick:getID()
     justPressed[jid] = justPressed[jid] or {}
@@ -115,8 +115,8 @@ end
 
 function love.keypressed(key)
     -- Forward keyboard input to Menu for pause functionality
-    local keyboardMap1 = InputManager.getKeyboardMapping(1)
-    local keyboardMap2 = InputManager.getKeyboardMapping(2)
+    local keyboardMap1 = InputManager.getDefaultKeyboardMapping(1)
+    local keyboardMap2 = InputManager.getDefaultKeyboardMapping(2)
     if key == keyboardMap1.start or key == keyboardMap1.y then
         Menu.handleKeyboardPauseInput(key, 1)
     elseif key == keyboardMap2.start or key == keyboardMap2.y then

@@ -32,8 +32,8 @@ local keyboardJustPressed = {
 
 -- Update keyboard edge detection
 local function updateKeyboardEdgeDetection()
-    local keyboardMap1 = InputManager.getKeyboardMapping(1)
-    local keyboardMap2 = InputManager.getKeyboardMapping(2)
+    local keyboardMap1 = InputManager.getDefaultKeyboardMapping(1)
+    local keyboardMap2 = InputManager.getDefaultKeyboardMapping(2)
     
     -- Check for key presses this frame for P1
     if love.keyboard.isDown(keyboardMap1.a) then
@@ -90,11 +90,11 @@ function Menu.updateMenu(GameInfo)
     local p1Input = nil
     local p2Input = nil
     
-    -- Handle P1 input
+    -- Handle P1 input (use default mappings for menu)
     if GameInfo.p1InputType == "keyboard" then
-        p1Input = InputManager.getKeyboardInput(1)
+        p1Input = InputManager.getDefaultKeyboardInput(1)
     else
-        p1Input = InputManager.get(GameInfo.player1Controller, 1)
+        p1Input = InputManager.getDefault(GameInfo.player1Controller, 1)
     end
     
     -- For menu navigation, we can use any available controller or keyboard
@@ -360,7 +360,7 @@ function Menu.handleKeyboardPauseInput(key, playerIndex)
     return
   end
 
-  local keyboardMap = InputManager.getKeyboardMapping(playerIndex or 1)
+  local keyboardMap = InputManager.getDefaultKeyboardMapping(playerIndex or 1)
   
   if key == keyboardMap.start then
     if not Menu.paused then
