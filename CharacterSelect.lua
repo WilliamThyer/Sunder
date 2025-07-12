@@ -265,6 +265,11 @@ local function exitRemapMenu()
     remapState.playerIndex = nil
     remapState.selectedAction = 1
     remapState.remapping = false
+    
+    -- Clear edge detection state to prevent input carryover
+    clearKeyboardEdgeDetection()
+    -- Clear controller edge detection
+    justPressed = {}
 end
 
 -- Update remap menu
@@ -671,7 +676,7 @@ function CharacterSelect.update(GameInfo)
             if p1Input then
                 -- Check for X button to enter remap menu (edge detection)
                 if p1Input.x and not remapState.active and justStates[1] and justStates[1].x then
-                    startRemapMenu(2)
+                    startRemapMenu(1)
                     clearKeyboardEdgeDetection()
                     return
                 end
