@@ -185,6 +185,17 @@ end
 -- ----------------------------------------------------------------------
 -- Menu draw logic
 -- ----------------------------------------------------------------------
+function Menu.drawStartScreen()
+    love.graphics.clear(0, 0, 0, 1)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.printf("SUNDER", 0, 10, GameInfo.gameWidth/2, "center", 0, 2, 2)
+    love.graphics.printf(
+        "PRESS START/SPACE",
+        0, 30,
+        GameInfo.gameWidth, "center"
+    )
+end
+
 function Menu.drawMenu(GameInfo)
 
     -- Clear background to black so the text is visible
@@ -208,7 +219,7 @@ function Menu.drawMenu(GameInfo)
     -- Show keyboard controls if keyboard is enabled
     if GameInfo.keyboardPlayer == 1 or GameInfo.keyboardPlayer == 2 then
         love.graphics.setColor(0.7, 0.7, 0.7, 1)
-        love.graphics.printf("Use WASD to move, SPACE to select", 0, 50, GameInfo.gameWidth, "center", 0, 0.8, 0.8)
+        -- love.graphics.printf("Use WASD to move, SPACE to select", 0, 50, GameInfo.gameWidth, "center", 0, 0.8, 0.8)
     end
 
     love.graphics.setColor(1,1,1,1)  -- reset

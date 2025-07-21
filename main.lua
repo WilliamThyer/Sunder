@@ -253,18 +253,8 @@ function love.draw()
     push:start()
 
     if GameInfo.gameState == "inputassign" then
-        -- Draw input assignment screen
-        love.graphics.clear(0, 0, 0, 1)
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.printf(
-            "Press Start (controller) or Space (keyboard) to begin",
-            0, GameInfo.gameHeight / 2 - 8,
-            GameInfo.gameWidth, "center"
-        )
-        push:finish()
-        return
-    end
-    if GameInfo.gameState == "menu" then
+        Menu.drawStartScreen()
+    elseif GameInfo.gameState == "menu" then
         Menu.drawMenu(GameInfo)
     elseif GameInfo.gameState == "characterselect" then
         CharacterSelect.draw(GameInfo)
