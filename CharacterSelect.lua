@@ -103,8 +103,8 @@ local remapState = {
 local remappableActions = {
     { name = "Light Attack/Select", key = "a" },
     { name = "Heavy Attack/Back", key = "b" },
-    { name = "Jump", key = "y" },
-    { name = "Counter", key = "x" },
+    { name = "Jump", key = "x" },
+    { name = "Counter", key = "y" },
     { name = "Dash", key = "shoulderL" },
     { name = "Shield", key = "shoulderR" },
     { name = "Left", key = "left" },
@@ -967,7 +967,7 @@ function CharacterSelect.draw(GameInfo)
     -- If both locked, prompt "Press START to begin!"
     if playerSelections[1].locked and playerSelections[2].locked then
         love.graphics.printf(
-          "Press start to begin!",
+          "START/ENTER TO BEGIN",
           0, gameHeight - 43,
           gameWidth, "center", 0, 1, 1
         )
@@ -977,22 +977,23 @@ function CharacterSelect.draw(GameInfo)
     if not isOnePlayer and not isP2Assigned() then
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.printf(
-            "Player 2: Press Start (controller) or Enter (keyboard)",
-            0, gameHeight / 2 + 20,
+            "START/ENTER",
+            -- place text directly below P2 box
+            p2BoxX - 50, p2BoxY + boxHeight,
             gameWidth, "center"
         )
         return
     end
 
     -- Show keyboard controls if keyboard is enabled
-    if GameInfo.p1InputType == "keyboard" or GameInfo.p2InputType == "keyboard" then
-        love.graphics.setColor(0.7, 0.7, 0.7, 1)
-        love.graphics.printf("P1: WASD/Space, P2: Arrows/Keypad0, K/L: Color, Shift: Back", 0, gameHeight - 20, gameWidth, "center", 0, 0.7, 0.7)
-    end
+    -- if GameInfo.p1InputType == "keyboard" or GameInfo.p2InputType == "keyboard" then
+    --     love.graphics.setColor(0.7, 0.7, 0.7, 1)
+    --     love.graphics.printf("P1: WASD/Space, P2: Arrows/Keypad0, K/L: Color, Shift: Back", 0, gameHeight - 20, gameWidth, "center", 0, 0.7, 0.7)
+    -- end
     
     -- Show remap prompt
     love.graphics.setColor(0.8, 0.8, 0.8, 1)
-    love.graphics.printf("Press X to remap controls", 0, gameHeight - 35, gameWidth, "center", 0, 0.8, 0.8)
+    love.graphics.printf("X/ENTER: REMAP, Y/SHIFT: COLOR", 0, gameHeight - 43, gameWidth, "center", 0, 1, 1)
     
     -- Draw remap menu if active
     if remapState.active then
@@ -1007,25 +1008,26 @@ function drawRemapMenu(GameInfo)
     local gameWidth = GameInfo.gameWidth
     local gameHeight = GameInfo.gameHeight
     
-    -- Draw semi-transparent background
-    love.graphics.setColor(0, 0, 0, 0.8)
+    -- Draw background
+    love.graphics.setColor(0, 0, 0, 1)
     love.graphics.rectangle("fill", 0, 0, gameWidth, gameHeight)
     
     -- Draw menu box
     love.graphics.setColor(1, 1, 1, 1)
-    local menuWidth = 80
-    local menuHeight = 60
+    local menuWidth = gameWidth * 0.8
+    local menuHeight = 80
     local menuX = (gameWidth - menuWidth) / 2
-    local menuY = (gameHeight - menuHeight) / 2
-    love.graphics.rectangle("line", menuX, menuY, menuWidth, menuHeight)
+    -- draw menu box slightly lower
+    local menuY = (gameHeight - menuHeight) / 2 + 8
+    -- love.graphics.rectangle("line", menuX, menuY, menuWidth, menuHeight)
     
     -- Draw title
     local playerText = "Player " .. remapState.playerIndex .. " Remap"
-    love.graphics.printf(playerText, menuX, menuY - 10, menuWidth, "center")
+    love.graphics.printf(playerText, menuX, menuY, menuWidth, "center")
     
     -- Draw action list
     local startY = menuY + 10
-    local lineHeight = 6
+    local lineHeight = 7
     local playerActions = getRemappableActionsForPlayer(remapState.playerIndex)
     
     for i, action in ipairs(playerActions) do
