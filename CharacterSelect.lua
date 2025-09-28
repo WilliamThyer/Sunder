@@ -83,9 +83,10 @@ local mageQuad = love.graphics.newQuad(
 --   colorIndex: which color (1..4) is chosen
 --   colorChangeCooldown: to prevent rapid color cycling
 --   inputDelay: to prevent input carryover from menu
+--   navigationMode: 1 = Remap, 2 = Character Select, 3 = Back
 local playerSelections = {
-    [1] = { cursor = 1, locked = false, moveCooldown = 0, colorIndex = 1, colorChangeCooldown = 0, inputDelay = 0 },
-    [2] = { cursor = 1, locked = false, moveCooldown = 0, colorIndex = 2, colorChangeCooldown = 0, inputDelay = 0 }
+    [1] = { cursor = 1, locked = false, moveCooldown = 0, colorIndex = 1, colorChangeCooldown = 0, inputDelay = 0, navigationMode = 2 },
+    [2] = { cursor = 1, locked = false, moveCooldown = 0, colorIndex = 2, colorChangeCooldown = 0, inputDelay = 0, navigationMode = 2 }
 }
 
 -- Remap menu state
@@ -261,10 +262,18 @@ end
 
 -- Exit remap menu
 local function exitRemapMenu()
+    -- Store player index before clearing it
+    local playerIndex = remapState.playerIndex
+    
     remapState.active = false
     remapState.playerIndex = nil
     remapState.selectedAction = 1
     remapState.remapping = false
+    
+    -- Reset the player's navigation mode back to character select
+    if playerIndex then
+        playerSelections[playerIndex].navigationMode = 2
+    end
     
     -- Clear edge detection state to prevent input carryover
     clearKeyboardEdgeDetection()
@@ -353,34 +362,41 @@ local function updateRemapMenu(dt)
             remapState.remapping = false
             remapState.remapCooldown = 0.2
         end
+        
+        return  -- Don't process other input while remapping
+    end
+    
+    -- In selection mode, handle navigation (use default mappings for remap menu navigation)
+    local input = nil
+    if inputType == "keyboard" then
+        input = InputManager.getDefaultKeyboardInput(playerIndex)
     else
-        -- In selection mode, handle navigation (use default mappings for remap menu navigation)
-        local input = nil
-        if inputType == "keyboard" then
-            input = InputManager.getDefaultKeyboardInput(playerIndex)
-        else
-            input = InputManager.getDefault(inputType, playerIndex)
+        input = InputManager.getDefault(inputType, playerIndex)
+    end
+        
+    if input then
+        -- Navigate with up/down
+        local playerActions = getRemappableActionsForPlayer(playerIndex)
+        local totalOptions = #playerActions + 1  -- +1 for Back option
+        
+        if input.moveY < -0.5 and remapState.remapCooldown <= 0 then
+            remapState.selectedAction = remapState.selectedAction - 1
+            if remapState.selectedAction < 1 then
+                remapState.selectedAction = totalOptions
+            end
+            remapState.remapCooldown = 0.2
+        elseif input.moveY > 0.5 and remapState.remapCooldown <= 0 then
+            remapState.selectedAction = remapState.selectedAction + 1
+            if remapState.selectedAction > totalOptions then
+                remapState.selectedAction = 1
+            end
+            remapState.remapCooldown = 0.2
         end
         
-        if input then
-            -- Navigate with up/down
-            local playerActions = getRemappableActionsForPlayer(playerIndex)
-            if input.moveY < -0.5 and remapState.remapCooldown <= 0 then
-                remapState.selectedAction = remapState.selectedAction - 1
-                if remapState.selectedAction < 1 then
-                    remapState.selectedAction = #playerActions
-                end
-                remapState.remapCooldown = 0.2
-            elseif input.moveY > 0.5 and remapState.remapCooldown <= 0 then
-                remapState.selectedAction = remapState.selectedAction + 1
-                if remapState.selectedAction > #playerActions then
-                    remapState.selectedAction = 1
-                end
-                remapState.remapCooldown = 0.2
-            end
-            
-            -- Enter remap mode with A
-            if input.a and remapState.remapCooldown <= 0 then
+        -- Enter remap mode with A or select Back
+        if input.a and remapState.remapCooldown <= 0 then
+            if remapState.selectedAction <= #playerActions then
+                -- Remap an action
                 remapState.remapping = true
                 remapState.remapCooldown = 0.2
                 
@@ -390,13 +406,18 @@ local function updateRemapMenu(dt)
                 else
                     remapState.lastPressedButtons = InputManager.getPressedButtons(inputType)
                 end
-            end
-            
-            -- Exit with B
-            if input.b and remapState.remapCooldown <= 0 then
+            else
+                -- Back option selected - exit immediately
                 exitRemapMenu()
                 remapState.remapCooldown = 0.2
+                return
             end
+        end
+        
+        -- Exit with B
+        if input.b and remapState.remapCooldown <= 0 then
+            exitRemapMenu()
+            remapState.remapCooldown = 0.2
         end
     end
 end
@@ -410,44 +431,111 @@ end
 --     changeColor = true if "Y was pressed this frame"
 --     moveX, moveY = current axis values for left stick
 -----------------------------------------------------
-function CharacterSelect.updateCharacter(input, playerIndex, dt)
+function CharacterSelect.updateCharacter(input, playerIndex, dt, isOnePlayer)
     local ps = playerSelections[playerIndex]
     ps.moveCooldown = math.max(0, ps.moveCooldown - dt)
     ps.colorChangeCooldown = math.max(0, ps.colorChangeCooldown - dt)
     ps.inputDelay = math.max(0, ps.inputDelay - dt)
 
-    -- 1) Move cursor left/right if not locked
-    if (not ps.locked) and ps.moveCooldown <= 0 then
+    -- Handle vertical navigation between modes
+    if ps.moveCooldown <= 0 then
         local move = 0
-        if input.moveX < -0.5 then move = -1
-        elseif input.moveX >  0.5 then move =  1 end
+        if input.moveY < -0.5 then move = -1
+        elseif input.moveY >  0.5 then move =  1 end
 
         if move ~= 0 then
-            ps.cursor = ps.cursor + move
-            if ps.cursor < 1 then
-                ps.cursor = #characters
-            elseif ps.cursor > #characters then
-                ps.cursor = 1
+            if ps.navigationMode == 2 then
+                -- In character select mode, up goes to remap, down goes to back
+                if move == -1 then
+                    ps.navigationMode = 1  -- Up to remap
+                else
+                    ps.navigationMode = 3  -- Down to back
+                end
+            else
+                -- In menu modes, up/down goes back to character select
+                if (move == -1 and ps.navigationMode == 1) then
+                    -- Up from remap - do nothing (remap is the top)
+                elseif (move == 1 and ps.navigationMode == 3) then
+                    -- Down from back - do nothing (back is the bottom)
+                else
+                    -- Otherwise go back to character select
+                    ps.navigationMode = 2
+                end
             end
             ps.moveCooldown = 0.25
         end
     end
 
-    -- 2) Y (changeColor) toggles through available colors (only if not locked and input delay is over)
-    if input.y and ps.colorChangeCooldown <= 0 and ps.inputDelay <= 0 then
-        cycleColor(playerIndex)
-        ps.colorChangeCooldown = 0.2  -- 200ms cooldown
-    end
-
-    -- 3) If not locked, A (select) locks in character. If already locked, B (back) unlocks.
-    if not ps.locked then
+    -- Handle different navigation modes
+    if ps.navigationMode == 1 then
+        -- Remap mode
         if input.a and ps.inputDelay <= 0 then
-            ps.locked = true
+            startRemapMenu(playerIndex)
+            return
         end
-    else
+        -- B to go back to character select
         if input.b then
-            ps.locked = false
+            ps.navigationMode = 2
+            return
         end
+        return
+    elseif ps.navigationMode == 2 then
+        -- Character selection mode
+        -- Only allow character selection if not locked
+        if not ps.locked then
+            -- Move cursor left/right
+            if ps.moveCooldown <= 0 then
+                local move = 0
+                if input.moveX < -0.5 then move = -1
+                elseif input.moveX >  0.5 then move =  1 end
+
+                if move ~= 0 then
+                    ps.cursor = ps.cursor + move
+                    if ps.cursor < 1 then
+                        ps.cursor = #characters
+                    elseif ps.cursor > #characters then
+                        ps.cursor = 1
+                    end
+                    ps.moveCooldown = 0.25
+                end
+            end
+
+            -- Y (changeColor) toggles through available colors
+            if input.y and ps.colorChangeCooldown <= 0 and ps.inputDelay <= 0 then
+                cycleColor(playerIndex)
+                ps.colorChangeCooldown = 0.2  -- 200ms cooldown
+            end
+
+            -- A (select) locks in character
+            if input.a and ps.inputDelay <= 0 then
+                ps.locked = true
+            end
+        else
+            -- If locked, B unlocks
+            if input.b then
+                ps.locked = false
+            end
+        end
+    elseif ps.navigationMode == 3 then
+        -- Back mode
+        if input.a and ps.inputDelay <= 0 then
+            if ps.locked then
+                ps.locked = false
+            else
+                -- Return to menu or unassign P2
+                if playerIndex == 2 and not isOnePlayer then
+                    return "unassign_p2"
+                else
+                    return "menu"
+                end
+            end
+        end
+        -- B to go back to character select
+        if input.b then
+            ps.navigationMode = 2
+            return
+        end
+        return
     end
 end
 
@@ -482,6 +570,7 @@ function CharacterSelect.update(GameInfo)
             playerSelections[i].colorIndex   = (i == 1) and 1 or 2
             playerSelections[i].colorChangeCooldown = 0.5  -- Increased delay to prevent carryover
             playerSelections[i].inputDelay = 0.3  -- 300ms delay to prevent input carryover
+            playerSelections[i].navigationMode = 2  -- Start in character select mode
         end
         -- Only reset P2 controller assignment in 2P mode
         local isOnePlayer = (GameInfo.previousMode == "game_1P")
@@ -528,25 +617,7 @@ function CharacterSelect.update(GameInfo)
         end
         -- Do not process any other input for P2 until assigned
     end
-    -- Unassign P2 if back is pressed and not locked
-    if not isOnePlayer and isP2Assigned() and not playerSelections[2].locked then
-        local unassign = false
-        if GameInfo.p2InputType == "keyboard" then
-            local kb = InputManager.getDefaultKeyboardInput(2)
-            if kb.b then unassign = true end
-        else
-            for _, js in ipairs(love.joystick.getJoysticks()) do
-                if js:getID() == GameInfo.p2InputType and js:isGamepadDown("b") then
-                    unassign = true
-                end
-            end
-        end
-        if unassign then
-            GameInfo.p2InputType = nil
-            GameInfo.player2Controller = nil
-            return
-        end
-    end
+
 
     -- Edge detection for both players
     local justStates = {}
@@ -591,128 +662,62 @@ function CharacterSelect.update(GameInfo)
         end
     end
 
-    -- 1P mode: handle B for deselect or exit
-    if isOnePlayer then
-        -- Keyboard B
-        if GameInfo.p1InputType == "keyboard" and keyboardJustPressed.b and not remapState.active then
-            if playerSelections[2].locked then
-                playerSelections[2].locked = false
-                clearKeyboardEdgeDetection()
-                return
-            elseif playerSelections[1].locked then
-                playerSelections[1].locked = false
-                clearKeyboardEdgeDetection()
-                return
-            else
-                GameInfo.gameState = "menu"
-                clearKeyboardEdgeDetection()
-                return
-            end
-        end
-        -- Controller B (edge-detection)
-        if GameInfo.p1InputType ~= "keyboard" and justStates[1] and justStates[1].b and not remapState.active then
-            if playerSelections[2].locked then
-                playerSelections[2].locked = false
-                return
-            elseif playerSelections[1].locked then
-                playerSelections[1].locked = false
-                return
-            else
-                GameInfo.gameState = "menu"
-                return
-            end
-        end
-    end
-    -- 2P mode: handle P2 B for deselect or unassign
-    if not isOnePlayer and isP2Assigned() and GameInfo.p2InputType == "keyboard" and not remapState.active then
-        local kb = InputManager.getDefaultKeyboardInput(2)
-        if kb.b then
-            if playerSelections[2].locked then
-                playerSelections[2].locked = false
-                clearKeyboardEdgeDetection()
-                return
-            else
-                GameInfo.p2InputType = nil
-                GameInfo.player2Controller = nil
-                clearKeyboardEdgeDetection()
-                return
-            end
-        end
-    end
-    if not isOnePlayer and isP2Assigned() and GameInfo.p2InputType and GameInfo.p2InputType ~= "keyboard" and not remapState.active then
-        for _, js in ipairs(love.joystick.getJoysticks()) do
-            if js:getID() == GameInfo.p2InputType and js:isGamepadDown("b") then
-                if playerSelections[2].locked then
-                    playerSelections[2].locked = false
-                    clearKeyboardEdgeDetection()
-                    return
-                else
-                    GameInfo.p2InputType = nil
-                    GameInfo.player2Controller = nil
-                    clearKeyboardEdgeDetection()
-                    return
-                end
-            end
-        end
-    end
+
 
     -- P1 always has input (use default mappings for character select navigation)
     if isOnePlayer then
         if not playerSelections[1].locked then
             if p1Input then
-                -- Check for X button to enter remap menu (edge detection)
-                if p1Input.x and not remapState.active and justStates[1] and justStates[1].x then
-                    startRemapMenu(1)
+                local result = CharacterSelect.updateCharacter({
+                    a = p1Input.a, b = p1Input.b, y = p1Input.y, start = p1Input.start,
+                    moveX = p1Input.moveX, moveY = p1Input.moveY
+                }, 1, dt, isOnePlayer)
+                if result == "menu" then
+                    GameInfo.gameState = "menu"
                     clearKeyboardEdgeDetection()
                     return
                 end
-                
-                CharacterSelect.updateCharacter({
-                    a = p1Input.a, b = false, y = p1Input.y, start = p1Input.start,
-                    moveX = p1Input.moveX, moveY = p1Input.moveY
-                }, 1, dt)
             end
         else
             if p1Input then
-                -- Check for X button to enter remap menu (edge detection)
-                if p1Input.x and not remapState.active and justStates[1] and justStates[1].x then
-                    startRemapMenu(1)
+                local result = CharacterSelect.updateCharacter({
+                    a = p1Input.a, b = p1Input.b, y = p1Input.y, start = p1Input.start,
+                    moveX = p1Input.moveX, moveY = p1Input.moveY
+                }, 2, dt, isOnePlayer)
+                if result == "menu" then
+                    GameInfo.gameState = "menu"
                     clearKeyboardEdgeDetection()
                     return
                 end
-                
-                CharacterSelect.updateCharacter({
-                    a = p1Input.a, b = false, y = p1Input.y, start = p1Input.start,
-                    moveX = p1Input.moveX, moveY = p1Input.moveY
-                }, 2, dt)
             end
         end
     else
         if p1Input then
-            -- Check for X button to enter remap menu (edge detection)
-            if p1Input.x and not remapState.active and justStates[1] and justStates[1].x then
-                startRemapMenu(1)
+            local result = CharacterSelect.updateCharacter({
+                a = p1Input.a, b = p1Input.b, y = p1Input.y, start = p1Input.start,
+                moveX = p1Input.moveX, moveY = p1Input.moveY
+            }, 1, dt, isOnePlayer)
+            if result == "menu" then
+                GameInfo.gameState = "menu"
                 clearKeyboardEdgeDetection()
                 return
             end
-            
-            CharacterSelect.updateCharacter({
-                a = p1Input.a, b = false, y = p1Input.y, start = p1Input.start,
-                moveX = p1Input.moveX, moveY = p1Input.moveY
-            }, 1, dt)
         end
         if GameInfo.p2InputType and p2Input then
-            -- Check for X button to enter remap menu (edge detection)
-            if p2Input.x and not remapState.active and justStates[2] and justStates[2].x then
-                startRemapMenu(2)
+            local result = CharacterSelect.updateCharacter({
+                a = p2Input.a, b = p2Input.b, y = p2Input.y, start = p2Input.start,
+                moveX = p2Input.moveX, moveY = p2Input.moveY
+            }, 2, dt, isOnePlayer)
+            if result == "menu" then
+                GameInfo.gameState = "menu"
+                clearKeyboardEdgeDetection()
+                return
+            elseif result == "unassign_p2" then
+                GameInfo.p2InputType = nil
+                GameInfo.player2Controller = nil
                 clearKeyboardEdgeDetection()
                 return
             end
-            
-            CharacterSelect.updateCharacter({
-                a = p2Input.a, b = false, y = p2Input.y, start = p2Input.start,
-                moveX = p2Input.moveX, moveY = p2Input.moveY
-            }, 2, dt)
         end
     end
 
@@ -727,53 +732,7 @@ function CharacterSelect.update(GameInfo)
         end
     end
 
-    -- 2P mode: allow P1 to deselect or return to menu
-    if not isOnePlayer then
-        -- P1: Deselect if locked, else return to menu
-        if GameInfo.p1InputType == "keyboard" and keyboardJustPressed.b and not remapState.active then
-            if playerSelections[1].locked then
-                playerSelections[1].locked = false
-                clearKeyboardEdgeDetection()
-                return
-            else
-                GameInfo.gameState = "menu"
-                clearKeyboardEdgeDetection()
-                return
-            end
-        end
-        if GameInfo.p1InputType ~= "keyboard" and justStates[1] and justStates[1].b and not remapState.active then
-            if playerSelections[1].locked then
-                playerSelections[1].locked = false
-                return
-            else
-                GameInfo.gameState = "menu"
-                return
-            end
-        end
-        -- P2: Deselect if locked, else unassign controller (one action per press)
-        if GameInfo.p2InputType == "keyboard" and keyboardJustPressed.b and not remapState.active then
-            if playerSelections[2].locked then
-                playerSelections[2].locked = false
-                clearKeyboardEdgeDetection()
-                return
-            elseif not playerSelections[2].locked then
-                GameInfo.p2InputType = nil
-                GameInfo.player2Controller = nil
-                clearKeyboardEdgeDetection()
-                return
-            end
-        end
-        if GameInfo.p2InputType and GameInfo.p2InputType ~= "keyboard" and justStates[2] and justStates[2].b and not remapState.active then
-            if playerSelections[2].locked then
-                playerSelections[2].locked = false
-                return
-            elseif not playerSelections[2].locked then
-                GameInfo.p2InputType = nil
-                GameInfo.player2Controller = nil
-                return
-            end
-        end
-    end
+
 
     clearKeyboardEdgeDetection()
 end
@@ -985,15 +944,39 @@ function CharacterSelect.draw(GameInfo)
         return
     end
 
-    -- Show keyboard controls if keyboard is enabled
-    -- if GameInfo.p1InputType == "keyboard" or GameInfo.p2InputType == "keyboard" then
-    --     love.graphics.setColor(0.7, 0.7, 0.7, 1)
-    --     love.graphics.printf("P1: WASD/Space, P2: Arrows/Keypad0, K/L: Color, Shift: Back", 0, gameHeight - 20, gameWidth, "center", 0, 0.7, 0.7)
-    -- end
+    -- Show navigation options
+    local menuY = gameHeight - 60
+    local menuSpacing = 15
     
-    -- Show remap prompt
-    love.graphics.setColor(0.8, 0.8, 0.8, 1)
-    love.graphics.printf("X/ENTER: REMAP, Y/SHIFT: COLOR", 0, gameHeight - 43, gameWidth, "center", 0, 1, 1)
+    -- Determine which player is active (for highlighting)
+    local activePlayer = nil
+    if playerSelections[1].navigationMode ~= 2 then
+        activePlayer = 1
+    elseif not isOnePlayer and playerSelections[2].navigationMode ~= 2 then
+        activePlayer = 2
+    end
+    
+    -- Draw "Remap" option
+    local remapColor = {0.8, 0.8, 0.8, 1}
+    if activePlayer and playerSelections[activePlayer].navigationMode == 1 then
+        remapColor = {1, 1, 0, 1}  -- Yellow when selected
+    end
+    love.graphics.setColor(remapColor[1], remapColor[2], remapColor[3], remapColor[4])
+    love.graphics.printf("Remap", 0, menuY, gameWidth, "center", 0, 1, 1)
+    
+
+    
+    -- Draw "Back" option
+    local backColor = {0.8, 0.8, 0.8, 1}
+    if activePlayer and playerSelections[activePlayer].navigationMode == 3 then
+        backColor = {1, 1, 0, 1}  -- Yellow when selected
+    end
+    love.graphics.setColor(backColor[1], backColor[2], backColor[3], backColor[4])
+    love.graphics.printf("Back", 0, menuY + menuSpacing, gameWidth, "center", 0, 1, 1)
+    
+    -- Show navigation hint
+    love.graphics.setColor(0.6, 0.6, 0.6, 1)
+    love.graphics.printf("Up/Down: Navigate, A: Select, B: Back", 0, gameHeight - 20, gameWidth, "center", 0, 0.8, 0.8)
     
     -- Draw remap menu if active
     if remapState.active then
@@ -1058,10 +1041,16 @@ function drawRemapMenu(GameInfo)
         love.graphics.printf(text, menuX + 2, y, menuWidth - 4, "left")
     end
     
+    -- Draw Back option
+    local backY = startY + #playerActions * lineHeight
+    local backColor = (remapState.selectedAction > #playerActions) and {1, 1, 0, 1} or {1, 1, 1, 1}
+    love.graphics.setColor(backColor[1], backColor[2], backColor[3], backColor[4])
+    love.graphics.printf("Back", menuX + 2, backY, menuWidth - 4, "left")
+    
     -- Draw instructions
     love.graphics.setColor(0.7, 0.7, 0.7, 1)
     local instructionY = menuY + menuHeight + 5
-    love.graphics.printf("Up/Down: Select, A: Remap, B: Exit", menuX, instructionY, menuWidth, "center")
+    love.graphics.printf("Up/Down: Select, A: Select, B: Exit", menuX, instructionY, menuWidth, "center")
     
     love.graphics.setColor(1, 1, 1, 1)
 end
