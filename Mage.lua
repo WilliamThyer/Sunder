@@ -147,7 +147,7 @@ end
 function Mage:initializeSoundEffects()
     self.soundEffects = {
         counter             = love.audio.newSource("assets/soundEffects/counter.wav", "static"),
-        dash                = love.audio.newSource("assets/soundEffects/dash.wav", "static"),
+        dash                = love.audio.newSource("assets/soundEffects/mageDash.wav", "static"),
         die                 = love.audio.newSource("assets/soundEffects/die.wav", "static"),
         downAir             = love.audio.newSource("assets/soundEffects/downAir.wav", "static"),
         heavyAttack         = love.audio.newSource("assets/soundEffects/heavyAttack.wav", "static"),

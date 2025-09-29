@@ -130,12 +130,12 @@ end
 function Lancer:initializeSoundEffects()
     self.soundEffects = {
         counter             = love.audio.newSource("assets/soundEffects/counter.wav", "static"),
-        dash                = love.audio.newSource("assets/soundEffects/dash.wav", "static"),
+        dash                = love.audio.newSource("assets/soundEffects/lancerDash.wav", "static"),
         die                 = love.audio.newSource("assets/soundEffects/die.wav", "static"),
         downAir             = love.audio.newSource("assets/soundEffects/downAir.wav", "static"),
         heavyAttack         = love.audio.newSource("assets/soundEffects/heavyAttack.wav", "static"),
         heavyAttackCharge   = love.audio.newSource("assets/soundEffects/heavyAttackCharge.wav", "static"),
-        lightAttack         = love.audio.newSource("assets/soundEffects/lightAttack.wav", "static"),
+        lightAttack         = love.audio.newSource("assets/soundEffects/lancerBerserkerLightAttack.wav", "static"),
         hitHurt             = love.audio.newSource("assets/soundEffects/hitHurt.wav", "static"),
         jump                = love.audio.newSource("assets/soundEffects/jump.wav", "static"),
         shield              = love.audio.newSource("assets/soundEffects/shield.wav", "static"),
@@ -205,7 +205,7 @@ function Lancer:processInput(dt, input, otherPlayer)
         end
     elseif input.lightAttack and self:canPerformAction("lightAttack") then
         if self:useStamina(self.staminaMapping["lightAttack"]) then
-            self.soundEffects['lightAttack']:play()
+            self.soundEffects['lightAttackCharge']:play()
             self.isAttacking       = true
             self.isLightAttacking  = true
             self.lightAttackTimer  = self.lightAttackDuration
@@ -364,6 +364,7 @@ function Lancer:handleAttacks(dt, otherPlayer)
        (self.lightAttackTimer <= self.lightAttackDuration - self.lightAttackNoDamageDuration)
     then
         if self:checkHit(otherPlayer, "lightAttack") then
+            self.soundEffects['lightAttack']:play()
             otherPlayer:handleAttackEffects(self, dt, 0.5, "lightAttack")
             self.hasHitLight = true
         end
