@@ -146,18 +146,18 @@ end
 
 function Mage:initializeSoundEffects()
     self.soundEffects = {
-        counter             = love.audio.newSource("assets/soundEffects/counter.wav", "static"),
+        counter             = love.audio.newSource("assets/soundEffects/counterMage.wav", "static"),
         dash                = love.audio.newSource("assets/soundEffects/mageDash.wav", "static"),
         die                 = love.audio.newSource("assets/soundEffects/die.wav", "static"),
         downAir             = love.audio.newSource("assets/soundEffects/downAir.wav", "static"),
-        heavyAttack         = love.audio.newSource("assets/soundEffects/heavyAttack.wav", "static"),
-        heavyAttackCharge   = love.audio.newSource("assets/soundEffects/heavyAttackCharge.wav", "static"),
-        lightAttack         = love.audio.newSource("assets/soundEffects/lightAttack.wav", "static"),
+        heavyAttack         = love.audio.newSource("assets/soundEffects/heavyAttackMage.wav", "static"),
+        heavyAttackCharge   = love.audio.newSource("assets/soundEffects/heavyAttackChargeMage.wav", "static"),
+        lightAttack         = love.audio.newSource("assets/soundEffects/lightAttackFullMage.wav", "static"),
         hitHurt             = love.audio.newSource("assets/soundEffects/hitHurt.wav", "static"),
-        jump                = love.audio.newSource("assets/soundEffects/jump.wav", "static"),
-        shield              = love.audio.newSource("assets/soundEffects/shield.wav", "static"),
-        shieldHit           = love.audio.newSource("assets/soundEffects/shieldHit.wav", "static"),
-        successfulCounter   = love.audio.newSource("assets/soundEffects/successfulCounter.wav", "static")
+        jump                = love.audio.newSource("assets/soundEffects/jumpMage.wav", "static"),
+        shield              = love.audio.newSource("assets/soundEffects/shieldMage.wav", "static"),
+        shieldHit           = love.audio.newSource("assets/soundEffects/shieldHitMage.wav", "static"),
+        successfulCounter   = love.audio.newSource("assets/soundEffects/successfulCounterMage.wav", "static")
     }
 end
 

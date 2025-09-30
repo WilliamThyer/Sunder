@@ -133,7 +133,7 @@ function Berserker:initializeSoundEffects()
         dash                = love.audio.newSource("assets/soundEffects/dash.wav", "static"),
         die                 = love.audio.newSource("assets/soundEffects/die.wav", "static"),
         downAir             = love.audio.newSource("assets/soundEffects/downAir.wav", "static"),
-        heavyAttack         = love.audio.newSource("assets/soundEffects/heavyAttack.wav", "static"),
+        heavyAttack         = love.audio.newSource("assets/soundEffects/heavyAttackFullBerserker.wav", "static"),
         heavyAttackCharge   = love.audio.newSource("assets/soundEffects/heavyAttackCharge.wav", "static"),
         lightAttack         = love.audio.newSource("assets/soundEffects/lancerBerserkerLightAttackFull.wav", "static"),
         hitHurt             = love.audio.newSource("assets/soundEffects/hitHurt.wav", "static"),

@@ -133,8 +133,7 @@ function Lancer:initializeSoundEffects()
         dash                = love.audio.newSource("assets/soundEffects/lancerDash.wav", "static"),
         die                 = love.audio.newSource("assets/soundEffects/die.wav", "static"),
         downAir             = love.audio.newSource("assets/soundEffects/downAir.wav", "static"),
-        heavyAttack         = love.audio.newSource("assets/soundEffects/heavyAttack.wav", "static"),
-        heavyAttackCharge   = love.audio.newSource("assets/soundEffects/heavyAttackCharge.wav", "static"),
+        heavyAttack         = love.audio.newSource("assets/soundEffects/heavyAttackFullLancer.wav", "static"),
         lightAttack         = love.audio.newSource("assets/soundEffects/lancerBerserkerLightAttack.wav", "static"),
         hitHurt             = love.audio.newSource("assets/soundEffects/hitHurt.wav", "static"),
         jump                = love.audio.newSource("assets/soundEffects/jump.wav", "static"),
@@ -205,7 +204,7 @@ function Lancer:processInput(dt, input, otherPlayer)
         end
     elseif input.lightAttack and self:canPerformAction("lightAttack") then
         if self:useStamina(self.staminaMapping["lightAttack"]) then
-            self.soundEffects['lightAttackCharge']:play()
+            self.soundEffects['lightAttack']:play()
             self.isAttacking       = true
             self.isLightAttacking  = true
             self.lightAttackTimer  = self.lightAttackDuration
