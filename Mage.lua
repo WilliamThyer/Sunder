@@ -111,8 +111,8 @@ end
 -- Fighter–Specific (Mage) Methods
 --------------------------------------------------
 function Mage:initializeAnimations()
-    local file = "assets/sprites/MageBlueOld.png"
-    -- local file = "assets/sprites/Mage" .. self.colorName .. "Old.png"
+    -- local file = "assets/sprites/MageBlueOld.png"
+    local file = "assets/sprites/Mage" .. self.colorName .. ".png"
     if not love.filesystem.getInfo(file) then
         file = "assets/sprites/MageBlue.png"  -- fallback to default sprite
     end
