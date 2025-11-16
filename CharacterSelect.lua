@@ -83,9 +83,12 @@ local mageQuad = love.graphics.newQuad(
 --   colorIndex: which color (1..4) is chosen
 --   colorChangeCooldown: to prevent rapid color cycling
 --   inputDelay: to prevent input carryover from menu
+--   backButtonSelected: whether this player has navigated to the back button
+--   previousCursor: cursor position before navigating to back button
+--   verticalMoveCooldown: to prevent rapid vertical navigation
 local playerSelections = {
-    [1] = { cursor = 1, locked = false, moveCooldown = 0, colorIndex = 1, colorChangeCooldown = 0, inputDelay = 0 },
-    [2] = { cursor = 1, locked = false, moveCooldown = 0, colorIndex = 2, colorChangeCooldown = 0, inputDelay = 0 }
+    [1] = { cursor = 1, locked = false, moveCooldown = 0, colorIndex = 1, colorChangeCooldown = 0, inputDelay = 0, backButtonSelected = false, previousCursor = 1, verticalMoveCooldown = 0 },
+    [2] = { cursor = 1, locked = false, moveCooldown = 0, colorIndex = 2, colorChangeCooldown = 0, inputDelay = 0, backButtonSelected = false, previousCursor = 1, verticalMoveCooldown = 0 }
 }
 
 -- Controller assignment tracking
@@ -110,32 +113,39 @@ local keyboardJustPressed = {
 
 -- Update keyboard edge detection
 local function updateKeyboardEdgeDetection()
-    local keyboardMap = InputManager.getKeyboardMapping(1)
+    local keyboardMap1 = InputManager.getKeyboardMapping(1)
+    local keyboardMap2 = InputManager.getKeyboardMapping(2)
     
-    -- Check for key presses this frame
-    if love.keyboard.isDown(keyboardMap.a) then
+    -- Check for key presses this frame for both players
+    if love.keyboard.isDown(keyboardMap1.a) or love.keyboard.isDown(keyboardMap2.a) then
         keyboardJustPressed.a = true
     end
-    if love.keyboard.isDown(keyboardMap.b) then
+    if love.keyboard.isDown(keyboardMap1.b) or love.keyboard.isDown(keyboardMap2.b) then
         keyboardJustPressed.b = true
     end
-    if love.keyboard.isDown(keyboardMap.x) then
+    if love.keyboard.isDown(keyboardMap1.x) or love.keyboard.isDown(keyboardMap2.x) then
         keyboardJustPressed.x = true
     end
-    if love.keyboard.isDown(keyboardMap.y) then
+    if love.keyboard.isDown(keyboardMap1.y) or love.keyboard.isDown(keyboardMap2.y) then
         keyboardJustPressed.y = true
     end
-    if love.keyboard.isDown(keyboardMap.start) then
+    if love.keyboard.isDown(keyboardMap1.start) or love.keyboard.isDown(keyboardMap2.start) then
         keyboardJustPressed.start = true
     end
-    if love.keyboard.isDown(keyboardMap.back) then
+    if love.keyboard.isDown(keyboardMap1.back) or love.keyboard.isDown(keyboardMap2.back) then
         keyboardJustPressed.back = true
     end
-    if love.keyboard.isDown(keyboardMap.left) then
+    if love.keyboard.isDown(keyboardMap1.left) or love.keyboard.isDown(keyboardMap2.left) then
         keyboardJustPressed.left = true
     end
-    if love.keyboard.isDown(keyboardMap.right) then
+    if love.keyboard.isDown(keyboardMap1.right) or love.keyboard.isDown(keyboardMap2.right) then
         keyboardJustPressed.right = true
+    end
+    if love.keyboard.isDown(keyboardMap1.up) or love.keyboard.isDown(keyboardMap2.up) then
+        keyboardJustPressed.up = true
+    end
+    if love.keyboard.isDown(keyboardMap1.down) or love.keyboard.isDown(keyboardMap2.down) then
+        keyboardJustPressed.down = true
     end
 end
 
@@ -326,6 +336,9 @@ function CharacterSelect.update(GameInfo)
             playerSelections[i].colorIndex   = (i == 1) and 1 or 2
             playerSelections[i].colorChangeCooldown = 0.5  -- Increased delay to prevent carryover
             playerSelections[i].inputDelay = 0.3  -- 300ms delay to prevent input carryover
+            playerSelections[i].backButtonSelected = false
+            playerSelections[i].previousCursor = 1
+            playerSelections[i].verticalMoveCooldown = 0
         end
         -- Only reset P2 controller assignment in 2P mode
         local isOnePlayer = (GameInfo.previousMode == "game_1P")
@@ -510,34 +523,129 @@ function CharacterSelect.update(GameInfo)
         end
     end
 
+    -- Handle back button navigation (up/down) for each player
+    -- This needs to happen before character updates to prevent horizontal movement when on back button
+    local function handleBackButtonNavigation(playerIndex, input, justState, dt)
+        local ps = playerSelections[playerIndex]
+        ps.verticalMoveCooldown = math.max(0, ps.verticalMoveCooldown - dt)
+        
+        -- Only handle navigation if not locked
+        if ps.locked then
+            return false
+        end
+        
+        -- Check for down press to navigate to back button (from stick or keyboard)
+        local moveDown = false
+        if ps.verticalMoveCooldown <= 0 then
+            if input and input.moveY > 0.5 then
+                moveDown = true
+            elseif justState and justState.down then
+                moveDown = true
+            end
+        end
+        
+        -- Check for up press to navigate back to character selection (from stick or keyboard)
+        local moveUp = false
+        if ps.verticalMoveCooldown <= 0 then
+            if input and input.moveY < -0.5 then
+                moveUp = true
+            elseif justState and justState.up then
+                moveUp = true
+            end
+        end
+        
+        -- Navigate to back button
+        if moveDown and not ps.backButtonSelected then
+            ps.previousCursor = ps.cursor
+            ps.backButtonSelected = true
+            ps.verticalMoveCooldown = 0.25  -- 250ms cooldown
+            playCharacterSelectSound("counter")
+        end
+        
+        -- Navigate back to character selection
+        if moveUp and ps.backButtonSelected then
+            ps.cursor = ps.previousCursor
+            ps.backButtonSelected = false
+            ps.verticalMoveCooldown = 0.25  -- 250ms cooldown
+            playCharacterSelectSound("counter")
+        end
+        
+        -- Handle A press on back button
+        local aPressed = (justState and justState.a) or false
+        
+        if aPressed and ps.backButtonSelected then
+            -- Only allow the player who navigated to the back button to go back
+            playCharacterSelectSound("downAir")
+            GameInfo.gameState = "menu"
+            return true  -- Signal that we're going back to menu
+        end
+        
+        return false
+    end
+    
+    -- Handle back button navigation for each active player
+    if isOnePlayer then
+        -- In 1P mode, handle for the active player (P1 if not locked, P2 if P1 is locked)
+        local activePlayer = playerSelections[1].locked and 2 or 1
+        local activeInput = p1Input
+        local activeJustState = justStates[1]
+        
+        if handleBackButtonNavigation(activePlayer, activeInput, activeJustState, dt) then
+            clearKeyboardEdgeDetection()
+            return
+        end
+    else
+        -- In 2P mode, handle for both players independently
+        if p1Input then
+            if handleBackButtonNavigation(1, p1Input, justStates[1], dt) then
+                clearKeyboardEdgeDetection()
+                return
+            end
+        end
+        if GameInfo.p2InputType and p2Input then
+            if handleBackButtonNavigation(2, p2Input, justStates[2], dt) then
+                clearKeyboardEdgeDetection()
+                return
+            end
+        end
+    end
+
     -- P1 always has input
     if isOnePlayer then
         if not playerSelections[1].locked then
             if p1Input then
+                -- Prevent horizontal movement when back button is selected
+                local moveX = playerSelections[1].backButtonSelected and 0 or p1Input.moveX
                 CharacterSelect.updateCharacter({
                     a = p1Input.a, b = false, y = p1Input.y, start = p1Input.start,
-                    moveX = p1Input.moveX, moveY = p1Input.moveY
+                    moveX = moveX, moveY = p1Input.moveY
                 }, 1, dt)
             end
         else
             if p1Input then
+                -- Prevent horizontal movement when back button is selected
+                local moveX = playerSelections[2].backButtonSelected and 0 or p1Input.moveX
                 CharacterSelect.updateCharacter({
                     a = p1Input.a, b = false, y = p1Input.y, start = p1Input.start,
-                    moveX = p1Input.moveX, moveY = p1Input.moveY
+                    moveX = moveX, moveY = p1Input.moveY
                 }, 2, dt)
             end
         end
     else
         if p1Input then
+            -- Prevent horizontal movement when back button is selected
+            local moveX = playerSelections[1].backButtonSelected and 0 or p1Input.moveX
             CharacterSelect.updateCharacter({
                 a = p1Input.a, b = false, y = p1Input.y, start = p1Input.start,
-                moveX = p1Input.moveX, moveY = p1Input.moveY
+                moveX = moveX, moveY = p1Input.moveY
             }, 1, dt)
         end
         if GameInfo.p2InputType and p2Input then
+            -- Prevent horizontal movement when back button is selected
+            local moveX = playerSelections[2].backButtonSelected and 0 or p2Input.moveX
             CharacterSelect.updateCharacter({
                 a = p2Input.a, b = false, y = p2Input.y, start = p2Input.start,
-                moveX = p2Input.moveX, moveY = p2Input.moveY
+                moveX = moveX, moveY = p2Input.moveY
             }, 2, dt)
         end
     end
@@ -781,20 +889,23 @@ function CharacterSelect.draw(GameInfo)
             -- Hide CPU's cursor until P1 locks
         else
             local cs = playerSelections[playerIndex]
-            local cursorIndex = cs.cursor
-            local offsetX = (playerIndex == 1) and -3 or 3
-            local x = startX + (cursorIndex - 1) * (charBoxWidth + charSpacing)
-                     + charBoxWidth/2 + offsetX
-            local y = cursorY
+            -- Only draw arrow if back button is not selected for this player
+            if not cs.backButtonSelected then
+                local cursorIndex = cs.cursor
+                local offsetX = (playerIndex == 1) and -3 or 3
+                local x = startX + (cursorIndex - 1) * (charBoxWidth + charSpacing)
+                         + charBoxWidth/2 + offsetX
+                local y = cursorY
 
-            love.graphics.setColor(getPlayerColor(playerIndex))
-            love.graphics.polygon(
-              "fill",
-              x - arrowSize/2, y,
-              x + arrowSize/2, y,
-              x, y - arrowSize
-            )
-            love.graphics.setColor(1, 1, 1, 1)
+                love.graphics.setColor(getPlayerColor(playerIndex))
+                love.graphics.polygon(
+                  "fill",
+                  x - arrowSize/2, y,
+                  x + arrowSize/2, y,
+                  x, y - arrowSize
+                )
+                love.graphics.setColor(1, 1, 1, 1)
+            end
         end
     end
 
@@ -806,6 +917,13 @@ function CharacterSelect.draw(GameInfo)
           gameWidth, "center", 0, 1, 1
         )
     end
+    
+    -- Draw back button in bottom left
+    local backButtonSelected = playerSelections[1].backButtonSelected or playerSelections[2].backButtonSelected
+    local backButtonColor = backButtonSelected and {1, 1, 0, 1} or {1, 1, 1, 1}
+    love.graphics.setColor(backButtonColor)
+    love.graphics.printf("Back", 4, gameHeight - 10, gameWidth, "left", 0, 1, 1)
+    love.graphics.setColor(1, 1, 1, 1)
     
     -- Show P2 assignment prompt if needed
     if not isOnePlayer and not isP2Assigned() then
