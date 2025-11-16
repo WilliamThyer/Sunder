@@ -16,6 +16,49 @@ local font = love.graphics.newFont("assets/6px-Normal.ttf", 8)
 font:setFilter("nearest", "nearest")
 love.graphics.setFont(font)
 
+-- ----------------------------------------------------------------------
+-- Menu sound effects
+-- ----------------------------------------------------------------------
+local menuSounds = {}
+
+-- Initialize menu sound effects with error handling
+local function initMenuSounds()
+    local success, counter = pcall(love.audio.newSource, "assets/soundEffects/counter.wav", "static")
+    if success then
+        menuSounds.counter = counter
+        menuSounds.counter:setLooping(false)
+    else
+        print("Warning: Could not load counter.wav")
+    end
+    
+    local success2, downAir = pcall(love.audio.newSource, "assets/soundEffects/downAir.wav", "static")
+    if success2 then
+        menuSounds.downAir = downAir
+        menuSounds.downAir:setLooping(false)
+    else
+        print("Warning: Could not load downAir.wav")
+    end
+    
+    local success3, shield = pcall(love.audio.newSource, "assets/soundEffects/shield.wav", "static")
+    if success3 then
+        menuSounds.shield = shield
+        menuSounds.shield:setLooping(false)
+    else
+        print("Warning: Could not load shield.wav")
+    end
+end
+
+-- Safely play a menu sound effect
+local function playMenuSound(soundName)
+    if menuSounds[soundName] then
+        menuSounds[soundName]:stop()
+        menuSounds[soundName]:play()
+    end
+end
+
+-- Initialize sounds when module loads
+initMenuSounds()
+
 -- Keyboard edge detection state
 local keyboardJustPressed = {
     a = false,
@@ -79,7 +122,15 @@ end
 -- ----------------------------------------------------------------------
 -- Menu logic
 -- ----------------------------------------------------------------------
+-- Track previous selection to detect actual changes
+local previousSelectedOption = nil
+
 function Menu.updateMenu(GameInfo)
+    -- Initialize selectedOption if not set (defaults to option 1)
+    if not GameInfo.selectedOption then
+        GameInfo.selectedOption = 1
+    end
+    
     -- Force refresh controllers when in menu to catch any newly connected ones
     InputManager.refreshControllersImmediate()
     
@@ -150,10 +201,25 @@ function Menu.updateMenu(GameInfo)
         moveDown = true
     end
     
+    -- Track current selection before updating
+    local currentSelection = GameInfo.selectedOption or 1
+    
+    -- Update selection and play sound only if it actually changed
     if moveUp then
+        if currentSelection ~= 1 then
+            playMenuSound("counter")
+        end
         GameInfo.selectedOption = 1
+        previousSelectedOption = 1
     elseif moveDown then
+        if currentSelection ~= 2 then
+            playMenuSound("counter")
+        end
         GameInfo.selectedOption = 2
+        previousSelectedOption = 2
+    else
+        -- No movement, preserve previous selection for next frame comparison
+        previousSelectedOption = currentSelection
     end
 
     -- Check which controller or keyboard pressed A first to determine Player 1
@@ -161,6 +227,9 @@ function Menu.updateMenu(GameInfo)
     local p2Pressed = justStates[2] and justStates[2]["a"]
     
     if p1Pressed or p2Pressed then
+        -- Play selection sound
+        playMenuSound("downAir")
+        
         if GameInfo.selectedOption == 1 then
             GameInfo.previousMode = "game_1P"
             GameInfo.keyboardPlayer = 1
@@ -290,6 +359,8 @@ function Menu.updateRestartMenu(GameInfo)
         startGame(GameInfo.gameState)
     -- Press Y to go back to character select
     elseif yPressed then
+        -- Play back/go back sound
+        playMenuSound("shield")
         Menu.restartMenu = false
         Menu.restartMenuOpenedAt = nil
         GameInfo.gameState = "characterselect"

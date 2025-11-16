@@ -150,6 +150,49 @@ local font = love.graphics.newFont("assets/6px-Normal.ttf", 8)
 font:setFilter("nearest", "nearest")
 love.graphics.setFont(font)
 
+-- ----------------------------------------------------------------------
+-- Character Select sound effects
+-- ----------------------------------------------------------------------
+local characterSelectSounds = {}
+
+-- Initialize character select sound effects with error handling
+local function initCharacterSelectSounds()
+    local success, counter = pcall(love.audio.newSource, "assets/soundEffects/counter.wav", "static")
+    if success then
+        characterSelectSounds.counter = counter
+        characterSelectSounds.counter:setLooping(false)
+    else
+        print("Warning: Could not load counter.wav")
+    end
+    
+    local success2, downAir = pcall(love.audio.newSource, "assets/soundEffects/downAir.wav", "static")
+    if success2 then
+        characterSelectSounds.downAir = downAir
+        characterSelectSounds.downAir:setLooping(false)
+    else
+        print("Warning: Could not load downAir.wav")
+    end
+    
+    local success3, shield = pcall(love.audio.newSource, "assets/soundEffects/shield.wav", "static")
+    if success3 then
+        characterSelectSounds.shield = shield
+        characterSelectSounds.shield:setLooping(false)
+    else
+        print("Warning: Could not load shield.wav")
+    end
+end
+
+-- Safely play a character select sound effect
+local function playCharacterSelectSound(soundName)
+    if characterSelectSounds[soundName] then
+        characterSelectSounds[soundName]:stop()
+        characterSelectSounds[soundName]:play()
+    end
+end
+
+-- Initialize sounds when module loads
+initCharacterSelectSounds()
+
 -----------------------------------------------------
 -- Helper: Advance colorIndex for `playerIndex`, skipping the other player's color
 -----------------------------------------------------
@@ -228,6 +271,8 @@ function CharacterSelect.updateCharacter(input, playerIndex, dt)
         elseif input.moveX >  0.5 then move =  1 end
 
         if move ~= 0 then
+            -- Play cursor movement sound
+            playCharacterSelectSound("counter")
             ps.cursor = ps.cursor + move
             if ps.cursor < 1 then
                 ps.cursor = #characters
@@ -247,10 +292,14 @@ function CharacterSelect.updateCharacter(input, playerIndex, dt)
     -- 3) If not locked, A (select) locks in character. If already locked, B (back) unlocks.
     if not ps.locked then
         if input.a and ps.inputDelay <= 0 then
+            -- Play selection sound
+            playCharacterSelectSound("downAir")
             ps.locked = true
         end
     else
         if input.b then
+            -- Play unlock/back sound
+            playCharacterSelectSound("shield")
             ps.locked = false
         end
     end
@@ -391,14 +440,18 @@ function CharacterSelect.update(GameInfo)
         -- Keyboard B
         if GameInfo.p1InputType == "keyboard" and keyboardJustPressed.b then
             if playerSelections[2].locked then
+                playCharacterSelectSound("shield")
                 playerSelections[2].locked = false
                 clearKeyboardEdgeDetection()
                 return
             elseif playerSelections[1].locked then
+                playCharacterSelectSound("shield")
                 playerSelections[1].locked = false
                 clearKeyboardEdgeDetection()
                 return
             else
+                -- Play back to menu sound
+                playCharacterSelectSound("shield")
                 GameInfo.gameState = "menu"
                 clearKeyboardEdgeDetection()
                 return
@@ -407,12 +460,16 @@ function CharacterSelect.update(GameInfo)
         -- Controller B (edge-detection)
         if GameInfo.p1InputType ~= "keyboard" and justStates[1] and justStates[1].b then
             if playerSelections[2].locked then
+                playCharacterSelectSound("shield")
                 playerSelections[2].locked = false
                 return
             elseif playerSelections[1].locked then
+                playCharacterSelectSound("shield")
                 playerSelections[1].locked = false
                 return
             else
+                -- Play back to menu sound
+                playCharacterSelectSound("shield")
                 GameInfo.gameState = "menu"
                 return
             end
@@ -423,6 +480,7 @@ function CharacterSelect.update(GameInfo)
         local kb = InputManager.getKeyboardInput(2)
         if kb.b then
             if playerSelections[2].locked then
+                playCharacterSelectSound("shield")
                 playerSelections[2].locked = false
                 clearKeyboardEdgeDetection()
                 return
@@ -438,6 +496,7 @@ function CharacterSelect.update(GameInfo)
         for _, js in ipairs(love.joystick.getJoysticks()) do
             if js:getID() == GameInfo.p2InputType and js:isGamepadDown("b") then
                 if playerSelections[2].locked then
+                    playCharacterSelectSound("shield")
                     playerSelections[2].locked = false
                     clearKeyboardEdgeDetection()
                     return
@@ -499,10 +558,13 @@ function CharacterSelect.update(GameInfo)
         -- P1: Deselect if locked, else return to menu
         if GameInfo.p1InputType == "keyboard" and keyboardJustPressed.b then
             if playerSelections[1].locked then
+                playCharacterSelectSound("shield")
                 playerSelections[1].locked = false
                 clearKeyboardEdgeDetection()
                 return
             else
+                -- Play back to menu sound
+                playCharacterSelectSound("shield")
                 GameInfo.gameState = "menu"
                 clearKeyboardEdgeDetection()
                 return
@@ -510,9 +572,12 @@ function CharacterSelect.update(GameInfo)
         end
         if GameInfo.p1InputType ~= "keyboard" and justStates[1] and justStates[1].b then
             if playerSelections[1].locked then
+                playCharacterSelectSound("shield")
                 playerSelections[1].locked = false
                 return
             else
+                -- Play back to menu sound
+                playCharacterSelectSound("shield")
                 GameInfo.gameState = "menu"
                 return
             end
@@ -520,6 +585,7 @@ function CharacterSelect.update(GameInfo)
         -- P2: Deselect if locked, else unassign controller (one action per press)
         if GameInfo.p2InputType == "keyboard" and keyboardJustPressed.b then
             if playerSelections[2].locked then
+                playCharacterSelectSound("shield")
                 playerSelections[2].locked = false
                 clearKeyboardEdgeDetection()
                 return
@@ -532,6 +598,7 @@ function CharacterSelect.update(GameInfo)
         end
         if GameInfo.p2InputType and GameInfo.p2InputType ~= "keyboard" and justStates[2] and justStates[2].b then
             if playerSelections[2].locked then
+                playCharacterSelectSound("shield")
                 playerSelections[2].locked = false
                 return
             elseif not playerSelections[2].locked then

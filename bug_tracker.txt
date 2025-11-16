@@ -1,9 +1,7 @@
 To Do
 - Make 3 more stages.
 - Button remapping?
-- Sound effects for Berserker.
-- Sounds effects for Lancer.
-- Sounds effects for Mage.
+- Sounds effects for Mage (just need jump and shield?)
 - Color variants for Berserker.
 - Color variants for Lancer.
 - Color variants for Mage.
