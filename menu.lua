@@ -275,10 +275,10 @@ function Menu.drawMenu(GameInfo)
     love.graphics.printf("2 PLAYERS", 0, 40, GameInfo.gameWidth, "center", 0, 1, 1)
 
     -- Show keyboard controls if keyboard is enabled
-    if GameInfo.keyboardPlayer == 1 or GameInfo.keyboardPlayer == 2 then
-        love.graphics.setColor(0.7, 0.7, 0.7, 1)
-        love.graphics.printf("Use WASD to move, SPACE to select", 0, 50, GameInfo.gameWidth, "center", 0, 0.8, 0.8)
-    end
+    -- if GameInfo.keyboardPlayer == 1 or GameInfo.keyboardPlayer == 2 then
+    --     love.graphics.setColor(0.7, 0.7, 0.7, 1)
+    --     love.graphics.printf("Use WASD to move, SPACE to select", 0, 50, GameInfo.gameWidth, "center", 0, 1, 1)
+    -- end
 
     love.graphics.setColor(1,1,1,1)  -- reset
 end

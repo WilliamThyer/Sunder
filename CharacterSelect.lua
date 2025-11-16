@@ -829,7 +829,7 @@ function CharacterSelect.draw(GameInfo)
     local charBoxWidth   = 16
     local charBoxHeight  = 16
     local startX         = 6
-    local startY         = p1BoxY + boxHeight + 20
+    local startY         = p1BoxY + boxHeight + 12 
     local charBoxPadding = 16
 
     for i, charName in ipairs(characters) do
@@ -913,7 +913,7 @@ function CharacterSelect.draw(GameInfo)
     if playerSelections[1].locked and playerSelections[2].locked then
         love.graphics.printf(
           "Press start to begin!",
-          0, gameHeight - 43,
+          0, gameHeight - 10,
           gameWidth, "center", 0, 1, 1
         )
     end
@@ -939,7 +939,7 @@ function CharacterSelect.draw(GameInfo)
     -- Show keyboard controls if keyboard is enabled
     if GameInfo.p1InputType == "keyboard" or GameInfo.p2InputType == "keyboard" then
         love.graphics.setColor(0.7, 0.7, 0.7, 1)
-        love.graphics.printf("P1: WASD/Space, P2: Arrows/Keypad0, K/L: Color, Shift: Back", 0, gameHeight - 20, gameWidth, "center", 0, 0.7, 0.7)
+        love.graphics.printf("P1: WASD/Space, P2: Arrows/Keypad0, K/L: Color, Shift: Back", 0, gameHeight - 20, gameWidth, "center", 0, 1, 1)
     end
 end
 

@@ -257,7 +257,7 @@ function love.draw()
         love.graphics.clear(0, 0, 0, 1)
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.printf(
-            "Press Start (controller) or Space (keyboard) to begin",
+            "Press Start or Space to begin",
             0, GameInfo.gameHeight / 2 - 8,
             GameInfo.gameWidth, "center"
         )
