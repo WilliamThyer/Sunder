@@ -1,6 +1,8 @@
 To Do
 - Make 3 more stages.
-- Menu Navigation for character select. Fix bugs with button presses. Fix color change.
+- Menu Navigation for character select. Fix color change.
+- Arrows for all main menu nav.
+- Pause menu with arrows.
 - Button remapping?
 - Sounds effects for Mage (just need jump and shield?)
 - Color variants for Berserker.

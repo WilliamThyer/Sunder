@@ -266,16 +266,42 @@ function Menu.drawMenu(GameInfo)
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.printf("SUNDER", 0, 10, GameInfo.gameWidth/2, "center", 0, 2, 2)
 
-    local color1 = (GameInfo.selectedOption == 1) and {1, 1, 0, 1} or {1, 1, 1, 1}
-    local color2 = (GameInfo.selectedOption == 2) and {1, 1, 0, 1} or {1, 1, 1, 1}
+    -- Blue color matching CharacterSelect menu (127/255, 146/255, 237/255)
+    local blueColor = {127/255, 146/255, 237/255}
+    local arrowSize = 5
 
     -- Option 1: 1 PLAYER
-    love.graphics.setColor(color1)
+    love.graphics.setColor(1, 1, 1, 1)
     love.graphics.printf("1 PLAYER", 0, 30, GameInfo.gameWidth, "center", 0, 1, 1)
 
     -- Option 2: 2 PLAYERS
-    love.graphics.setColor(color2)
+    love.graphics.setColor(1, 1, 1, 1)
     love.graphics.printf("2 PLAYERS", 0, 40, GameInfo.gameWidth, "center", 0, 1, 1)
+
+    -- Draw blue arrow to the left of selected option
+    local centerX = GameInfo.gameWidth / 2
+    local textOffset = 25  -- Approximate offset to left of centered text
+    local arrowX = centerX - textOffset
+    
+    if GameInfo.selectedOption == 1 then
+        local arrowY = 35
+        love.graphics.setColor(blueColor)
+        love.graphics.polygon(
+            "fill",
+            arrowX, arrowY - arrowSize/2,
+            arrowX, arrowY + arrowSize/2,
+            arrowX + arrowSize, arrowY
+        )
+    elseif GameInfo.selectedOption == 2 then
+        local arrowY = 45
+        love.graphics.setColor(blueColor)
+        love.graphics.polygon(
+            "fill",
+            arrowX, arrowY - arrowSize/2,
+            arrowX, arrowY + arrowSize/2,
+            arrowX + arrowSize, arrowY
+        )
+    end
 
     -- Show keyboard controls if keyboard is enabled
     -- if GameInfo.keyboardPlayer == 1 or GameInfo.keyboardPlayer == 2 then
