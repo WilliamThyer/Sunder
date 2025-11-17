@@ -56,6 +56,9 @@ local function playMenuSound(soundName)
     end
 end
 
+-- Export playMenuSound for use in other modules
+Menu.playMenuSound = playMenuSound
+
 -- Initialize sounds when module loads
 initMenuSounds()
 

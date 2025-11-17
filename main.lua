@@ -192,6 +192,7 @@ function love.update(dt)
         for _, js in ipairs(love.joystick.getJoysticks()) do
             local jid = js:getID()
             if justPressed[jid] and justPressed[jid]["a"] then
+                Menu.playMenuSound("downAir")
                 GameInfo.p1InputType = js:getID()
                 GameInfo.player1Controller = js:getID()
                 GameInfo.p1KeyboardMapping = nil
@@ -207,6 +208,7 @@ function love.update(dt)
             blockMenuSpaceUntilRelease = false
         end
         if love.keyboard.isDown("space") and inputAssignSpaceReleased then
+            Menu.playMenuSound("downAir")
             GameInfo.p1InputType = "keyboard"
             GameInfo.p1KeyboardMapping = 1
             GameInfo.keyboardPlayer = 1
