@@ -575,17 +575,17 @@ function CharacterBase:initializeUIAnimations()
         emptyHeart   = love.graphics.newQuad(10, 1, 8, 8, self.iconSpriteSheet),
         stamina      = love.graphics.newQuad(1, 10, 8, 8, self.iconSpriteSheet),
         emptyStamina = love.graphics.newQuad(10, 10, 8, 8, self.iconSpriteSheet),
-        stock      = love.graphics.newQuad(1, 20, 8, 8, self.iconSpriteSheet),
-        emptyStock = love.graphics.newQuad(10, 20, 8, 8, self.iconSpriteSheet)
+        stock      = love.graphics.newQuad(1, 19, 8, 8, self.iconSpriteSheet),
+        emptyStock = love.graphics.newQuad(10, 19, 8, 8, self.iconSpriteSheet)
     }
     if self.index == 1 then
         self.iconXPos = 2
     else
         self.iconXPos = 128 - (5 * self.maxHealth) - 10
     end
-    self.healthYPos  = 72 - 6
+    self.healthYPos  = 72 - 9
     self.staminaYPos = 72 - 11
-    self.stockYPos    = 72 - 1  -- Below hearts
+    self.stockYPos    = 72 - 3
 end
 
 function CharacterBase:moveWithBump(dt)
@@ -767,11 +767,41 @@ function CharacterBase:drawUI()
     end
 
     -- Draw stocks below hearts
+    -- Both players: stocks aligned with innermost hearts/stamina, extending outward
+    -- P1: extends left from innermost heart (outermost left, innermost at rightmost heart position)
+    -- P2: extends right from innermost heart (outermost right, innermost at leftmost heart position)
+    -- First stock lost is outermost, last stock remaining is innermost (middlemost)
     local maxStocks = 3
-    for st = 0, maxStocks - 1 do
-        local icon = (self.stocks > st) and 'stock' or 'emptyStock'
-        local xPos = self.iconXPos + 6 * st
-        self:drawIcon(xPos, self.stockYPos, icon)
+    local stockSpacing = 6
+    
+    if self.index == 1 then
+        -- P1: innermost heart is at iconXPos + 6 * (maxHealth - 1) (rightmost heart)
+        local innermostHeartX = self.iconXPos + 6 * (self.maxHealth - 1)
+        -- Draw from innermost heart extending left
+        -- Stock positions: innermostHeartX-12 (innermost, lost last), innermostHeartX-6 (middle), innermostHeartX (outermost, lost first)
+        for st = 0, maxStocks - 1 do
+            -- Reverse order: st=0 is outermost (rightmost position), st=2 is innermost (leftmost position)
+            -- Check: outermost (st=0) shows if stocks >= 1, innermost (st=2) shows if stocks >= 3
+            local stockCheck = maxStocks - st  -- st=0 checks stocks >= 1, st=1 checks stocks >= 2, st=2 checks stocks >= 3
+            local icon = (self.stocks >= stockCheck) and 'stock' or 'emptyStock'
+            -- Position: rightmost (outermost) at innermost heart, leftmost (innermost) at innermost heart - 12
+            local xPos = innermostHeartX - stockSpacing * (maxStocks - 1 - st)
+            self:drawIcon(xPos, self.stockYPos, icon)
+        end
+    else
+        -- P2: innermost heart is at iconXPos (leftmost heart)
+        local innermostHeartX = self.iconXPos
+        -- Draw from innermost heart extending right
+        -- Stock positions: innermostHeartX (innermost, lost last), innermostHeartX+6 (middle), innermostHeartX+12 (outermost, lost first)
+        for st = 0, maxStocks - 1 do
+            -- Reverse order: st=0 is outermost (leftmost position), st=2 is innermost (rightmost position)
+            -- Check: outermost (st=0) shows if stocks >= 1, innermost (st=2) shows if stocks >= 3
+            local stockCheck = maxStocks - st  -- st=0 checks stocks >= 1, st=1 checks stocks >= 2, st=2 checks stocks >= 3
+            local icon = (self.stocks >= stockCheck) and 'stock' or 'emptyStock'
+            -- Position: leftmost (outermost) at innermost heart, rightmost (innermost) at innermost heart + 12
+            local xPos = innermostHeartX + stockSpacing * (maxStocks - 1 - st)
+            self:drawIcon(xPos, self.stockYPos, icon)
+        end
     end
 end
 
