@@ -118,6 +118,14 @@ function CharacterBase:new(x, y)
     instance.isDying = false
     instance.isDyingTimer = 0
 
+    -- Stocks & Respawning
+    instance.stocks = 3
+    instance.isRespawning = false
+    instance.respawnDelayTimer = 0
+    instance.respawnInvincibleTimer = 0
+    instance.respawnInvincibleDuration = 1.0
+    instance.respawnFlashAlpha = 0
+
     -- Shield Knockback
     instance.isShieldKnockback   = false
     instance.shieldKnockTimer    = 0
@@ -291,7 +299,9 @@ function CharacterBase:handleAttackEffects(attacker, dt, knockbackMultiplier, at
     
     local isUnblockable = (attackType == "heavyAttack") and attacker.isUnblockableHeavy
 
-     if not self.isHurt and not self.isInvincible then
+     -- Check invincibility (both hit invincibility and respawn invincibility)
+     local isInvincible = self.isInvincible or (self.respawnInvincibleTimer > 0)
+     if not self.isHurt and not isInvincible then
         -- Check for hit stun during attack startup frames
         local shouldInterruptAttack = false
         
@@ -369,7 +379,7 @@ end
 -- Hurt/Death State Update (Generic)
 --------------------------------------------------
 function CharacterBase:updateHurtState(dt)
-    if self.health == 0 and not self.isDying and not self.isDead then
+    if self.health == 0 and not self.isDying and not self.isDead and not self.isRespawning then
         self.isHurt = false
         self.isDying = true
         self.isDyingTimer = self.timeToDeath
@@ -378,8 +388,34 @@ function CharacterBase:updateHurtState(dt)
     elseif self.isDying then
         self.isDyingTimer = self.isDyingTimer - dt
         if self.isDyingTimer <= 0 then
+            -- Check if player has stocks remaining
+            if self.stocks > 0 then
+                -- Lose a stock and start respawn process
+                self.stocks = self.stocks - 1
+                self.isDying = false
+                self.isRespawning = true
+                self.respawnDelayTimer = 0.5  -- 0.5 second delay before respawn
+            else
+                -- No stocks left, player is dead
+                self.isDead = true
+                self.isDying = false
+            end
+        end
+    elseif self.isRespawning then
+        -- If player has no stocks left, convert to dead state
+        if self.stocks <= 0 then
+            self.isRespawning = false
             self.isDead = true
-            self.isDying = false
+            self.canMove = false
+            self.y = -10
+        -- Handle respawn delay
+        elseif self.respawnDelayTimer > 0 then
+            self.respawnDelayTimer = self.respawnDelayTimer - dt
+            self.canMove = false
+            self.y = -10  -- Keep player off-screen during delay
+        else
+            -- Delay complete, respawn will be triggered from main.lua
+            -- (we need the other player's position to calculate spawn)
         end
     elseif self.isDead then
         self.canMove = false
@@ -401,6 +437,21 @@ function CharacterBase:updateHurtState(dt)
         if self.invincibleTimer <= 0 then
             self.isInvincible = false
         end
+    end
+
+    -- Update respawn invincibility timer
+    if self.respawnInvincibleTimer > 0 then
+        self.respawnInvincibleTimer = self.respawnInvincibleTimer - dt
+        -- Flash on/off every 0.1 seconds (10 times per second)
+        -- Use modulo to create on/off pattern: on when remainder is > 0.05, off when <= 0.05
+        local flashCycle = (self.respawnInvincibleDuration - self.respawnInvincibleTimer) % 0.2
+        self.respawnFlashAlpha = (flashCycle < 0.1) and 1 or 0  -- 1 = visible, 0 = invisible
+        if self.respawnInvincibleTimer <= 0 then
+            self.respawnInvincibleTimer = 0
+            self.respawnFlashAlpha = 1  -- Always visible when not flashing
+        end
+    else
+        self.respawnFlashAlpha = 1  -- Always visible when not invincible
     end
 
     if self.isStunned then
@@ -429,6 +480,85 @@ function CharacterBase:updateHurtState(dt)
 end
 
 --------------------------------------------------
+-- Respawn Method
+--------------------------------------------------
+function CharacterBase:respawn(x, y)
+    -- Reset position
+    self.x = x
+    self.y = y
+    
+    -- Update bump world position
+    if self.world then
+        self.world:update(self, self.x+1, self.y, self.width-2, self.height-1)
+    end
+    
+    -- Reset all combat states
+    self.isAttacking = false
+    self.isHeavyAttacking = false
+    self.isLightAttacking = false
+    self.isDownAir = false
+    self.heavyAttackTimer = 0
+    self.lightAttackTimer = 0
+    self.downAirTimer = 0
+    self.hasHitHeavy = false
+    self.hasHitLight = false
+    self.hasHitDownAir = false
+    
+    -- Reset shield state
+    self.isShielding = false
+    self.isShieldKnockback = false
+    self.shieldKnockTimer = 0
+    
+    -- Reset dash state
+    self.isDashing = false
+    self.dashTimer = 0
+    self.dashVelocity = 0
+    self.canDash = true
+    
+    -- Reset jump state
+    self.isJumping = false
+    self.jumpVelocity = 0
+    self.canDoubleJump = false
+    
+    -- Reset knockback/velocity
+    self.knockbackSpeed = 0
+    self.knockbackDirection = 1
+    self.chargeVelocity = 0
+    self.chargeTimer = 0
+    
+    -- Reset hurt/stun states
+    self.isHurt = false
+    self.hurtTimer = 0
+    self.isStunned = false
+    self.stunTimer = 0
+    self.isCountering = false
+    self.counterTimer = 0
+    self.counterActive = false
+    
+    -- Reset health to full
+    self.health = self.maxHealth
+    self.stamina = self.maxStamina
+    
+    -- Set direction to face center (or opponent will be handled in main.lua)
+    local centerX = 64  -- Center of 128-wide screen
+    if x < centerX then
+        self.direction = 1  -- Face right
+    else
+        self.direction = -1  -- Face left
+    end
+    
+    -- Enable movement
+    self.canMove = true
+    
+    -- Set respawn invincibility
+    self.respawnInvincibleTimer = self.respawnInvincibleDuration
+    self.respawnFlashAlpha = 0.5
+    
+    -- Mark respawning as complete
+    self.isRespawning = false
+end
+
+--------------------------------------------------
 -- Generic "Infrastructure" Methods
 --------------------------------------------------
 function CharacterBase:collisionFilter(item, other)
@@ -444,7 +574,9 @@ function CharacterBase:initializeUIAnimations()
         heart        = love.graphics.newQuad(1, 1, 8, 8, self.iconSpriteSheet),
         emptyHeart   = love.graphics.newQuad(10, 1, 8, 8, self.iconSpriteSheet),
         stamina      = love.graphics.newQuad(1, 10, 8, 8, self.iconSpriteSheet),
-        emptyStamina = love.graphics.newQuad(10, 10, 8, 8, self.iconSpriteSheet)
+        emptyStamina = love.graphics.newQuad(10, 10, 8, 8, self.iconSpriteSheet),
+        stock      = love.graphics.newQuad(1, 20, 8, 8, self.iconSpriteSheet),
+        emptyStock = love.graphics.newQuad(10, 20, 8, 8, self.iconSpriteSheet)
     }
     if self.index == 1 then
         self.iconXPos = 2
@@ -453,6 +585,7 @@ function CharacterBase:initializeUIAnimations()
     end
     self.healthYPos  = 72 - 6
     self.staminaYPos = 72 - 11
+    self.stockYPos    = 72 - 1  -- Below hearts
 end
 
 function CharacterBase:moveWithBump(dt)
@@ -631,6 +764,14 @@ function CharacterBase:drawUI()
         local icon = (self.stamina > s) and 'stamina' or 'emptyStamina'
         local xPos = self.iconXPos + 6 * s
         self:drawIcon(xPos, self.staminaYPos, icon)
+    end
+
+    -- Draw stocks below hearts
+    local maxStocks = 3
+    for st = 0, maxStocks - 1 do
+        local icon = (self.stocks > st) and 'stock' or 'emptyStock'
+        local xPos = self.iconXPos + 6 * st
+        self:drawIcon(xPos, self.stockYPos, icon)
     end
 end
 

@@ -1,13 +1,7 @@
 To Do
 - Make 3 more stages.
-- Menu Navigation for character select. Fix color change.
-- Arrows for all main menu nav.
-- Pause menu with arrows.
 - Button remapping?
 - Sounds effects for Mage (just need jump and shield?)
-- Color variants for Berserker.
-- Color variants for Lancer.
-- Color variants for Mage.
 - "Story mode".
 
  I want to update the controller logic so that you can also use a keyboard. Base mapping is left = a, right =d, shield = s, jump = w. Heavy=k, light=j, counter=h, dash =space. 

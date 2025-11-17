@@ -159,8 +159,18 @@ function Lancer:draw()
     end
 
     local th = self.grid.frameHeight
-    if self.currentAnim and self.spriteSheet then
-        self.currentAnim:draw(self.spriteSheet, self.x + offsetX, self.y + offsetY, 0, scaleX, scaleY, 0, 2)
+    
+    -- Flash sprite on/off during respawn invincibility
+    if self.respawnInvincibleTimer > 0 then
+        -- Only draw sprite when flash is "on" (respawnFlashAlpha == 1)
+        if self.respawnFlashAlpha == 1 and self.currentAnim and self.spriteSheet then
+            self.currentAnim:draw(self.spriteSheet, self.x + offsetX, self.y + offsetY, 0, scaleX, scaleY, 0, 2)
+        end
+    else
+        -- Normal drawing when not invincible
+        if self.currentAnim and self.spriteSheet then
+            self.currentAnim:draw(self.spriteSheet, self.x + offsetX, self.y + offsetY, 0, scaleX, scaleY, 0, 2)
+        end
     end
 
     self:drawUI()

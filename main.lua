@@ -276,6 +276,48 @@ function updateGame(dt)
     end
     -- p2.stamina = 10
 
+    -- Check if game is over (any player has 0 stocks)
+    local gameOver = (p1.stocks == 0 or p2.stocks == 0)
+    
+    -- Handle respawning (only if game is not over)
+    -- Check if P1 needs to respawn (only if they have stocks left and game is not over)
+    if not gameOver and p1.isRespawning and p1.respawnDelayTimer <= 0 and p1.stocks > 0 then
+        -- Calculate respawn position on opposite side from P2
+        local respawnX
+        local groundY = 49  -- Ground level
+        if not p2.isDead and not p2.isDying and not p2.isRespawning then
+            -- P2 is alive, spawn on opposite side
+            if p2.x < 64 then  -- P2 is on left side
+                respawnX = 100  -- Spawn on right side
+            else  -- P2 is on right side
+                respawnX = 20   -- Spawn on left side
+            end
+        else
+            -- P2 is also dead/respawning, spawn at default position
+            respawnX = 20
+        end
+        p1:respawn(respawnX, groundY)
+    end
+    
+    -- Check if P2 needs to respawn (only if they have stocks left and game is not over)
+    if not gameOver and p2.isRespawning and p2.respawnDelayTimer <= 0 and p2.stocks > 0 then
+        -- Calculate respawn position on opposite side from P1
+        local respawnX
+        local groundY = 49  -- Ground level
+        if not p1.isDead and not p1.isDying and not p1.isRespawning then
+            -- P1 is alive, spawn on opposite side
+            if p1.x < 64 then  -- P1 is on left side
+                respawnX = 100  -- Spawn on right side
+            else  -- P1 is on right side
+                respawnX = 20   -- Spawn on left side
+            end
+        else
+            -- P1 is also dead/respawning, spawn at default position
+            respawnX = 100
+        end
+        p2:respawn(respawnX, groundY)
+    end
+
     map:update(dt)
 end
 
@@ -356,12 +398,10 @@ function love.update(dt)
         end
     else
         updateGame(dt)
-        -- Always show restart menu when either player dies in 1P or 2P mode
+        -- Show restart menu when either player loses all stocks (stocks == 0)
         local shouldShowRestart = false
-        if GameInfo.gameState == "game_1P" then
-            shouldShowRestart = players[1].isDead or players[2].isDead
-        else
-            shouldShowRestart = players[1].isDead or players[2].isDead
+        if GameInfo.gameState == "game_1P" or GameInfo.gameState == "game_2P" then
+            shouldShowRestart = players[1].stocks == 0 or players[2].stocks == 0
         end
         if shouldShowRestart then
             Menu.restartMenu = true
@@ -403,12 +443,10 @@ function love.draw()
         for _, player in ipairs(players) do
             player:draw()
         end
-        -- Always show restart menu when either player dies in 1P or 2P mode
+        -- Show restart menu when either player loses all stocks (stocks == 0)
         local shouldShowRestart = false
-        if GameInfo.gameState == "game_1P" then
-            shouldShowRestart = players[1].isDead or players[2].isDead
-        else
-            shouldShowRestart = players[1].isDead or players[2].isDead
+        if GameInfo.gameState == "game_1P" or GameInfo.gameState == "game_2P" then
+            shouldShowRestart = players[1].stocks == 0 or players[2].stocks == 0
         end
         if shouldShowRestart then
             Menu.restartMenu = true
