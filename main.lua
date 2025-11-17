@@ -50,6 +50,35 @@ local inputAssignSpaceReleased = true
 local inputAssignStartReleased = {}
 local blockMenuSpaceUntilRelease = false
 
+-- Button state tracking to prevent carryover from menus
+-- Track last button states per input source (controller ID or "keyboard_P1"/"keyboard_P2")
+local lastButtonStates = {}
+-- Track if we need to wait for button release after menu transition
+local waitForButtonRelease = {
+    p1 = false,
+    p2 = false
+}
+
+-- Function to set button release wait flag and capture current button state
+-- Called from Menu when resuming/restarting
+function setButtonReleaseWait(playerIndex, inputSource, currentInput)
+    if playerIndex == 1 then
+        waitForButtonRelease.p1 = true
+    elseif playerIndex == 2 then
+        waitForButtonRelease.p2 = true
+    end
+    
+    -- Capture current button state
+    if inputSource and currentInput then
+        lastButtonStates[inputSource] = {
+            a = currentInput.a or false,
+            b = currentInput.b or false,
+            x = currentInput.x or false,
+            y = currentInput.y or false
+        }
+    end
+end
+
 function love.load()
     -- Initialize InputManager
     InputManager.initialize()
@@ -132,6 +161,63 @@ function love.keypressed(key)
     end
 end
 
+-- Helper function to filter button inputs until released after menu transition
+local function filterButtonInput(input, inputSource, waitForRelease, playerIndex)
+    if not input then
+        return input
+    end
+    
+    -- Get the last button state for this input source
+    local lastState = lastButtonStates[inputSource] or {}
+    
+    -- Check if button 'a' was previously pressed
+    local aWasPressed = lastState.a or false
+    local aIsPressed = input.a or false
+    
+    -- If we're waiting for release
+    if waitForRelease then
+        -- If button is still held from before, block it
+        if aWasPressed and aIsPressed then
+            -- Create a filtered copy of input with 'a' blocked
+            local filteredInput = {}
+            for k, v in pairs(input) do
+                if k == "a" then
+                    filteredInput[k] = false
+                else
+                    filteredInput[k] = v
+                end
+            end
+            -- Update last state (keep tracking that button is still pressed)
+            lastButtonStates[inputSource] = {
+                a = aIsPressed,
+                b = input.b or false,
+                x = input.x or false,
+                y = input.y or false
+            }
+            return filteredInput
+        end
+        
+        -- If button was released, we can stop waiting for this player
+        if aWasPressed and not aIsPressed then
+            if playerIndex == 1 then
+                waitForButtonRelease.p1 = false
+            elseif playerIndex == 2 then
+                waitForButtonRelease.p2 = false
+            end
+        end
+    end
+    
+    -- Update last state (always track current state)
+    lastButtonStates[inputSource] = {
+        a = aIsPressed,
+        b = input.b or false,
+        x = input.x or false,
+        y = input.y or false
+    }
+    
+    return input
+end
+
 -- Update the game (1P or 2P)
 function updateGame(dt)
     if not map then return end
@@ -142,25 +228,40 @@ function updateGame(dt)
     -- Get input from the correct controllers based on GameInfo assignments
     local p1Input = nil
     local p2Input = nil
+    local p1InputSource = nil
+    local p2InputSource = nil
     
     -- Handle P1 input
     if GameInfo.p1InputType == "keyboard" then
         p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
+        p1InputSource = "keyboard_P1"
     else
         p1Input = InputManager.get(GameInfo.player1Controller)
+        p1InputSource = tostring(GameInfo.player1Controller)
     end
     
     -- Handle P2 input
     if GameInfo.gameState == "game_1P" then
         -- In 1P mode, P2 is AI controlled, so no input needed
         p2Input = nil
+        p2InputSource = nil
     else
         -- In 2P mode, get P2 input
         if GameInfo.p2InputType == "keyboard" then
             p2Input = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2)
+            p2InputSource = "keyboard_P2"
         else
             p2Input = InputManager.get(GameInfo.player2Controller)
+            p2InputSource = tostring(GameInfo.player2Controller)
         end
+    end
+
+    -- Filter button inputs to prevent carryover from menus
+    if p1Input then
+        p1Input = filterButtonInput(p1Input, p1InputSource, waitForButtonRelease.p1, 1)
+    end
+    if p2Input then
+        p2Input = filterButtonInput(p2Input, p2InputSource, waitForButtonRelease.p2, 2)
     end
 
     -- Update each player with their input (only pass input to human players)

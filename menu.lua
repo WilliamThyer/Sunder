@@ -455,6 +455,36 @@ function Menu.updatePauseMenu(GameInfo)
         
         if GameInfo.pauseSelectedOption == 1 then
             -- Resume (unpause)
+            -- Determine which player paused and capture their button state
+            local pausePlayerIndex = nil
+            local pauseInputSource = nil
+            
+            if Menu.pausePlayer == "keyboard" then
+                pausePlayerIndex = 1
+                pauseInputSource = "keyboard_P1"
+            elseif type(Menu.pausePlayer) == "number" then
+                if GameInfo.player1Controller == Menu.pausePlayer or Menu.pausePlayer == 1 then
+                    pausePlayerIndex = 1
+                    if GameInfo.p1InputType == "keyboard" then
+                        pauseInputSource = "keyboard_P1"
+                    else
+                        pauseInputSource = tostring(GameInfo.player1Controller)
+                    end
+                elseif GameInfo.player2Controller == Menu.pausePlayer or Menu.pausePlayer == 2 then
+                    pausePlayerIndex = 2
+                    if GameInfo.p2InputType == "keyboard" then
+                        pauseInputSource = "keyboard_P2"
+                    else
+                        pauseInputSource = tostring(GameInfo.player2Controller)
+                    end
+                end
+            end
+            
+            -- Capture current button state and set wait flag
+            if pausePlayerIndex and pauseInputSource and pauseInput then
+                setButtonReleaseWait(pausePlayerIndex, pauseInputSource, pauseInput)
+            end
+            
             Menu.paused = false
             Menu.pausePlayer = nil
         else
@@ -641,6 +671,32 @@ function Menu.updateRestartMenu(GameInfo)
         
         if GameInfo.restartSelectedOption == 1 then
             -- Restart Fight
+            -- Capture button states for both players to prevent carryover
+            -- Determine input sources and capture current states
+            if p1Input then
+                local p1InputSource = nil
+                if GameInfo.p1InputType == "keyboard" then
+                    p1InputSource = "keyboard_P1"
+                else
+                    p1InputSource = tostring(GameInfo.player1Controller)
+                end
+                if p1InputSource then
+                    setButtonReleaseWait(1, p1InputSource, p1Input)
+                end
+            end
+            
+            if p2Input and isTwoPlayer then
+                local p2InputSource = nil
+                if GameInfo.p2InputType == "keyboard" then
+                    p2InputSource = "keyboard_P2"
+                else
+                    p2InputSource = tostring(GameInfo.player2Controller)
+                end
+                if p2InputSource then
+                    setButtonReleaseWait(2, p2InputSource, p2Input)
+                end
+            end
+            
             Menu.restartMenu = false
             Menu.restartMenuOpenedAt = nil
             startGame(GameInfo.gameState)
