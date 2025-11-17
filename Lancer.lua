@@ -131,6 +131,7 @@ function Lancer:initializeSoundEffects()
         counter             = love.audio.newSource("assets/soundEffects/counter.wav", "static"),
         dash                = love.audio.newSource("assets/soundEffects/lancerDash.wav", "static"),
         die                 = love.audio.newSource("assets/soundEffects/die.wav", "static"),
+        finalDie            = love.audio.newSource("assets/soundEffects/finalDie.wav", "static"),
         downAir             = love.audio.newSource("assets/soundEffects/downAir.wav", "static"),
         heavyAttack         = love.audio.newSource("assets/soundEffects/heavyAttackFullLancer.wav", "static"),
         lightAttack         = love.audio.newSource("assets/soundEffects/lancerBerserkerLightAttack.wav", "static"),

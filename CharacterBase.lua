@@ -384,7 +384,12 @@ function CharacterBase:updateHurtState(dt)
         self.isDying = true
         self.isDyingTimer = self.timeToDeath
         self.canMove = false
-        self.soundEffects['die']:play()
+        -- Play finalDie.wav if this is the last stock, otherwise play die.wav
+        if self.stocks == 1 then
+            self.soundEffects['finalDie']:play()
+        else
+            self.soundEffects['die']:play()
+        end
     elseif self.isDying then
         self.isDyingTimer = self.isDyingTimer - dt
         if self.isDyingTimer <= 0 then
