@@ -31,7 +31,10 @@ GameInfo = {
     p2InputType = nil,        -- "keyboard" or joystick ID
     p2Assigned = false,       -- For 2P mode: has P2 picked input yet?
     keyboardPlayer = nil,     -- 1 or 2, which player is using keyboard
-    previousMode = nil        -- Track previous mode for char select
+    previousMode = nil,       -- Track previous mode for char select
+    p1KeyboardMapping = nil,  -- Which keyboard mapping (1 or 2) P1 is using
+    p2KeyboardMapping = nil,  -- Which keyboard mapping (1 or 2) P2 is using
+    gameStartDelay = nil      -- Delay timer before starting the game (in seconds)
 }
 
 -- track if a button was pressed this frame
@@ -140,7 +143,7 @@ function updateGame(dt)
     
     -- Handle P1 input
     if GameInfo.p1InputType == "keyboard" then
-        p1Input = InputManager.getKeyboardInput(1)
+        p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
     else
         p1Input = InputManager.get(GameInfo.player1Controller)
     end
@@ -152,7 +155,7 @@ function updateGame(dt)
     else
         -- In 2P mode, get P2 input
         if GameInfo.p2InputType == "keyboard" then
-            p2Input = InputManager.getKeyboardInput(2)
+            p2Input = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2)
         else
             p2Input = InputManager.get(GameInfo.player2Controller)
         end
@@ -185,15 +188,16 @@ function love.update(dt)
             print("  Joystick: ", js:getID(), js:getName())
         end
         -- Input assignment screen: P1 chooses input
-        -- Listen for controller Start (edge detection) or Spacebar (keyboard)
+        -- Listen for controller A button (edge detection) or Spacebar (keyboard)
         for _, js in ipairs(love.joystick.getJoysticks()) do
             local jid = js:getID()
-            if justPressed[jid] and justPressed[jid]["start"] then
+            if justPressed[jid] and justPressed[jid]["a"] then
                 GameInfo.p1InputType = js:getID()
                 GameInfo.player1Controller = js:getID()
+                GameInfo.p1KeyboardMapping = nil
                 GameInfo.keyboardPlayer = nil
                 GameInfo.gameState = "menu"
-                justPressed[jid]["start"] = nil
+                justPressed[jid]["a"] = nil
                 blockMenuSpaceUntilRelease = false
                 return
             end
@@ -204,6 +208,7 @@ function love.update(dt)
         end
         if love.keyboard.isDown("space") and inputAssignSpaceReleased then
             GameInfo.p1InputType = "keyboard"
+            GameInfo.p1KeyboardMapping = 1
             GameInfo.keyboardPlayer = 1
             GameInfo.gameState = "menu"
             inputAssignSpaceReleased = false
@@ -226,6 +231,18 @@ function love.update(dt)
         Menu.updateMenu(GameInfo)
     elseif GameInfo.gameState == "characterselect" then
         CharacterSelect.update(GameInfo)
+    elseif GameInfo.gameState == "game_starting" then
+        -- Handle delay before starting the game
+        if GameInfo.gameStartDelay then
+            GameInfo.gameStartDelay = GameInfo.gameStartDelay - dt
+            if GameInfo.gameStartDelay <= 0 then
+                -- Delay elapsed, start the game
+                GameInfo.gameStartDelay = nil
+                local mode = GameInfo.previousMode
+                GameInfo.gameState = mode
+                startGame(mode)
+            end
+        end
     else
         updateGame(dt)
         -- Always show restart menu when either player dies in 1P or 2P mode
@@ -257,7 +274,7 @@ function love.draw()
         love.graphics.clear(0, 0, 0, 1)
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.printf(
-            "Press Start or Space to begin",
+            "Press A or Space to begin",
             0, GameInfo.gameHeight / 2 - 8,
             GameInfo.gameWidth, "center"
         )
@@ -266,7 +283,7 @@ function love.draw()
     end
     if GameInfo.gameState == "menu" then
         Menu.drawMenu(GameInfo)
-    elseif GameInfo.gameState == "characterselect" then
+    elseif GameInfo.gameState == "characterselect" or GameInfo.gameState == "game_starting" then
         CharacterSelect.draw(GameInfo)
     else
         if map then map:draw(0, 0, 1, 1) end

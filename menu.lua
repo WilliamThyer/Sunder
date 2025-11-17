@@ -143,7 +143,7 @@ function Menu.updateMenu(GameInfo)
     
     -- Handle P1 input
     if GameInfo.p1InputType == "keyboard" then
-        p1Input = InputManager.getKeyboardInput(1)
+        p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
     else
         p1Input = InputManager.get(GameInfo.player1Controller)
     end
@@ -304,7 +304,7 @@ function Menu.updateRestartMenu(GameInfo)
         -- 2P mode: Either player can input
         -- Check P1 input
         if GameInfo.p1InputType == "keyboard" then
-            startPressed = startPressed or keyboardJustPressed["start"]
+            startPressed = startPressed or keyboardJustPressed["a"]
             yPressed = yPressed or keyboardJustPressed["y"]
         else
             local js1 = InputManager.getJoystick(GameInfo.player1Controller)
@@ -312,14 +312,14 @@ function Menu.updateRestartMenu(GameInfo)
                 local jid = js1:getID()
                 local justStates = justPressed[jid] or {}
                 justPressed[jid] = nil
-                startPressed = startPressed or justStates["start"]
+                startPressed = startPressed or justStates["a"]
                 yPressed = yPressed or justStates["y"]
             end
         end
         
         -- Check P2 input
         if GameInfo.p2InputType == "keyboard" then
-            startPressed = startPressed or keyboardJustPressed["start"]
+            startPressed = startPressed or keyboardJustPressed["a"]
             yPressed = yPressed or keyboardJustPressed["y"]
         else
             local js2 = InputManager.getJoystick(GameInfo.player2Controller)
@@ -327,7 +327,7 @@ function Menu.updateRestartMenu(GameInfo)
                 local jid = js2:getID()
                 local justStates = justPressed[jid] or {}
                 justPressed[jid] = nil
-                startPressed = startPressed or justStates["start"]
+                startPressed = startPressed or justStates["a"]
                 yPressed = yPressed or justStates["y"]
             end
         end
@@ -335,7 +335,7 @@ function Menu.updateRestartMenu(GameInfo)
         -- 1P mode: Only P1 (the human player) can input
         -- Check keyboard input for P1
         if GameInfo.p1InputType == "keyboard" then
-            startPressed = keyboardJustPressed["start"]
+            startPressed = keyboardJustPressed["a"]
             yPressed = keyboardJustPressed["y"]
         end
         
@@ -346,13 +346,13 @@ function Menu.updateRestartMenu(GameInfo)
                 local jid = js1:getID()
                 local justStates = justPressed[jid] or {}
                 justPressed[jid] = nil
-                startPressed = startPressed or justStates["start"]
+                startPressed = startPressed or justStates["a"]
                 yPressed = yPressed or justStates["y"]
             end
         end
     end
 
-    -- Confirm selection with 'start' on controller
+    -- Confirm selection with 'a' button on controller
     if startPressed then
         Menu.restartMenu = false
         Menu.restartMenuOpenedAt = nil
@@ -383,7 +383,7 @@ function Menu.drawRestartMenu(players)
     elseif p2.isDead then
         love.graphics.printf("Player 1 Wins", GameInfo.gameWidth / 4, 20, GameInfo.gameWidth/2, "center", 0, 1, 1)
     end
-    love.graphics.printf("Press start to play again", GameInfo.gameWidth / 12, 30, GameInfo.gameWidth*.9, "center", 0, 1, 1)
+    love.graphics.printf("Press A to play again", GameInfo.gameWidth / 12, 30, GameInfo.gameWidth*.9, "center", 0, 1, 1)
     love.graphics.printf("Press Y to return to menu", GameInfo.gameWidth / 12, 40, GameInfo.gameWidth*.9, "center", 0, 1, 1)
 
 end

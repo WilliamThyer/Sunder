@@ -345,6 +345,7 @@ function CharacterSelect.update(GameInfo)
         if not isOnePlayer then
             GameInfo.p2InputType = nil
             GameInfo.player2Controller = nil
+            GameInfo.p2KeyboardMapping = nil
             controllerAssignments[2] = nil
         end
         -- Clear all justPressed entries so A/Y presses that opened this screen are ignored:
@@ -361,13 +362,13 @@ function CharacterSelect.update(GameInfo)
     CharacterSelect._p2KpenterReleased = CharacterSelect._p2KpenterReleased ~= false
     CharacterSelect._p2ReturnReleased = CharacterSelect._p2ReturnReleased ~= false
     if not isOnePlayer and not isP2Assigned() then
-        -- Allow P2 to assign controller or keyboard ONLY with Start (controller) or Enter (keyboard)
+        -- Allow P2 to assign controller or keyboard ONLY with A (controller) or Enter (keyboard)
         for _, js in ipairs(love.joystick.getJoysticks()) do
             local jid = js:getID()
-            if (justPressed[jid] and justPressed[jid]["start"]) and (GameInfo.p1InputType ~= js:getID()) then
+            if (justPressed[jid] and justPressed[jid]["a"]) and (GameInfo.p1InputType ~= js:getID()) then
                 GameInfo.p2InputType = js:getID()
                 GameInfo.player2Controller = js:getID()
-                justPressed[jid]["start"] = nil
+                justPressed[jid]["a"] = nil
                 break
             end
         end
@@ -380,6 +381,12 @@ function CharacterSelect.update(GameInfo)
         if (love.keyboard.isDown("kpenter") and CharacterSelect._p2KpenterReleased) or (love.keyboard.isDown("return") and CharacterSelect._p2ReturnReleased) then
             GameInfo.p2InputType = "keyboard"
             GameInfo.player2Controller = "keyboard"
+            -- If P1 is using keyboard (mapping 1), P2 gets mapping 2; otherwise P2 gets mapping 1
+            if GameInfo.p1InputType == "keyboard" then
+                GameInfo.p2KeyboardMapping = 2
+            else
+                GameInfo.p2KeyboardMapping = 1
+            end
             CharacterSelect._p2KpenterReleased = false
             CharacterSelect._p2ReturnReleased = false
         end
@@ -389,7 +396,7 @@ function CharacterSelect.update(GameInfo)
     if not isOnePlayer and isP2Assigned() and not playerSelections[2].locked then
         local unassign = false
         if GameInfo.p2InputType == "keyboard" then
-            local kb = InputManager.getKeyboardInput(2)
+            local kb = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2)
             if kb.b then unassign = true end
         else
             for _, js in ipairs(love.joystick.getJoysticks()) do
@@ -401,6 +408,7 @@ function CharacterSelect.update(GameInfo)
         if unassign then
             GameInfo.p2InputType = nil
             GameInfo.player2Controller = nil
+            GameInfo.p2KeyboardMapping = nil
             return
         end
     end
@@ -413,11 +421,11 @@ function CharacterSelect.update(GameInfo)
     -- P1 edge detection
     local p1Input = nil
     if GameInfo.p1InputType == "keyboard" then
-        local kb = InputManager.getKeyboardInput(1)
+        local kb = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
         for k,v in pairs(keyboardJustPressed) do
             if v then justStates[1][k] = true end
         end
-        p1Input = InputManager.getKeyboardInput(1)
+        p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
     else
         local js = InputManager.getJoystick(GameInfo.player1Controller)
         if js then
@@ -433,11 +441,11 @@ function CharacterSelect.update(GameInfo)
         p2Input = p1Input
         justStates[2] = justStates[1]
     elseif GameInfo.p2InputType == "keyboard" then
-        local kb = InputManager.getKeyboardInput(2)
+        local kb = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2)
         for k,v in pairs(keyboardJustPressed) do
             if v then justStates[2][k] = true end
         end
-        p2Input = InputManager.getKeyboardInput(2)
+        p2Input = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2)
     elseif GameInfo.p2InputType then
         local js = InputManager.getJoystick(GameInfo.player2Controller)
         if js then
@@ -490,7 +498,7 @@ function CharacterSelect.update(GameInfo)
     end
     -- 2P mode: handle P2 B for deselect or unassign
     if not isOnePlayer and isP2Assigned() and GameInfo.p2InputType == "keyboard" then
-        local kb = InputManager.getKeyboardInput(2)
+        local kb = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2)
         if kb.b then
             if playerSelections[2].locked then
                 playCharacterSelectSound("shield")
@@ -500,6 +508,7 @@ function CharacterSelect.update(GameInfo)
             else
                 GameInfo.p2InputType = nil
                 GameInfo.player2Controller = nil
+                GameInfo.p2KeyboardMapping = nil
                 clearKeyboardEdgeDetection()
                 return
             end
@@ -516,6 +525,7 @@ function CharacterSelect.update(GameInfo)
                 else
                     GameInfo.p2InputType = nil
                     GameInfo.player2Controller = nil
+                    GameInfo.p2KeyboardMapping = nil
                     clearKeyboardEdgeDetection()
                     return
                 end
@@ -610,54 +620,107 @@ function CharacterSelect.update(GameInfo)
         end
     end
 
+    -- Start game when both players are locked and any A button was just pressed.
+    -- Check this BEFORE processing character updates to avoid clearing edge states first.
+    if playerSelections[1].locked and playerSelections[2].locked then
+        local startPressed = false
+        if (justStates[1] and justStates[1].a) or (justStates[2] and justStates[2].a) then
+            startPressed = true
+        end
+        if startPressed then
+            -- Clear edge-detected states after use
+            if justStates[1] then
+                justStates[1].a = nil
+            end
+            if justStates[2] then
+                justStates[2].a = nil
+            end
+            CharacterSelect.beginGame(GameInfo)
+            clearKeyboardEdgeDetection()
+            return
+        end
+    end
+
     -- P1 always has input
     if isOnePlayer then
         if not playerSelections[1].locked then
             if p1Input then
                 -- Prevent horizontal movement when back button is selected
                 local moveX = playerSelections[1].backButtonSelected and 0 or p1Input.moveX
+                local aPressed = (justStates[1] and justStates[1].a) or false
+                local yPressed = (justStates[1] and justStates[1].y) or false
                 CharacterSelect.updateCharacter({
-                    a = p1Input.a, b = false, y = p1Input.y, start = p1Input.start,
+                    a = aPressed, b = false, y = yPressed,
                     moveX = moveX, moveY = p1Input.moveY
                 }, 1, dt)
+                -- Clear edge-detected states after use
+                if justStates[1] then
+                    justStates[1].a = nil
+                    justStates[1].y = nil
+                end
             end
         else
             if p1Input then
                 -- Prevent horizontal movement when back button is selected
                 local moveX = playerSelections[2].backButtonSelected and 0 or p1Input.moveX
+                local aPressed = (justStates[1] and justStates[1].a) or false
+                local yPressed = (justStates[1] and justStates[1].y) or false
+                -- Only clear A button if P2 is not locked (we might use it to lock P2)
+                -- If P2 is already locked, keep A for game start check
+                local shouldClearA = not playerSelections[2].locked
                 CharacterSelect.updateCharacter({
-                    a = p1Input.a, b = false, y = p1Input.y, start = p1Input.start,
+                    a = aPressed, b = false, y = yPressed,
                     moveX = moveX, moveY = p1Input.moveY
                 }, 2, dt)
+                -- Clear edge-detected states after use (only A if player wasn't locked)
+                if justStates[1] then
+                    if shouldClearA then
+                        justStates[1].a = nil
+                    end
+                    justStates[1].y = nil
+                end
             end
         end
     else
         if p1Input then
             -- Prevent horizontal movement when back button is selected
             local moveX = playerSelections[1].backButtonSelected and 0 or p1Input.moveX
+            local aPressed = (justStates[1] and justStates[1].a) or false
+            local yPressed = (justStates[1] and justStates[1].y) or false
+            -- Only clear A button if P1 is not locked (we might use it to lock P1)
+            -- If P1 is already locked, keep A for game start check
+            local shouldClearA = not playerSelections[1].locked
             CharacterSelect.updateCharacter({
-                a = p1Input.a, b = false, y = p1Input.y, start = p1Input.start,
+                a = aPressed, b = false, y = yPressed,
                 moveX = moveX, moveY = p1Input.moveY
             }, 1, dt)
+            -- Clear edge-detected states after use (only A if player wasn't locked)
+            if justStates[1] then
+                if shouldClearA then
+                    justStates[1].a = nil
+                end
+                justStates[1].y = nil
+            end
         end
         if GameInfo.p2InputType and p2Input then
             -- Prevent horizontal movement when back button is selected
             local moveX = playerSelections[2].backButtonSelected and 0 or p2Input.moveX
+            local aPressed = (justStates[2] and justStates[2].a) or false
+            local yPressed = (justStates[2] and justStates[2].y) or false
+            -- Only clear A button if P2 is not locked (we might use it to lock P2)
+            -- If P2 is already locked, keep A for game start check
+            local shouldClearA = not playerSelections[2].locked
             CharacterSelect.updateCharacter({
-                a = p2Input.a, b = false, y = p2Input.y, start = p2Input.start,
+                a = aPressed, b = false, y = yPressed,
                 moveX = moveX, moveY = p2Input.moveY
             }, 2, dt)
-        end
-    end
-
-    -- Start game when both players are locked and any START was just pressed.
-    if playerSelections[1].locked and playerSelections[2].locked then
-        local startPressed = false
-        if (p1Input and p1Input.start) or (p2Input and p2Input.start) then
-            startPressed = true
-        end
-        if startPressed then
-            CharacterSelect.beginGame(GameInfo)
+            -- Clear edge-detected states after use (only A if player wasn't locked)
+            if justStates[2] then
+                if shouldClearA then
+                    justStates[2].a = nil
+                end
+                justStates[2].y = nil
+            end
         end
     end
 
@@ -700,6 +763,7 @@ function CharacterSelect.update(GameInfo)
             elseif not playerSelections[2].locked then
                 GameInfo.p2InputType = nil
                 GameInfo.player2Controller = nil
+                GameInfo.p2KeyboardMapping = nil
                 clearKeyboardEdgeDetection()
                 return
             end
@@ -712,6 +776,7 @@ function CharacterSelect.update(GameInfo)
             elseif not playerSelections[2].locked then
                 GameInfo.p2InputType = nil
                 GameInfo.player2Controller = nil
+                GameInfo.p2KeyboardMapping = nil
                 return
             end
         end
@@ -733,8 +798,13 @@ function CharacterSelect.beginGame(GameInfo)
     -- The controller assignments are already set in GameInfo from the input assignment process
     -- No need to override them here
 
-    GameInfo.gameState = GameInfo.previousMode
-    startGame(GameInfo.gameState)
+    -- Clear all input states to prevent button press from carrying over
+    justPressed = {}
+    clearKeyboardEdgeDetection()
+    
+    -- Set delay before starting the game (0.5 seconds)
+    GameInfo.gameStartDelay = 0.5
+    GameInfo.gameState = "game_starting"
 end
 
 -----------------------------------------------------
@@ -909,10 +979,10 @@ function CharacterSelect.draw(GameInfo)
         end
     end
 
-    -- If both locked, prompt "Press START to begin!"
+    -- If both locked, prompt "Press A to begin!"
     if playerSelections[1].locked and playerSelections[2].locked then
         love.graphics.printf(
-          "Press start to begin!",
+          "Press A to begin!",
           0, gameHeight - 10,
           gameWidth, "center", 0, 1, 1
         )
@@ -929,7 +999,7 @@ function CharacterSelect.draw(GameInfo)
     if not isOnePlayer and not isP2Assigned() then
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.printf(
-            "Player 2: Press Start (controller) or Enter (keyboard)",
+            "P2: Press to Join",
             0, gameHeight / 2 + 20,
             gameWidth, "center"
         )
