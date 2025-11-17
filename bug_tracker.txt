@@ -1,6 +1,7 @@
 To Do
 - Make 3 more stages.
 - Button remapping?
+- More umph for menu selects, fight start and end.
 - Sounds effects for Mage (just need jump and shield?)
 - "Story mode".
 

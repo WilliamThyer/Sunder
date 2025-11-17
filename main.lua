@@ -20,7 +20,7 @@ local displayWidth, displayHeight = love.window.getDesktopDimensions()
 
 -- Game info stored in a global table
 GameInfo = {
-    gameState = "inputassign",       -- NEW: "inputassign", "menu", "characterselect", "game_1P", "game_2P"
+    gameState = "inputassign",       -- NEW: "inputassign", "menu", "characterselect", "game_1P", "game_2P", "game_story", "story_victory"
     selectedOption = 1,       -- which menu option is highlighted
     gameWidth = 128,          -- internal virtual width
     gameHeight = 72,          -- internal virtual height
@@ -36,7 +36,14 @@ GameInfo = {
     p2KeyboardMapping = nil,  -- Which keyboard mapping (1 or 2) P2 is using
     gameStartDelay = nil,      -- Delay timer before starting the game (in seconds)
     pauseSelectedOption = 1,   -- which pause menu option is highlighted (1 = Resume, 2 = Return to Menu)
-    restartSelectedOption = 1  -- which restart menu option is highlighted (1 = Restart Fight, 2 = Return to Menu)
+    restartSelectedOption = 1,  -- which restart menu option is highlighted (1 = Restart Fight, 2 = Return to Menu)
+    -- Story mode tracking
+    storyMode = false,        -- flag to track if in story mode
+    storyOpponentIndex = 1,   -- current opponent (1, 2, or 3)
+    storyOpponents = {},      -- array of 3 opponent characters to fight
+    storyOpponentColors = {}, -- array of 3 opponent colors
+    storyPlayerCharacter = nil, -- player's selected character
+    storyPlayerColor = nil    -- player's selected color
 }
 
 -- track if a button was pressed this frame
@@ -111,11 +118,19 @@ function startGame(mode)
     local p1Color = GameInfo.player1Color     or "Blue"
     local p2Color = GameInfo.player2Color     or "Blue"
     
+    -- Story mode: use story mode tracking
+    if mode == "game_story" then
+        p1Char = GameInfo.storyPlayerCharacter
+        p1Color = GameInfo.storyPlayerColor
+        p2Char = GameInfo.storyOpponents[GameInfo.storyOpponentIndex]
+        p2Color = GameInfo.storyOpponentColors[GameInfo.storyOpponentIndex]
+    end
+    
     -- Use the controller assignment from GameInfo, or fall back to default if not set
     local p1Controller = GameInfo.player1Controller or 1
     local p2Controller = GameInfo.player2Controller or 2
 
-    if mode == "game_1P" then
+    if mode == "game_1P" or mode == "game_story" then
         local ai = AIController:new()
         players = {
             -- signature now: Player:new(character, color, x, y, playerIndex, world, aiController)
@@ -327,7 +342,7 @@ function love.update(dt)
 
     if Menu.paused then
         -- Update pause menu navigation when paused
-        if GameInfo.gameState == "game_1P" or GameInfo.gameState == "game_2P" then
+        if GameInfo.gameState == "game_1P" or GameInfo.gameState == "game_2P" or GameInfo.gameState == "game_story" then
             Menu.updatePauseMenu(GameInfo)
         end
         return
@@ -396,8 +411,87 @@ function love.update(dt)
                 startGame(mode)
             end
         end
+    elseif GameInfo.gameState == "story_victory" then
+        -- Victory screen: wait for A button press
+        -- Initialize delay if not set
+        if not GameInfo.victoryScreenDelay then
+            GameInfo.victoryScreenDelay = 0.5
+        end
+        
+        -- Wait for delay before accepting input
+        if GameInfo.victoryScreenDelay > 0 then
+            GameInfo.victoryScreenDelay = GameInfo.victoryScreenDelay - dt
+            return
+        end
+        
+        -- Check for A button press (edge detection)
+        local aPressed = false
+        if GameInfo.p1InputType == "keyboard" then
+            local keyboardMap = InputManager.getKeyboardMapping(1)
+            -- Use edge detection: check if key is down and wasn't down last frame
+            if not GameInfo.victoryScreenAPressed then
+                if love.keyboard.isDown(keyboardMap.a) then
+                    aPressed = true
+                    GameInfo.victoryScreenAPressed = true
+                end
+            else
+                -- Key was pressed last frame, wait for release
+                if not love.keyboard.isDown(keyboardMap.a) then
+                    GameInfo.victoryScreenAPressed = false
+                end
+            end
+        else
+            local js = InputManager.getJoystick(GameInfo.player1Controller)
+            if js then
+                local jid = js:getID()
+                if justPressed[jid] and justPressed[jid]["a"] then
+                    aPressed = true
+                    justPressed[jid]["a"] = nil
+                end
+            end
+        end
+        
+        if aPressed then
+            -- Reset story mode flags and return to menu
+            GameInfo.storyMode = false
+            GameInfo.storyOpponentIndex = 1
+            GameInfo.storyOpponents = {}
+            GameInfo.storyOpponentColors = {}
+            GameInfo.storyPlayerCharacter = nil
+            GameInfo.storyPlayerColor = nil
+            GameInfo.victoryScreenDelay = nil
+            GameInfo.victoryScreenAPressed = nil
+            GameInfo.gameState = "menu"
+            GameInfo.selectedOption = 1
+        end
     else
         updateGame(dt)
+        -- Handle story mode fight completion
+        if GameInfo.gameState == "game_story" then
+            if players[1].stocks == 0 then
+                -- Player lost: return to main menu
+                GameInfo.storyMode = false
+                GameInfo.storyOpponentIndex = 1
+                GameInfo.storyOpponents = {}
+                GameInfo.storyOpponentColors = {}
+                GameInfo.storyPlayerCharacter = nil
+                GameInfo.storyPlayerColor = nil
+                GameInfo.gameState = "menu"
+                GameInfo.selectedOption = 1
+            elseif players[2].stocks == 0 then
+                -- Player won: advance to next opponent or show victory
+                if GameInfo.storyOpponentIndex < 3 then
+                    -- Advance to next opponent
+                    GameInfo.storyOpponentIndex = GameInfo.storyOpponentIndex + 1
+                    GameInfo.gameStartDelay = 0.5
+                    GameInfo.gameState = "game_starting"
+                else
+                    -- All opponents defeated: show victory screen
+                    GameInfo.gameState = "story_victory"
+                end
+            end
+        end
+        
         -- Show restart menu when either player loses all stocks (stocks == 0)
         local shouldShowRestart = false
         if GameInfo.gameState == "game_1P" or GameInfo.gameState == "game_2P" then
@@ -438,6 +532,21 @@ function love.draw()
         Menu.drawMenu(GameInfo)
     elseif GameInfo.gameState == "characterselect" or GameInfo.gameState == "game_starting" then
         CharacterSelect.draw(GameInfo)
+    elseif GameInfo.gameState == "story_victory" then
+        -- Draw victory screen
+        love.graphics.clear(0, 0, 0, 1)
+        love.graphics.setColor(1, 1, 1, 1)
+        local font = love.graphics.getFont()
+        love.graphics.printf(
+            "Congratulations, you are the Sunder Champion!",
+            0, GameInfo.gameHeight / 2 - 10,
+            GameInfo.gameWidth, "center", 0, 1, 1
+        )
+        love.graphics.printf(
+            "Press A to continue",
+            0, GameInfo.gameHeight / 2 + 10,
+            GameInfo.gameWidth, "center", 0, 1, 1
+        )
     else
         if map then map:draw(0, 0, 1, 1) end
         for _, player in ipairs(players) do

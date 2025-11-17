@@ -209,17 +209,17 @@ function Menu.updateMenu(GameInfo)
     
     -- Update selection and play sound only if it actually changed
     if moveUp then
-        if currentSelection ~= 1 then
+        if currentSelection > 1 then
             playMenuSound("counter")
         end
-        GameInfo.selectedOption = 1
-        previousSelectedOption = 1
+        GameInfo.selectedOption = math.max(1, currentSelection - 1)
+        previousSelectedOption = GameInfo.selectedOption
     elseif moveDown then
-        if currentSelection ~= 2 then
+        if currentSelection < 3 then
             playMenuSound("counter")
         end
-        GameInfo.selectedOption = 2
-        previousSelectedOption = 2
+        GameInfo.selectedOption = math.min(3, currentSelection + 1)
+        previousSelectedOption = GameInfo.selectedOption
     else
         -- No movement, preserve previous selection for next frame comparison
         previousSelectedOption = currentSelection
@@ -239,12 +239,19 @@ function Menu.updateMenu(GameInfo)
             GameInfo.p2InputType = nil
             GameInfo.player2Controller = nil
             GameInfo.p2Assigned = false
-        else
+        elseif GameInfo.selectedOption == 2 then
             GameInfo.previousMode = "game_2P"
             GameInfo.p2InputType = nil
             GameInfo.player2Controller = nil
             GameInfo.p2Assigned = false
             GameInfo.keyboardPlayer = nil
+        else
+            -- Story Mode
+            GameInfo.previousMode = "game_story"
+            GameInfo.keyboardPlayer = 1
+            GameInfo.p2InputType = nil
+            GameInfo.player2Controller = nil
+            GameInfo.p2Assigned = false
         end
         GameInfo.gameState = "characterselect"
         GameInfo.justEnteredCharacterSelect = true
@@ -278,6 +285,10 @@ function Menu.drawMenu(GameInfo)
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.printf("2 PLAYERS", 0, 40, GameInfo.gameWidth, "center", 0, 1, 1)
 
+    -- Option 3: STORY MODE
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.printf("STORY MODE", 0, 50, GameInfo.gameWidth, "center", 0, 1, 1)
+
     -- Draw blue arrow to the left of selected option
     local centerX = GameInfo.gameWidth / 2
     local textOffset = 25  -- Approximate offset to left of centered text
@@ -294,6 +305,15 @@ function Menu.drawMenu(GameInfo)
         )
     elseif GameInfo.selectedOption == 2 then
         local arrowY = 45
+        love.graphics.setColor(blueColor)
+        love.graphics.polygon(
+            "fill",
+            arrowX, arrowY - arrowSize/2,
+            arrowX, arrowY + arrowSize/2,
+            arrowX + arrowSize, arrowY
+        )
+    elseif GameInfo.selectedOption == 3 then
+        local arrowY = 55
         love.graphics.setColor(blueColor)
         love.graphics.polygon(
             "fill",
@@ -491,6 +511,15 @@ function Menu.updatePauseMenu(GameInfo)
             -- Return to Menu
             Menu.paused = false
             Menu.pausePlayer = nil
+            -- Reset story mode flags if in story mode
+            if GameInfo.storyMode then
+                GameInfo.storyMode = false
+                GameInfo.storyOpponentIndex = 1
+                GameInfo.storyOpponents = {}
+                GameInfo.storyOpponentColors = {}
+                GameInfo.storyPlayerCharacter = nil
+                GameInfo.storyPlayerColor = nil
+            end
             GameInfo.gameState = "characterselect"
             GameInfo.justEnteredCharacterSelect = true
         end
@@ -708,6 +737,15 @@ function Menu.updateRestartMenu(GameInfo)
             -- Return to Menu
             Menu.restartMenu = false
             Menu.restartMenuOpenedAt = nil
+            -- Reset story mode flags if in story mode
+            if GameInfo.storyMode then
+                GameInfo.storyMode = false
+                GameInfo.storyOpponentIndex = 1
+                GameInfo.storyOpponents = {}
+                GameInfo.storyOpponentColors = {}
+                GameInfo.storyPlayerCharacter = nil
+                GameInfo.storyPlayerColor = nil
+            end
             GameInfo.gameState = "characterselect"
             GameInfo.justEnteredCharacterSelect = true
         end
@@ -773,7 +811,7 @@ end
 -- called by love.gamepadpressed in main.lua
 function Menu.handlePauseInput(joystick, button)
   -- only during an actual fight
-  if not (GameInfo.gameState == "game_1P" or GameInfo.gameState == "game_2P") then
+  if not (GameInfo.gameState == "game_1P" or GameInfo.gameState == "game_2P" or GameInfo.gameState == "game_story") then
     return
   end
   if Menu.restartMenu then
@@ -796,7 +834,7 @@ end
 -- Handle keyboard pause input
 function Menu.handleKeyboardPauseInput(key, playerIndex)
   -- only during an actual fight
-  if not (GameInfo.gameState == "game_1P" or GameInfo.gameState == "game_2P") then
+  if not (GameInfo.gameState == "game_1P" or GameInfo.gameState == "game_2P" or GameInfo.gameState == "game_story") then
     return
   end
   if Menu.restartMenu then

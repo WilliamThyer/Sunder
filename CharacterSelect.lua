@@ -350,11 +350,19 @@ function CharacterSelect.update(GameInfo)
         end
         -- Only reset P2 controller assignment in 2P mode
         local isOnePlayer = (GameInfo.previousMode == "game_1P")
-        if not isOnePlayer then
+        local isStoryMode = (GameInfo.previousMode == "game_story")
+        if not isOnePlayer and not isStoryMode then
             GameInfo.p2InputType = nil
             GameInfo.player2Controller = nil
             GameInfo.p2KeyboardMapping = nil
             controllerAssignments[2] = nil
+        end
+        -- Initialize story mode if needed
+        if isStoryMode then
+            GameInfo.storyMode = true
+            GameInfo.storyOpponentIndex = 1
+            GameInfo.storyOpponents = {}
+            GameInfo.storyOpponentColors = {}
         end
         -- Clear all justPressed entries so A/Y presses that opened this screen are ignored:
         justPressed = {}
@@ -364,6 +372,7 @@ function CharacterSelect.update(GameInfo)
     end
 
     local isOnePlayer = (GameInfo.previousMode == "game_1P")
+    local isStoryMode = (GameInfo.previousMode == "game_story")
     local dt = love.timer.getDelta()
 
     -- Edge detection for kpenter and return (P2 keyboard assignment)
@@ -464,11 +473,11 @@ function CharacterSelect.update(GameInfo)
         end
     end
 
-    -- 1P mode: handle B for deselect or exit
-    if isOnePlayer then
+    -- 1P mode or Story mode: handle B for deselect or exit
+    if isOnePlayer or isStoryMode then
         -- Keyboard B
         if GameInfo.p1InputType == "keyboard" and keyboardJustPressed.b then
-            if playerSelections[2].locked then
+            if isOnePlayer and playerSelections[2].locked then
                 playCharacterSelectSound("shield")
                 playerSelections[2].locked = false
                 clearKeyboardEdgeDetection()
@@ -488,7 +497,7 @@ function CharacterSelect.update(GameInfo)
         end
         -- Controller B (edge-detection)
         if GameInfo.p1InputType ~= "keyboard" and justStates[1] and justStates[1].b then
-            if playerSelections[2].locked then
+            if isOnePlayer and playerSelections[2].locked then
                 playCharacterSelectSound("shield")
                 playerSelections[2].locked = false
                 return
@@ -602,9 +611,9 @@ function CharacterSelect.update(GameInfo)
     end
     
     -- Handle back button navigation for each active player
-    if isOnePlayer then
-        -- In 1P mode, handle for the active player (P1 if not locked, P2 if P1 is locked)
-        local activePlayer = playerSelections[1].locked and 2 or 1
+    if isOnePlayer or isStoryMode then
+        -- In 1P/Story mode, handle for the active player (P1 if not locked, P2 if P1 is locked and in 1P mode)
+        local activePlayer = (isOnePlayer and playerSelections[1].locked) and 2 or 1
         local activeInput = p1Input
         local activeJustState = justStates[1]
         
@@ -628,9 +637,28 @@ function CharacterSelect.update(GameInfo)
         end
     end
 
+    -- Story mode: Start game when P1 locks in (no P2 selection needed)
+    if isStoryMode and playerSelections[1].locked then
+        local startPressed = false
+        if justStates[1] and justStates[1].a then
+            startPressed = true
+        end
+        if startPressed then
+            -- Play fight start sound
+            playCharacterSelectSound("heavyAttackBerserker")
+            -- Clear edge-detected states after use
+            if justStates[1] then
+                justStates[1].a = nil
+            end
+            CharacterSelect.beginGame(GameInfo)
+            clearKeyboardEdgeDetection()
+            return
+        end
+    end
+
     -- Start game when both players are locked and any A button was just pressed.
     -- Check this BEFORE processing character updates to avoid clearing edge states first.
-    if playerSelections[1].locked and playerSelections[2].locked then
+    if not isStoryMode and playerSelections[1].locked and playerSelections[2].locked then
         local startPressed = false
         if (justStates[1] and justStates[1].a) or (justStates[2] and justStates[2].a) then
             startPressed = true
@@ -652,7 +680,7 @@ function CharacterSelect.update(GameInfo)
     end
 
     -- P1 always has input
-    if isOnePlayer then
+    if isOnePlayer or isStoryMode then
         if not playerSelections[1].locked then
             if p1Input then
                 -- Prevent horizontal movement when back button is selected
@@ -669,7 +697,8 @@ function CharacterSelect.update(GameInfo)
                     justStates[1].y = nil
                 end
             end
-        else
+        elseif isOnePlayer then
+            -- Only handle P2 selection in 1P mode, not story mode
             if p1Input then
                 -- Prevent horizontal movement when back button is selected
                 local moveX = playerSelections[2].backButtonSelected and 0 or p1Input.moveX
@@ -796,14 +825,48 @@ function CharacterSelect.update(GameInfo)
 end
 
 -----------------------------------------------------
--- Called when both players have locked in their characters.
+-- Called when both players have locked in their characters (or P1 in story mode).
 -----------------------------------------------------
 function CharacterSelect.beginGame(GameInfo)
-    GameInfo.player1Character = characters[playerSelections[1].cursor]
-    GameInfo.player2Character = characters[playerSelections[2].cursor]
+    local isStoryMode = (GameInfo.previousMode == "game_story")
+    
+    if isStoryMode then
+        -- Story mode: only P1 selects
+        GameInfo.storyPlayerCharacter = characters[playerSelections[1].cursor]
+        GameInfo.storyPlayerColor = colorNames[playerSelections[1].colorIndex]
+        
+        -- Calculate opponents: exclude player's character from [Warrior, Berserk, Lancer, Mage]
+        local allCharacters = {"Warrior", "Berserk", "Lancer", "Mage"}
+        GameInfo.storyOpponents = {}
+        for _, char in ipairs(allCharacters) do
+            if char ~= GameInfo.storyPlayerCharacter then
+                table.insert(GameInfo.storyOpponents, char)
+            end
+        end
+        
+        -- Calculate opponent colors: exclude player's color from [Blue, Red, Yellow, Gray]
+        local allColors = {"Blue", "Red", "Yellow", "Gray"}
+        GameInfo.storyOpponentColors = {}
+        for _, color in ipairs(allColors) do
+            if color ~= GameInfo.storyPlayerColor then
+                table.insert(GameInfo.storyOpponentColors, color)
+            end
+        end
+        
+        -- Set up for first opponent
+        GameInfo.storyOpponentIndex = 1
+        GameInfo.player1Character = GameInfo.storyPlayerCharacter
+        GameInfo.player1Color = GameInfo.storyPlayerColor
+        GameInfo.player2Character = GameInfo.storyOpponents[1]
+        GameInfo.player2Color = GameInfo.storyOpponentColors[1]
+    else
+        -- Normal mode: both players select
+        GameInfo.player1Character = characters[playerSelections[1].cursor]
+        GameInfo.player2Character = characters[playerSelections[2].cursor]
 
-    GameInfo.player1Color = colorNames[playerSelections[1].colorIndex]
-    GameInfo.player2Color = colorNames[playerSelections[2].colorIndex]
+        GameInfo.player1Color = colorNames[playerSelections[1].colorIndex]
+        GameInfo.player2Color = colorNames[playerSelections[2].colorIndex]
+    end
 
     -- The controller assignments are already set in GameInfo from the input assignment process
     -- No need to override them here
@@ -826,6 +889,7 @@ function CharacterSelect.draw(GameInfo)
     local gameWidth   = GameInfo.gameWidth
     local gameHeight  = GameInfo.gameHeight
     local isOnePlayer = (GameInfo.previousMode == "game_1P")
+    local isStoryMode = (GameInfo.previousMode == "game_story")
 
     -- === Draw player info boxes at the top ===
     local boxWidth   = 16
@@ -875,35 +939,37 @@ function CharacterSelect.draw(GameInfo)
     love.graphics.printf("Player 1", p1BoxX - boxWidth/2 - 22, p1BoxY - 9, boxWidth*5, "center", 0, 1, 1)
 
     -- --- Draw Player 2's box ---
-    if playerSelections[2].locked then
-        love.graphics.setColor(getPlayerColor(2))
-    else
-        love.graphics.setColor(1, 1, 1, 1)
-    end
-    love.graphics.rectangle("line", p2BoxX, p2BoxY, boxWidth, boxHeight)
-    local p2Char = characters[playerSelections[2].cursor]
-    if p2Char == "Warrior" or p2Char == "Berserk" or p2Char == "Lancer" or p2Char == "Mage" then
-        local colName = colorNames[playerSelections[2].colorIndex]
-        local image, quad, spriteW, spriteH
-        if p2Char == "Warrior" then
-            image, quad = sprites.Warrior[colName], warriorQuad
-            spriteW, spriteH = 8, 8
-        elseif p2Char == "Berserk" then
-            image, quad = sprites.Berserk[colName], berserkQuad
-            spriteW, spriteH = 12, 12
-        elseif p2Char == "Lancer" then
-            image, quad = sprites.Lancer[colName], lancerQuad
-            spriteW, spriteH = 12, 12
-        elseif p2Char == "Mage" then
-            image, quad = sprites.Mage[colName], mageQuad
-            spriteW, spriteH = 12, 12
+    if not isStoryMode then
+        if playerSelections[2].locked then
+            love.graphics.setColor(getPlayerColor(2))
+        else
+            love.graphics.setColor(1, 1, 1, 1)
         end
-        local offsetX = (boxWidth - spriteW) / 2
-        local offsetY = (boxHeight - spriteH) / 2
-        love.graphics.draw(image, quad, p2BoxX + offsetX, p2BoxY + offsetY)
+        love.graphics.rectangle("line", p2BoxX, p2BoxY, boxWidth, boxHeight)
+        local p2Char = characters[playerSelections[2].cursor]
+        if p2Char == "Warrior" or p2Char == "Berserk" or p2Char == "Lancer" or p2Char == "Mage" then
+            local colName = colorNames[playerSelections[2].colorIndex]
+            local image, quad, spriteW, spriteH
+            if p2Char == "Warrior" then
+                image, quad = sprites.Warrior[colName], warriorQuad
+                spriteW, spriteH = 8, 8
+            elseif p2Char == "Berserk" then
+                image, quad = sprites.Berserk[colName], berserkQuad
+                spriteW, spriteH = 12, 12
+            elseif p2Char == "Lancer" then
+                image, quad = sprites.Lancer[colName], lancerQuad
+                spriteW, spriteH = 12, 12
+            elseif p2Char == "Mage" then
+                image, quad = sprites.Mage[colName], mageQuad
+                spriteW, spriteH = 12, 12
+            end
+            local offsetX = (boxWidth - spriteW) / 2
+            local offsetY = (boxHeight - spriteH) / 2
+            love.graphics.draw(image, quad, p2BoxX + offsetX, p2BoxY + offsetY)
+        end
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.printf("Player 2", p2BoxX - boxWidth/2 - 22, p2BoxY - 9, boxWidth*5, "center", 0, 1, 1)
     end
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.printf("Player 2", p2BoxX - boxWidth/2 - 22, p2BoxY - 9, boxWidth*5, "center", 0, 1, 1)
 
     -- === Draw character boxes in the center ===
     local charBoxWidth   = 16
@@ -965,7 +1031,9 @@ function CharacterSelect.draw(GameInfo)
     local charSpacing = charBoxPadding
 
     for playerIndex = 1, 2 do
-        if isOnePlayer and playerIndex == 2 and (not playerSelections[1].locked) then
+        if isStoryMode and playerIndex == 2 then
+            -- Hide P2 cursor in story mode
+        elseif isOnePlayer and playerIndex == 2 and (not playerSelections[1].locked) then
             -- Hide CPU's cursor until P1 locks
         else
             local cs = playerSelections[playerIndex]
@@ -989,8 +1057,14 @@ function CharacterSelect.draw(GameInfo)
         end
     end
 
-    -- If both locked, prompt "Press A to begin!"
-    if playerSelections[1].locked and playerSelections[2].locked then
+    -- If both locked (or P1 locked in story mode), prompt "Press A to begin!"
+    if isStoryMode and playerSelections[1].locked then
+        love.graphics.printf(
+          "Press A to begin!",
+          0, gameHeight - 10,
+          gameWidth, "center", 0, 1, 1
+        )
+    elseif not isStoryMode and playerSelections[1].locked and playerSelections[2].locked then
         love.graphics.printf(
           "Press A to begin!",
           0, gameHeight - 10,
