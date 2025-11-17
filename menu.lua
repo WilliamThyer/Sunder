@@ -313,14 +313,15 @@ function Menu.drawMenu(GameInfo)
 end
 
 function Menu.updateRestartMenu(GameInfo)
-    -- Wait for input delay
+    -- Wait for input delay to prevent immediate inputs from the fight affecting the menu
+    -- This ensures players have time to see the menu before any input is accepted
     if not Menu.restartMenuOpenedAt then
         Menu.restartMenuOpenedAt = love.timer.getTime()
-        return
+        return  -- Return early on first call, before delay period
     end
     local now = love.timer.getTime()
     if now - Menu.restartMenuOpenedAt < Menu.restartMenuInputDelay then
-        return
+        return  -- Return early if delay hasn't passed yet, preventing all input processing
     end
 
     -- Update keyboard edge detection
@@ -361,24 +362,31 @@ function Menu.updateRestartMenu(GameInfo)
             end
         end
     else
-        -- 1P mode: Only P1 (the human player) can input
-        -- Check keyboard input for P1
+        -- 1P mode: Only P1 (the human player) can input - CPU inputs must never affect this menu
+        -- Check keyboard input for P1 (only if P1 is using keyboard)
         if GameInfo.p1InputType == "keyboard" then
             startPressed = keyboardJustPressed["a"]
             yPressed = keyboardJustPressed["y"]
         end
         
-        -- Check controller input for P1 (if P1 is using a controller)
+        -- Check controller input for P1 (only if P1 is using a controller)
+        -- Explicitly filter to only accept inputs from P1's assigned controller ID
         if GameInfo.p1InputType ~= "keyboard" and GameInfo.player1Controller then
             local js1 = InputManager.getJoystick(GameInfo.player1Controller)
             if js1 then
-                local jid = js1:getID()
-                local justStates = justPressed[jid] or {}
-                justPressed[jid] = nil
-                startPressed = startPressed or justStates["a"]
-                yPressed = yPressed or justStates["y"]
+                local p1Jid = js1:getID()
+                -- Only check justPressed for P1's specific controller ID
+                -- Ignore all other joystick IDs to prevent CPU or other controllers from affecting the menu
+                if justPressed[p1Jid] then
+                    local justStates = justPressed[p1Jid]
+                    justPressed[p1Jid] = nil
+                    startPressed = startPressed or justStates["a"]
+                    yPressed = yPressed or justStates["y"]
+                end
             end
         end
+        -- Note: In 1P mode, we intentionally ignore all other joysticks in justPressed
+        -- to prevent any CPU or unassigned controllers from affecting the restart menu
     end
 
     -- Confirm selection with 'a' button on controller

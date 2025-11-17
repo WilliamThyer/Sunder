@@ -257,6 +257,8 @@ function love.update(dt)
         if shouldShowRestart then
             Menu.restartMenu = true
             if not Menu.restartMenuOpenedAt then
+                -- Clear all queued button presses to prevent inputs from the fight affecting the menu
+                justPressed = {}
                 Menu.restartMenuOpenedAt = love.timer.getTime() -- Reset input delay timer only once
             end
             Menu.updateRestartMenu(GameInfo)
@@ -302,6 +304,8 @@ function love.draw()
         if shouldShowRestart then
             Menu.restartMenu = true
             if not Menu.restartMenuOpenedAt then
+                -- Clear all queued button presses to prevent inputs from the fight affecting the menu
+                justPressed = {}
                 Menu.restartMenuOpenedAt = love.timer.getTime() -- Reset input delay timer only once
             end
             Menu.drawRestartMenu(players)
