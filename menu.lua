@@ -508,10 +508,14 @@ function Menu.updateRestartMenu(GameInfo)
     -- This ensures players have time to see the menu before any input is accepted
     if not Menu.restartMenuOpenedAt then
         Menu.restartMenuOpenedAt = love.timer.getTime()
+        -- Clear keyboard edge detection state to prevent any queued inputs
+        clearKeyboardEdgeDetection()
         return  -- Return early on first call, before delay period
     end
     local now = love.timer.getTime()
     if now - Menu.restartMenuOpenedAt < Menu.restartMenuInputDelay then
+        -- Clear keyboard edge detection state during delay period to prevent any queued inputs
+        clearKeyboardEdgeDetection()
         return  -- Return early if delay hasn't passed yet, preventing all input processing
     end
 
