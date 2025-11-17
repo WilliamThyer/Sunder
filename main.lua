@@ -530,8 +530,15 @@ function love.draw()
     end
     if GameInfo.gameState == "menu" then
         Menu.drawMenu(GameInfo)
-    elseif GameInfo.gameState == "characterselect" or GameInfo.gameState == "game_starting" then
+    elseif GameInfo.gameState == "characterselect" then
         CharacterSelect.draw(GameInfo)
+    elseif GameInfo.gameState == "game_starting" then
+        -- In Story Mode, skip character select screen during fight transitions
+        if GameInfo.storyMode then
+            love.graphics.clear(0, 0, 0, 1)
+        else
+            CharacterSelect.draw(GameInfo)
+        end
     elseif GameInfo.gameState == "story_victory" then
         -- Draw victory screen
         love.graphics.clear(0, 0, 0, 1)

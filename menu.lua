@@ -5,6 +5,7 @@ Menu.pausePlayer = nil
 Menu.restartMenu = false
 Menu.restartMenuOpenedAt = nil -- Timestamp when restart menu was opened
 Menu.restartMenuInputDelay = 0.5 -- Seconds to wait before accepting input
+Menu.menuMoveCooldown = 0 -- Cooldown timer for menu navigation
 
 love.graphics.setDefaultFilter("nearest","nearest")
 
@@ -134,6 +135,10 @@ function Menu.updateMenu(GameInfo)
         GameInfo.selectedOption = 1
     end
     
+    -- Get delta time and update cooldown
+    local dt = love.timer.getDelta()
+    Menu.menuMoveCooldown = math.max(0, Menu.menuMoveCooldown - dt)
+    
     -- Force refresh controllers when in menu to catch any newly connected ones
     InputManager.refreshControllersImmediate()
     
@@ -185,23 +190,26 @@ function Menu.updateMenu(GameInfo)
     end
 
     -- Allow either controller or keyboard to move the selection
+    -- Only allow movement when cooldown has expired
     local moveUp = false
     local moveDown = false
     
-    if js1 and (p1Input.moveY < -0.5) then
-        moveUp = true
-    elseif js2 and (p2Input and p2Input.moveY < -0.5) then
-        moveUp = true
-    elseif keyboardJustPressed.up then
-        moveUp = true
-    end
-    
-    if js1 and (p1Input.moveY > 0.5) then
-        moveDown = true
-    elseif js2 and (p2Input and p2Input.moveY > 0.5) then
-        moveDown = true
-    elseif keyboardJustPressed.down then
-        moveDown = true
+    if Menu.menuMoveCooldown <= 0 then
+        if js1 and (p1Input.moveY < -0.5) then
+            moveUp = true
+        elseif js2 and (p2Input and p2Input.moveY < -0.5) then
+            moveUp = true
+        elseif keyboardJustPressed.up then
+            moveUp = true
+        end
+        
+        if js1 and (p1Input.moveY > 0.5) then
+            moveDown = true
+        elseif js2 and (p2Input and p2Input.moveY > 0.5) then
+            moveDown = true
+        elseif keyboardJustPressed.down then
+            moveDown = true
+        end
     end
     
     -- Track current selection before updating
@@ -214,12 +222,14 @@ function Menu.updateMenu(GameInfo)
         end
         GameInfo.selectedOption = math.max(1, currentSelection - 1)
         previousSelectedOption = GameInfo.selectedOption
+        Menu.menuMoveCooldown = 0.25  -- Set cooldown after movement
     elseif moveDown then
         if currentSelection < 3 then
             playMenuSound("counter")
         end
         GameInfo.selectedOption = math.min(3, currentSelection + 1)
         previousSelectedOption = GameInfo.selectedOption
+        Menu.menuMoveCooldown = 0.25  -- Set cooldown after movement
     else
         -- No movement, preserve previous selection for next frame comparison
         previousSelectedOption = currentSelection
