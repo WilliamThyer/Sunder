@@ -190,6 +190,14 @@ local function initCharacterSelectSounds()
     else
         print("Warning: Could not load shield.wav")
     end
+    
+    local success4, heavyAttackBerserker = pcall(love.audio.newSource, "assets/soundEffects/heavyAttackBerserker.wav", "static")
+    if success4 then
+        characterSelectSounds.heavyAttackBerserker = heavyAttackBerserker
+        characterSelectSounds.heavyAttackBerserker:setLooping(false)
+    else
+        print("Warning: Could not load heavyAttackBerserker.wav")
+    end
 end
 
 -- Safely play a character select sound effect
@@ -628,6 +636,8 @@ function CharacterSelect.update(GameInfo)
             startPressed = true
         end
         if startPressed then
+            -- Play fight start sound
+            playCharacterSelectSound("heavyAttackBerserker")
             -- Clear edge-detected states after use
             if justStates[1] then
                 justStates[1].a = nil
