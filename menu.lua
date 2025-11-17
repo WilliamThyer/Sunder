@@ -312,6 +312,167 @@ function Menu.drawMenu(GameInfo)
     love.graphics.setColor(1,1,1,1)  -- reset
 end
 
+-- Track previous pause selection to detect actual changes
+local previousPauseSelectedOption = nil
+
+function Menu.updatePauseMenu(GameInfo)
+    -- Initialize pauseSelectedOption if not set (defaults to option 1)
+    if not GameInfo.pauseSelectedOption then
+        GameInfo.pauseSelectedOption = 1
+    end
+    
+    -- Update keyboard edge detection
+    updateKeyboardEdgeDetection()
+    
+    -- Get input from the pause player
+    local pauseInput = nil
+    local pauseJoystick = nil
+    local pauseJustStates = {}
+    
+    -- Determine which player paused and get their input
+    if Menu.pausePlayer == "keyboard" then
+        -- Pause player is using keyboard (assume P1)
+        pauseInput = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
+        -- Merge keyboard edge detection
+        for k, v in pairs(keyboardJustPressed) do
+            if v then
+                pauseJustStates[k] = true
+            end
+        end
+    elseif type(Menu.pausePlayer) == "number" then
+        -- Pause player is using a controller or is a player index
+        -- Check if it matches a controller ID
+        if GameInfo.player1Controller == Menu.pausePlayer then
+            -- P1's controller
+            if GameInfo.p1InputType == "keyboard" then
+                pauseInput = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
+                for k, v in pairs(keyboardJustPressed) do
+                    if v then
+                        pauseJustStates[k] = true
+                    end
+                end
+            else
+                pauseJoystick = InputManager.getJoystick(GameInfo.player1Controller)
+                pauseInput = InputManager.get(GameInfo.player1Controller)
+                local jid = pauseJoystick:getID()
+                pauseJustStates = justPressed[jid] or {}
+                justPressed[jid] = nil
+            end
+        elseif GameInfo.player2Controller == Menu.pausePlayer then
+            -- P2's controller
+            if GameInfo.p2InputType == "keyboard" then
+                pauseInput = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2)
+                for k, v in pairs(keyboardJustPressed) do
+                    if v then
+                        pauseJustStates[k] = true
+                    end
+                end
+            else
+                pauseJoystick = InputManager.getJoystick(GameInfo.player2Controller)
+                pauseInput = InputManager.get(GameInfo.player2Controller)
+                local jid = pauseJoystick:getID()
+                pauseJustStates = justPressed[jid] or {}
+                justPressed[jid] = nil
+            end
+        elseif Menu.pausePlayer == 1 then
+            -- Player index 1
+            if GameInfo.p1InputType == "keyboard" then
+                pauseInput = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
+                for k, v in pairs(keyboardJustPressed) do
+                    if v then
+                        pauseJustStates[k] = true
+                    end
+                end
+            elseif GameInfo.player1Controller then
+                pauseJoystick = InputManager.getJoystick(GameInfo.player1Controller)
+                pauseInput = InputManager.get(GameInfo.player1Controller)
+                local jid = pauseJoystick:getID()
+                pauseJustStates = justPressed[jid] or {}
+                justPressed[jid] = nil
+            end
+        elseif Menu.pausePlayer == 2 then
+            -- Player index 2
+            if GameInfo.p2InputType == "keyboard" then
+                pauseInput = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2)
+                for k, v in pairs(keyboardJustPressed) do
+                    if v then
+                        pauseJustStates[k] = true
+                    end
+                end
+            elseif GameInfo.player2Controller then
+                pauseJoystick = InputManager.getJoystick(GameInfo.player2Controller)
+                pauseInput = InputManager.get(GameInfo.player2Controller)
+                local jid = pauseJoystick:getID()
+                pauseJustStates = justPressed[jid] or {}
+                justPressed[jid] = nil
+            end
+        end
+    end
+    
+    -- Allow arrow navigation
+    local moveUp = false
+    local moveDown = false
+    
+    if pauseJoystick and pauseInput and (pauseInput.moveY < -0.5) then
+        moveUp = true
+    elseif keyboardJustPressed.up then
+        moveUp = true
+    end
+    
+    if pauseJoystick and pauseInput and (pauseInput.moveY > 0.5) then
+        moveDown = true
+    elseif keyboardJustPressed.down then
+        moveDown = true
+    end
+    
+    -- Track current selection before updating
+    local currentSelection = GameInfo.pauseSelectedOption or 1
+    
+    -- Update selection and play sound only if it actually changed
+    if moveUp then
+        if currentSelection ~= 1 then
+            playMenuSound("counter")
+        end
+        GameInfo.pauseSelectedOption = 1
+        previousPauseSelectedOption = 1
+    elseif moveDown then
+        if currentSelection ~= 2 then
+            playMenuSound("counter")
+        end
+        GameInfo.pauseSelectedOption = 2
+        previousPauseSelectedOption = 2
+    else
+        -- No movement, preserve previous selection for next frame comparison
+        previousPauseSelectedOption = currentSelection
+    end
+    
+    -- Handle 'a' button press to select option
+    local aPressed = pauseJustStates["a"] or false
+    
+    if aPressed then
+        -- Play selection sound
+        playMenuSound("downAir")
+        
+        if GameInfo.pauseSelectedOption == 1 then
+            -- Resume (unpause)
+            Menu.paused = false
+            Menu.pausePlayer = nil
+        else
+            -- Return to Menu
+            Menu.paused = false
+            Menu.pausePlayer = nil
+            GameInfo.gameState = "characterselect"
+            GameInfo.justEnteredCharacterSelect = true
+        end
+    end
+    
+    -- Clear keyboard edge detection after processing
+    clearKeyboardEdgeDetection()
+end
+
+-- Track previous restart selection to detect actual changes
+local previousRestartSelectedOption = nil
+
 function Menu.updateRestartMenu(GameInfo)
     -- Wait for input delay to prevent immediate inputs from the fight affecting the menu
     -- This ensures players have time to see the menu before any input is accepted
@@ -324,49 +485,80 @@ function Menu.updateRestartMenu(GameInfo)
         return  -- Return early if delay hasn't passed yet, preventing all input processing
     end
 
+    -- Initialize restartSelectedOption if not set (defaults to option 1)
+    if not GameInfo.restartSelectedOption then
+        GameInfo.restartSelectedOption = 1
+    end
+
     -- Update keyboard edge detection
     updateKeyboardEdgeDetection()
 
     local isTwoPlayer = (GameInfo.gameState == "game_2P")
-    local startPressed, yPressed = false, false
-
+    local p1Input = nil
+    local p2Input = nil
+    local p1JustStates = {}
+    local p2JustStates = {}
+    
+    -- Get input from players
     if isTwoPlayer then
         -- 2P mode: Either player can input
         -- Check P1 input
         if GameInfo.p1InputType == "keyboard" then
-            startPressed = startPressed or keyboardJustPressed["a"]
-            yPressed = yPressed or keyboardJustPressed["y"]
+            p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
+            -- Merge keyboard edge detection
+            for k, v in pairs(keyboardJustPressed) do
+                if v then
+                    p1JustStates[k] = true
+                end
+            end
         else
             local js1 = InputManager.getJoystick(GameInfo.player1Controller)
             if js1 then
+                p1Input = InputManager.get(GameInfo.player1Controller)
                 local jid = js1:getID()
-                local justStates = justPressed[jid] or {}
+                p1JustStates = justPressed[jid] or {}
                 justPressed[jid] = nil
-                startPressed = startPressed or justStates["a"]
-                yPressed = yPressed or justStates["y"]
             end
         end
         
         -- Check P2 input
         if GameInfo.p2InputType == "keyboard" then
-            startPressed = startPressed or keyboardJustPressed["a"]
-            yPressed = yPressed or keyboardJustPressed["y"]
+            p2Input = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2)
+            -- Merge keyboard edge detection for P2 (if different mapping)
+            if GameInfo.p2KeyboardMapping == 2 then
+                local keyboardMap2 = InputManager.getKeyboardMapping(2)
+                -- P2 keyboard uses different keys, but we'll use the same keyboardJustPressed
+                for k, v in pairs(keyboardJustPressed) do
+                    if v then
+                        p2JustStates[k] = true
+                    end
+                end
+            else
+                -- Same keyboard mapping, use same states
+                for k, v in pairs(p1JustStates) do
+                    p2JustStates[k] = v
+                end
+            end
         else
             local js2 = InputManager.getJoystick(GameInfo.player2Controller)
             if js2 then
+                p2Input = InputManager.get(GameInfo.player2Controller)
                 local jid = js2:getID()
-                local justStates = justPressed[jid] or {}
+                p2JustStates = justPressed[jid] or {}
                 justPressed[jid] = nil
-                startPressed = startPressed or justStates["a"]
-                yPressed = yPressed or justStates["y"]
             end
         end
     else
         -- 1P mode: Only P1 (the human player) can input - CPU inputs must never affect this menu
         -- Check keyboard input for P1 (only if P1 is using keyboard)
         if GameInfo.p1InputType == "keyboard" then
-            startPressed = keyboardJustPressed["a"]
-            yPressed = keyboardJustPressed["y"]
+            p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
+            -- Merge keyboard edge detection
+            for k, v in pairs(keyboardJustPressed) do
+                if v then
+                    p1JustStates[k] = true
+                end
+            end
         end
         
         -- Check controller input for P1 (only if P1 is using a controller)
@@ -374,14 +566,13 @@ function Menu.updateRestartMenu(GameInfo)
         if GameInfo.p1InputType ~= "keyboard" and GameInfo.player1Controller then
             local js1 = InputManager.getJoystick(GameInfo.player1Controller)
             if js1 then
+                p1Input = InputManager.get(GameInfo.player1Controller)
                 local p1Jid = js1:getID()
                 -- Only check justPressed for P1's specific controller ID
                 -- Ignore all other joystick IDs to prevent CPU or other controllers from affecting the menu
                 if justPressed[p1Jid] then
-                    local justStates = justPressed[p1Jid]
+                    p1JustStates = justPressed[p1Jid]
                     justPressed[p1Jid] = nil
-                    startPressed = startPressed or justStates["a"]
-                    yPressed = yPressed or justStates["y"]
                 end
             end
         end
@@ -389,19 +580,77 @@ function Menu.updateRestartMenu(GameInfo)
         -- to prevent any CPU or unassigned controllers from affecting the restart menu
     end
 
-    -- Confirm selection with 'a' button on controller
-    if startPressed then
-        Menu.restartMenu = false
-        Menu.restartMenuOpenedAt = nil
-        startGame(GameInfo.gameState)
-    -- Press Y to go back to character select
-    elseif yPressed then
-        -- Play back/go back sound
-        playMenuSound("shield")
-        Menu.restartMenu = false
-        Menu.restartMenuOpenedAt = nil
-        GameInfo.gameState = "characterselect"
-        GameInfo.justEnteredCharacterSelect = true
+    -- Get joystick objects for arrow navigation
+    local js1 = nil
+    local js2 = nil
+    if GameInfo.p1InputType and GameInfo.p1InputType ~= "keyboard" then
+        js1 = InputManager.getJoystick(GameInfo.player1Controller)
+    end
+    if isTwoPlayer and GameInfo.p2InputType and GameInfo.p2InputType ~= "keyboard" then
+        js2 = InputManager.getJoystick(GameInfo.player2Controller)
+    end
+
+    -- Allow arrow navigation (either player can navigate)
+    local moveUp = false
+    local moveDown = false
+    
+    if js1 and p1Input and (p1Input.moveY < -0.5) then
+        moveUp = true
+    elseif js2 and p2Input and (p2Input.moveY < -0.5) then
+        moveUp = true
+    elseif keyboardJustPressed.up then
+        moveUp = true
+    end
+    
+    if js1 and p1Input and (p1Input.moveY > 0.5) then
+        moveDown = true
+    elseif js2 and p2Input and (p2Input.moveY > 0.5) then
+        moveDown = true
+    elseif keyboardJustPressed.down then
+        moveDown = true
+    end
+    
+    -- Track current selection before updating
+    local currentSelection = GameInfo.restartSelectedOption or 1
+    
+    -- Update selection and play sound only if it actually changed
+    if moveUp then
+        if currentSelection ~= 1 then
+            playMenuSound("counter")
+        end
+        GameInfo.restartSelectedOption = 1
+        previousRestartSelectedOption = 1
+    elseif moveDown then
+        if currentSelection ~= 2 then
+            playMenuSound("counter")
+        end
+        GameInfo.restartSelectedOption = 2
+        previousRestartSelectedOption = 2
+    else
+        -- No movement, preserve previous selection for next frame comparison
+        previousRestartSelectedOption = currentSelection
+    end
+
+    -- Handle selection with 'a' button or START button
+    local aPressed = (p1JustStates["a"] or p2JustStates["a"]) or false
+    local startPressed = (p1JustStates["start"] or p2JustStates["start"]) or false
+    
+    if aPressed or startPressed then
+        -- Play selection sound
+        playMenuSound("downAir")
+        
+        if GameInfo.restartSelectedOption == 1 then
+            -- Restart Fight
+            Menu.restartMenu = false
+            Menu.restartMenuOpenedAt = nil
+            startGame(GameInfo.gameState)
+        else
+            -- Return to Menu
+            Menu.restartMenu = false
+            Menu.restartMenuOpenedAt = nil
+            GameInfo.gameState = "characterselect"
+            GameInfo.justEnteredCharacterSelect = true
+        end
     end
     
     -- Clear keyboard edge detection after processing
@@ -420,9 +669,45 @@ function Menu.drawRestartMenu(players)
     elseif p2.isDead then
         love.graphics.printf("Player 1 Wins", GameInfo.gameWidth / 4, 20, GameInfo.gameWidth/2, "center", 0, 1, 1)
     end
-    love.graphics.printf("Press A to play again", GameInfo.gameWidth / 12, 30, GameInfo.gameWidth*.9, "center", 0, 1, 1)
-    love.graphics.printf("Press Y to return to menu", GameInfo.gameWidth / 12, 40, GameInfo.gameWidth*.9, "center", 0, 1, 1)
-
+    
+    -- Blue color matching main menu (127/255, 146/255, 237/255)
+    local blueColor = {127/255, 146/255, 237/255}
+    local arrowSize = 5
+    
+    -- Option 1: Restart Fight
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.printf("Restart Fight", 0, 30, GameInfo.gameWidth, "center", 0, 1, 1)
+    
+    -- Option 2: Return to Menu
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.printf("Return to Menu", 0, 40, GameInfo.gameWidth, "center", 0, 1, 1)
+    
+    -- Draw blue arrow to the left of selected option
+    local centerX = GameInfo.gameWidth / 2
+    local textOffset = 30  -- Approximate offset to left of centered text
+    local arrowX = centerX - textOffset
+    
+    if GameInfo.restartSelectedOption == 1 then
+        local arrowY = 35
+        love.graphics.setColor(blueColor)
+        love.graphics.polygon(
+            "fill",
+            arrowX, arrowY - arrowSize/2,
+            arrowX, arrowY + arrowSize/2,
+            arrowX + arrowSize, arrowY
+        )
+    elseif GameInfo.restartSelectedOption == 2 then
+        local arrowY = 45
+        love.graphics.setColor(blueColor)
+        love.graphics.polygon(
+            "fill",
+            arrowX, arrowY - arrowSize/2,
+            arrowX, arrowY + arrowSize/2,
+            arrowX + arrowSize, arrowY
+        )
+    end
+    
+    love.graphics.setColor(1,1,1,1)  -- reset
 end
 
 -- called by love.gamepadpressed in main.lua
@@ -441,19 +726,10 @@ function Menu.handlePauseInput(joystick, button)
       Menu.paused      = true
       Menu.pausePlayer = joystick:getID()
     elseif joystick:getID() == Menu.pausePlayer then
+      -- Resume game when START is pressed while paused
       Menu.paused      = false
       Menu.pausePlayer = nil
     end
-  end
-
-  if Menu.paused 
-  and joystick:getID() == Menu.pausePlayer
-  and button == "y" then
-    -- return to character select
-    Menu.paused      = false
-    Menu.pausePlayer = nil
-    GameInfo.gameState               = "characterselect"
-    GameInfo.justEnteredCharacterSelect = true
   end
 end
 
@@ -475,19 +751,10 @@ function Menu.handleKeyboardPauseInput(key, playerIndex)
       Menu.paused = true
       Menu.pausePlayer = playerIndex or "keyboard"
     elseif Menu.pausePlayer == (playerIndex or "keyboard") then
+      -- Resume game when START is pressed while paused
       Menu.paused = false
       Menu.pausePlayer = nil
     end
-  end
-
-  if Menu.paused 
-  and Menu.pausePlayer == (playerIndex or "keyboard")
-  and key == keyboardMap.y then
-    -- return to character select
-    Menu.paused = false
-    Menu.pausePlayer = nil
-    GameInfo.gameState = "characterselect"
-    GameInfo.justEnteredCharacterSelect = true
   end
 end
 
@@ -495,12 +762,51 @@ function Menu.drawPauseOverlay()
   -- a translucent black
   love.graphics.setColor(0,0,0,0.75)
   love.graphics.rectangle("fill", 0,0, GameInfo.gameWidth, GameInfo.gameHeight)
+  
+  love.graphics.setFont(font)
   love.graphics.setColor(1,1,1,1)
-  love.graphics.printf(
-    "PAUSED\nPress START to resume\nPress Y to return to menu",
-    0, GameInfo.gameHeight/2 - 10,
-    GameInfo.gameWidth, "center"
-  )
+  
+  -- Draw "PAUSED" title
+  love.graphics.printf("PAUSED", 0, GameInfo.gameHeight/2 - 20, GameInfo.gameWidth, "center", 0, 1, 1)
+  
+  -- Blue color matching main menu (127/255, 146/255, 237/255)
+  local blueColor = {127/255, 146/255, 237/255}
+  local arrowSize = 5
+  
+  -- Option 1: Resume
+  love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.printf("Resume", 0, GameInfo.gameHeight/2 - 5, GameInfo.gameWidth, "center", 0, 1, 1)
+  
+  -- Option 2: Return to Menu
+  love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.printf("Return to Menu", 0, GameInfo.gameHeight/2 + 5, GameInfo.gameWidth, "center", 0, 1, 1)
+  
+  -- Draw blue arrow to the left of selected option
+  local centerX = GameInfo.gameWidth / 2
+  local textOffset = 30  -- Approximate offset to left of centered text
+  local arrowX = centerX - textOffset
+  
+  if GameInfo.pauseSelectedOption == 1 then
+    local arrowY = GameInfo.gameHeight/2
+    love.graphics.setColor(blueColor)
+    love.graphics.polygon(
+      "fill",
+      arrowX, arrowY - arrowSize/2,
+      arrowX, arrowY + arrowSize/2,
+      arrowX + arrowSize, arrowY
+    )
+  elseif GameInfo.pauseSelectedOption == 2 then
+    local arrowY = GameInfo.gameHeight/2 + 10
+    love.graphics.setColor(blueColor)
+    love.graphics.polygon(
+      "fill",
+      arrowX, arrowY - arrowSize/2,
+      arrowX, arrowY + arrowSize/2,
+      arrowX + arrowSize, arrowY
+    )
+  end
+  
+  love.graphics.setColor(1,1,1,1)  -- reset
 end
 
 

@@ -34,7 +34,9 @@ GameInfo = {
     previousMode = nil,       -- Track previous mode for char select
     p1KeyboardMapping = nil,  -- Which keyboard mapping (1 or 2) P1 is using
     p2KeyboardMapping = nil,  -- Which keyboard mapping (1 or 2) P2 is using
-    gameStartDelay = nil      -- Delay timer before starting the game (in seconds)
+    gameStartDelay = nil,      -- Delay timer before starting the game (in seconds)
+    pauseSelectedOption = 1,   -- which pause menu option is highlighted (1 = Resume, 2 = Return to Menu)
+    restartSelectedOption = 1  -- which restart menu option is highlighted (1 = Restart Fight, 2 = Return to Menu)
 }
 
 -- track if a button was pressed this frame
@@ -180,7 +182,13 @@ function love.update(dt)
     -- Update InputManager for periodic controller detection
     InputManager.update(dt)
 
-    if Menu.paused then return end
+    if Menu.paused then
+        -- Update pause menu navigation when paused
+        if GameInfo.gameState == "game_1P" or GameInfo.gameState == "game_2P" then
+            Menu.updatePauseMenu(GameInfo)
+        end
+        return
+    end
     if GameInfo.gameState == "inputassign" then
         -- Debug: print all detected joysticks and their IDs
         print("[DEBUG] Detected joysticks:")
