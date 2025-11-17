@@ -999,11 +999,35 @@ function CharacterSelect.draw(GameInfo)
     end
     
     -- Draw back button in bottom left
-    local backButtonSelected = playerSelections[1].backButtonSelected or playerSelections[2].backButtonSelected
-    local backButtonColor = backButtonSelected and {1, 1, 0, 1} or {1, 1, 1, 1}
-    love.graphics.setColor(backButtonColor)
-    love.graphics.printf("Back", 4, gameHeight - 10, gameWidth, "left", 0, 1, 1)
     love.graphics.setColor(1, 1, 1, 1)
+    local backTextX = 4
+    local backTextY = gameHeight - 10
+    love.graphics.printf("Back", backTextX, backTextY, gameWidth, "left", 0, 1, 1)
+    
+    -- Draw player arrows to the right of "Back" text when back button is selected
+    local backTextWidth = font:getWidth("Back")
+    local arrowSize = 5
+    local arrowSpacing = 8  -- Space between arrows if multiple players select back
+    local baseArrowX = backTextX + backTextWidth + 1  -- Position arrow to the right of text
+    local arrowY = backTextY + 5  -- Center vertically with text
+    
+    -- Draw arrow for each player who has selected the back button
+    local arrowOffset = 0
+    for playerIndex = 1, 2 do
+        if playerSelections[playerIndex].backButtonSelected then
+            local arrowX = baseArrowX + arrowOffset
+            love.graphics.setColor(getPlayerColor(playerIndex))
+            -- Draw left-pointing arrow (triangle pointing left)
+            love.graphics.polygon(
+                "fill",
+                arrowX, arrowY,  -- Left point
+                arrowX + arrowSize, arrowY - arrowSize/2,  -- Top right
+                arrowX + arrowSize, arrowY + arrowSize/2   -- Bottom right
+            )
+            love.graphics.setColor(1, 1, 1, 1)
+            arrowOffset = arrowOffset + arrowSpacing  -- Offset next arrow if both players select
+        end
+    end
     
     -- Show P2 assignment prompt if needed
     if not isOnePlayer and not isP2Assigned() then
