@@ -848,25 +848,39 @@ function Menu.updateStoryMenu(GameInfo, playerWon)
         moveDown = true
     end
     
+    -- Check if this is the final fight
+    local isFinalFight = GameInfo.storyOpponentIndex == 3 and playerWon
+    
     -- Track current selection before updating
     local currentSelection = GameInfo.storyMenuSelectedOption or 1
     
     -- Update selection and play sound only if it actually changed
-    if moveUp then
+    -- For final fight, only allow option 1 (Return to Menu)
+    if isFinalFight then
+        -- Force selection to option 1 for final fight
         if currentSelection ~= 1 then
             playMenuSound("counter")
         end
         GameInfo.storyMenuSelectedOption = 1
         previousStoryMenuSelectedOption = 1
-    elseif moveDown then
-        if currentSelection ~= 2 then
-            playMenuSound("counter")
-        end
-        GameInfo.storyMenuSelectedOption = 2
-        previousStoryMenuSelectedOption = 2
     else
-        -- No movement, preserve previous selection for next frame comparison
-        previousStoryMenuSelectedOption = currentSelection
+        -- Normal navigation for non-final fights
+        if moveUp then
+            if currentSelection ~= 1 then
+                playMenuSound("counter")
+            end
+            GameInfo.storyMenuSelectedOption = 1
+            previousStoryMenuSelectedOption = 1
+        elseif moveDown then
+            if currentSelection ~= 2 then
+                playMenuSound("counter")
+            end
+            GameInfo.storyMenuSelectedOption = 2
+            previousStoryMenuSelectedOption = 2
+        else
+            -- No movement, preserve previous selection for next frame comparison
+            previousStoryMenuSelectedOption = currentSelection
+        end
     end
 
     -- Handle selection with 'a' button or START button
@@ -878,7 +892,7 @@ function Menu.updateStoryMenu(GameInfo, playerWon)
         playMenuSound("downAir")
         
         if GameInfo.storyMenuSelectedOption == 1 then
-            -- Option 1: Next Fight (if won) or Try Again (if lost)
+            -- Option 1: Next Fight (if won) or Try Again (if lost), or Return to Menu (if final fight)
             -- Capture button state to prevent carryover
             if p1Input then
                 local p1InputSource = nil
@@ -895,16 +909,26 @@ function Menu.updateStoryMenu(GameInfo, playerWon)
             Menu.storyMenu = false
             Menu.storyMenuOpenedAt = nil
             
-            if playerWon then
-                -- Player won: advance to next opponent or show victory
+            -- Check if this is the final fight
+            local isFinalFight = GameInfo.storyOpponentIndex == 3 and playerWon
+            
+            if isFinalFight then
+                -- Final fight won: return directly to menu (skip victory screen)
+                GameInfo.storyMode = false
+                GameInfo.storyOpponentIndex = 1
+                GameInfo.storyOpponents = {}
+                GameInfo.storyOpponentColors = {}
+                GameInfo.storyPlayerCharacter = nil
+                GameInfo.storyPlayerColor = nil
+                GameInfo.gameState = "menu"
+                GameInfo.selectedOption = 1
+            elseif playerWon then
+                -- Player won: advance to next opponent
                 if GameInfo.storyOpponentIndex < 3 then
                     -- Advance to next opponent
                     GameInfo.storyOpponentIndex = GameInfo.storyOpponentIndex + 1
                     GameInfo.gameStartDelay = 0.5
                     GameInfo.gameState = "game_starting"
-                else
-                    -- All opponents defeated: show victory screen
-                    GameInfo.gameState = "story_victory"
                 end
             else
                 -- Player lost: restart Story Mode from beginning
@@ -989,9 +1013,18 @@ function Menu.drawStoryMenu(playerWon)
     love.graphics.setFont(font)
     love.graphics.setColor(1, 1, 1, 1)
     
+    -- Check if this is the final fight
+    local isFinalFight = GameInfo.storyOpponentIndex == 3 and playerWon
+    
     -- Show win/loss message
     if playerWon then
-        love.graphics.printf("You Triumphed", GameInfo.gameWidth / 4, 20, GameInfo.gameWidth/2, "center", 0, 1, 1)
+        if isFinalFight then
+            love.graphics.printf("You Are The Champion", GameInfo.gameWidth / 4, 20, GameInfo.gameWidth/2, "center", 0, 1, 1)
+        else
+            -- love.graphics.printf("You Are The Champion", GameInfo.gameWidth / 12, 20, GameInfo.gameWidth, "center", 0, 1, 1)
+            love.graphics.printf("You Are The Champion", 0, 20, GameInfo.gameWidth, "center", 0, 1, 1)
+            -- love.graphics.printf("You Triumphed", GameInfo.gameWidth / 4, 20, GameInfo.gameWidth/2, "center", 0, 1, 1)
+        end
     else
         love.graphics.printf("You Died", GameInfo.gameWidth / 4, 20, GameInfo.gameWidth/2, "center", 0, 1, 1)
     end
@@ -1000,41 +1033,64 @@ function Menu.drawStoryMenu(playerWon)
     local blueColor = {127/255, 146/255, 237/255}
     local arrowSize = 5
     
-    -- Option 1: Next Fight (if won) or Try Again (if lost)
-    love.graphics.setColor(1, 1, 1, 1)
-    if playerWon then
-        love.graphics.printf("Next Fight", 0, 30, GameInfo.gameWidth, "center", 0, 1, 1)
+    -- For final fight, only show "Return to Menu"
+    if isFinalFight then
+        -- Option 1: Return to Menu (only option for final fight)
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.printf("Return to Menu", 0, 30, GameInfo.gameWidth, "center", 0, 1, 1)
+        
+        -- Draw blue arrow to the left of selected option
+        local centerX = GameInfo.gameWidth / 2
+        local textOffset = 30  -- Approximate offset to left of centered text
+        local arrowX = centerX - textOffset
+        
+        if GameInfo.storyMenuSelectedOption == 1 then
+            local arrowY = 35
+            love.graphics.setColor(blueColor)
+            love.graphics.polygon(
+                "fill",
+                arrowX, arrowY - arrowSize/2,
+                arrowX, arrowY + arrowSize/2,
+                arrowX + arrowSize, arrowY
+            )
+        end
     else
-        love.graphics.printf("Try Again", 0, 30, GameInfo.gameWidth, "center", 0, 1, 1)
-    end
-    
-    -- Option 2: Return to Menu
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.printf("Return to Menu", 0, 40, GameInfo.gameWidth, "center", 0, 1, 1)
-    
-    -- Draw blue arrow to the left of selected option
-    local centerX = GameInfo.gameWidth / 2
-    local textOffset = 30  -- Approximate offset to left of centered text
-    local arrowX = centerX - textOffset
-    
-    if GameInfo.storyMenuSelectedOption == 1 then
-        local arrowY = 35
-        love.graphics.setColor(blueColor)
-        love.graphics.polygon(
-            "fill",
-            arrowX, arrowY - arrowSize/2,
-            arrowX, arrowY + arrowSize/2,
-            arrowX + arrowSize, arrowY
-        )
-    elseif GameInfo.storyMenuSelectedOption == 2 then
-        local arrowY = 45
-        love.graphics.setColor(blueColor)
-        love.graphics.polygon(
-            "fill",
-            arrowX, arrowY - arrowSize/2,
-            arrowX, arrowY + arrowSize/2,
-            arrowX + arrowSize, arrowY
-        )
+        -- Option 1: Next Fight (if won) or Try Again (if lost)
+        love.graphics.setColor(1, 1, 1, 1)
+        if playerWon then
+            love.graphics.printf("Next Fight", 0, 30, GameInfo.gameWidth, "center", 0, 1, 1)
+        else
+            love.graphics.printf("Try Again", 0, 30, GameInfo.gameWidth, "center", 0, 1, 1)
+        end
+        
+        -- Option 2: Return to Menu
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.printf("Return to Menu", 0, 40, GameInfo.gameWidth, "center", 0, 1, 1)
+        
+        -- Draw blue arrow to the left of selected option
+        local centerX = GameInfo.gameWidth / 2
+        local textOffset = 30  -- Approximate offset to left of centered text
+        local arrowX = centerX - textOffset
+        
+        if GameInfo.storyMenuSelectedOption == 1 then
+            local arrowY = 35
+            love.graphics.setColor(blueColor)
+            love.graphics.polygon(
+                "fill",
+                arrowX, arrowY - arrowSize/2,
+                arrowX, arrowY + arrowSize/2,
+                arrowX + arrowSize, arrowY
+            )
+        elseif GameInfo.storyMenuSelectedOption == 2 then
+            local arrowY = 45
+            love.graphics.setColor(blueColor)
+            love.graphics.polygon(
+                "fill",
+                arrowX, arrowY - arrowSize/2,
+                arrowX, arrowY + arrowSize/2,
+                arrowX + arrowSize, arrowY
+            )
+        end
     end
     
     love.graphics.setColor(1,1,1,1)  -- reset

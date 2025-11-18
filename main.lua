@@ -165,6 +165,7 @@ function startGame(mode)
             Player:new(p2Char, p2Color, 100, 49, 2, world, nil)
         }
     end
+    players[2].health = 1
 
     for _, p in ipairs(players) do
         world:add(p, p.x+1, p.y, p.width-2, p.height-1)
@@ -323,6 +324,8 @@ function updateGame(dt)
         p2:update(dt, p1, p2Input)
     end
     -- p2.stamina = 10
+    -- DEBUG: Set P2 health to 1
+    p2.health = 1
 
     -- Check if game is over (any player has 0 stocks)
     local gameOver = (p1.stocks == 0 or p2.stocks == 0)
@@ -439,59 +442,6 @@ function love.update(dt)
         -- Transition to actual game state (fight sequence will run during gameplay)
         GameInfo.gameState = mode
         GameInfo.gameStartDelay = nil
-    elseif GameInfo.gameState == "story_victory" then
-        -- Victory screen: wait for A button press
-        -- Initialize delay if not set
-        if not GameInfo.victoryScreenDelay then
-            GameInfo.victoryScreenDelay = 0.5
-        end
-        
-        -- Wait for delay before accepting input
-        if GameInfo.victoryScreenDelay > 0 then
-            GameInfo.victoryScreenDelay = GameInfo.victoryScreenDelay - dt
-            return
-        end
-        
-        -- Check for A button press (edge detection)
-        local aPressed = false
-        if GameInfo.p1InputType == "keyboard" then
-            local keyboardMap = InputManager.getKeyboardMapping(1)
-            -- Use edge detection: check if key is down and wasn't down last frame
-            if not GameInfo.victoryScreenAPressed then
-                if love.keyboard.isDown(keyboardMap.a) then
-                    aPressed = true
-                    GameInfo.victoryScreenAPressed = true
-                end
-            else
-                -- Key was pressed last frame, wait for release
-                if not love.keyboard.isDown(keyboardMap.a) then
-                    GameInfo.victoryScreenAPressed = false
-                end
-            end
-        else
-            local js = InputManager.getJoystick(GameInfo.player1Controller)
-            if js then
-                local jid = js:getID()
-                if justPressed[jid] and justPressed[jid]["a"] then
-                    aPressed = true
-                    justPressed[jid]["a"] = nil
-                end
-            end
-        end
-        
-        if aPressed then
-            -- Reset story mode flags and return to menu
-            GameInfo.storyMode = false
-            GameInfo.storyOpponentIndex = 1
-            GameInfo.storyOpponents = {}
-            GameInfo.storyOpponentColors = {}
-            GameInfo.storyPlayerCharacter = nil
-            GameInfo.storyPlayerColor = nil
-            GameInfo.victoryScreenDelay = nil
-            GameInfo.victoryScreenAPressed = nil
-            GameInfo.gameState = "menu"
-            GameInfo.selectedOption = 1
-        end
     else
         -- Handle fight start sequence
         if GameInfo.fightStartPhase == "ready" then
@@ -579,21 +529,6 @@ function love.draw()
         else
             CharacterSelect.draw(GameInfo)
         end
-    elseif GameInfo.gameState == "story_victory" then
-        -- Draw victory screen
-        love.graphics.clear(0, 0, 0, 1)
-        love.graphics.setColor(1, 1, 1, 1)
-        local font = love.graphics.getFont()
-        love.graphics.printf(
-            "Congratulations, you are the Sunder Champion!",
-            0, GameInfo.gameHeight / 2 - 10,
-            GameInfo.gameWidth, "center", 0, 1, 1
-        )
-        love.graphics.printf(
-            "Press A to continue",
-            0, GameInfo.gameHeight / 2 + 10,
-            GameInfo.gameWidth, "center", 0, 1, 1
-        )
     else
         if map then map:draw(0, 0, 1, 1) end
         for _, player in ipairs(players) do
