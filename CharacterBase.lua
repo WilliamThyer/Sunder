@@ -319,6 +319,19 @@ function CharacterBase:handleAttackEffects(attacker, dt, knockbackMultiplier, at
         
         -- Interrupt the attack if hit during startup
         if shouldInterruptAttack then
+            -- Stop attack sound effects that are currently playing
+            if self.soundEffects then
+                if self.isHeavyAttacking and self.soundEffects['heavyAttack'] then
+                    self.soundEffects['heavyAttack']:stop()
+                end
+                if self.isLightAttacking and self.soundEffects['lightAttack'] then
+                    self.soundEffects['lightAttack']:stop()
+                end
+                if self.isDownAir and self.soundEffects['downAir'] then
+                    self.soundEffects['downAir']:stop()
+                end
+            end
+            
             self.isAttacking = false
             self.isHeavyAttacking = false
             self.isLightAttacking = false
