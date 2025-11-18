@@ -97,18 +97,38 @@ local controllerAssignments = {
     [2] = nil   -- Player 2's controller index
 }
 
--- Keyboard edge detection state
+-- Keyboard edge detection state - separate per player mapping
 local keyboardJustPressed = {
-    a = false,
-    b = false,
-    x = false,
-    y = false,
-    start = false,
-    back = false,
-    up = false,
-    down = false,
-    left = false,
-    right = false
+    [1] = {
+        a = false,
+        b = false,
+        x = false,
+        y = false,
+        start = false,
+        back = false,
+        up = false,
+        down = false,
+        left = false,
+        right = false
+    },
+    [2] = {
+        a = false,
+        b = false,
+        x = false,
+        y = false,
+        start = false,
+        back = false,
+        up = false,
+        down = false,
+        left = false,
+        right = false
+    }
+}
+
+-- Track previous key states for proper edge detection
+local keyboardPrevState = {
+    [1] = {},
+    [2] = {}
 }
 
 -- Update keyboard edge detection
@@ -116,43 +136,37 @@ local function updateKeyboardEdgeDetection()
     local keyboardMap1 = InputManager.getKeyboardMapping(1)
     local keyboardMap2 = InputManager.getKeyboardMapping(2)
     
-    -- Check for key presses this frame for both players
-    if love.keyboard.isDown(keyboardMap1.a) or love.keyboard.isDown(keyboardMap2.a) then
-        keyboardJustPressed.a = true
+    -- Update for player 1 mapping
+    local keys1 = {"a", "b", "x", "y", "start", "back", "left", "right", "up", "down"}
+    for _, key in ipairs(keys1) do
+        local keyName = keyboardMap1[key]
+        local isDown = love.keyboard.isDown(keyName)
+        local wasDown = keyboardPrevState[1][key] or false
+        
+        -- Edge detection: only true on transition from not-pressed to pressed
+        keyboardJustPressed[1][key] = isDown and not wasDown
+        keyboardPrevState[1][key] = isDown
     end
-    if love.keyboard.isDown(keyboardMap1.b) or love.keyboard.isDown(keyboardMap2.b) then
-        keyboardJustPressed.b = true
-    end
-    if love.keyboard.isDown(keyboardMap1.x) or love.keyboard.isDown(keyboardMap2.x) then
-        keyboardJustPressed.x = true
-    end
-    if love.keyboard.isDown(keyboardMap1.y) or love.keyboard.isDown(keyboardMap2.y) then
-        keyboardJustPressed.y = true
-    end
-    if love.keyboard.isDown(keyboardMap1.start) or love.keyboard.isDown(keyboardMap2.start) then
-        keyboardJustPressed.start = true
-    end
-    if love.keyboard.isDown(keyboardMap1.back) or love.keyboard.isDown(keyboardMap2.back) then
-        keyboardJustPressed.back = true
-    end
-    if love.keyboard.isDown(keyboardMap1.left) or love.keyboard.isDown(keyboardMap2.left) then
-        keyboardJustPressed.left = true
-    end
-    if love.keyboard.isDown(keyboardMap1.right) or love.keyboard.isDown(keyboardMap2.right) then
-        keyboardJustPressed.right = true
-    end
-    if love.keyboard.isDown(keyboardMap1.up) or love.keyboard.isDown(keyboardMap2.up) then
-        keyboardJustPressed.up = true
-    end
-    if love.keyboard.isDown(keyboardMap1.down) or love.keyboard.isDown(keyboardMap2.down) then
-        keyboardJustPressed.down = true
+    
+    -- Update for player 2 mapping
+    local keys2 = {"a", "b", "x", "y", "start", "back", "left", "right", "up", "down"}
+    for _, key in ipairs(keys2) do
+        local keyName = keyboardMap2[key]
+        local isDown = love.keyboard.isDown(keyName)
+        local wasDown = keyboardPrevState[2][key] or false
+        
+        -- Edge detection: only true on transition from not-pressed to pressed
+        keyboardJustPressed[2][key] = isDown and not wasDown
+        keyboardPrevState[2][key] = isDown
     end
 end
 
 -- Clear keyboard edge detection (call this after processing input)
 local function clearKeyboardEdgeDetection()
-    for key, _ in pairs(keyboardJustPressed) do
-        keyboardJustPressed[key] = false
+    for playerIndex = 1, 2 do
+        for key, _ in pairs(keyboardJustPressed[playerIndex]) do
+            keyboardJustPressed[playerIndex][key] = false
+        end
     end
 end
 
@@ -441,7 +455,8 @@ function CharacterSelect.update(GameInfo)
     local p1Input = nil
     if GameInfo.p1InputType == "keyboard" then
         local kb = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
-        for k,v in pairs(keyboardJustPressed) do
+        local p1Mapping = GameInfo.p1KeyboardMapping or 1
+        for k,v in pairs(keyboardJustPressed[p1Mapping]) do
             if v then justStates[1][k] = true end
         end
         p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
@@ -461,7 +476,8 @@ function CharacterSelect.update(GameInfo)
         justStates[2] = justStates[1]
     elseif GameInfo.p2InputType == "keyboard" then
         local kb = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2)
-        for k,v in pairs(keyboardJustPressed) do
+        local p2Mapping = GameInfo.p2KeyboardMapping or 2
+        for k,v in pairs(keyboardJustPressed[p2Mapping]) do
             if v then justStates[2][k] = true end
         end
         p2Input = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2)
@@ -478,7 +494,8 @@ function CharacterSelect.update(GameInfo)
     -- 1P mode or Story mode: handle B for deselect or exit
     if isOnePlayer or isStoryMode then
         -- Keyboard B
-        if GameInfo.p1InputType == "keyboard" and keyboardJustPressed.b then
+        local p1Mapping = GameInfo.p1KeyboardMapping or 1
+        if GameInfo.p1InputType == "keyboard" and keyboardJustPressed[p1Mapping].b then
             if isOnePlayer and playerSelections[2].locked then
                 playCharacterSelectSound("shield")
                 playerSelections[2].locked = false
@@ -768,7 +785,8 @@ function CharacterSelect.update(GameInfo)
     -- 2P mode: allow P1 to deselect or return to menu
     if not isOnePlayer then
         -- P1: Deselect if locked, else return to menu
-        if GameInfo.p1InputType == "keyboard" and keyboardJustPressed.b then
+        local p1Mapping = GameInfo.p1KeyboardMapping or 1
+        if GameInfo.p1InputType == "keyboard" and keyboardJustPressed[p1Mapping].b then
             if playerSelections[1].locked then
                 playCharacterSelectSound("shield")
                 playerSelections[1].locked = false
@@ -795,7 +813,8 @@ function CharacterSelect.update(GameInfo)
             end
         end
         -- P2: Deselect if locked, else unassign controller (one action per press)
-        if GameInfo.p2InputType == "keyboard" and keyboardJustPressed.b then
+        local p2Mapping = GameInfo.p2KeyboardMapping or 2
+        if GameInfo.p2InputType == "keyboard" and keyboardJustPressed[p2Mapping].b then
             if playerSelections[2].locked then
                 playCharacterSelectSound("shield")
                 playerSelections[2].locked = false
