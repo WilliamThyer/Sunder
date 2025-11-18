@@ -183,7 +183,7 @@ function Lancer:processInput(dt, input, otherPlayer)
     -- Shield
     if input.shield and self:canPerformAction("shield") and self.stamina > 0 then
         if not self.shieldHeld then
-            self.soundEffects['shield']:play()
+            self:playSound('shield')
         end
         self.isShielding = true
         self.shieldHeld  = true
@@ -203,7 +203,7 @@ function Lancer:processInput(dt, input, otherPlayer)
         self:triggerDownAir()
     elseif input.heavyAttack and self:canPerformAction("heavyAttack") then
         if self:useStamina(self.staminaMapping["heavyAttack"]) then
-            self.soundEffects['heavyAttack']:play()
+            self:playSound('heavyAttack')
             self.isAttacking      = true
             self.isHeavyAttacking = true
             self.heavyAttackTimer = self.heavyAttackDuration
@@ -214,7 +214,7 @@ function Lancer:processInput(dt, input, otherPlayer)
         end
     elseif input.lightAttack and self:canPerformAction("lightAttack") then
         if self:useStamina(self.staminaMapping["lightAttack"]) then
-            self.soundEffects['lightAttack']:play()
+            self:playSound('lightAttack')
             self.isAttacking       = true
             self.isLightAttacking  = true
             self.lightAttackTimer  = self.lightAttackDuration
@@ -265,7 +265,7 @@ function Lancer:processInput(dt, input, otherPlayer)
         if not self.isJumping then
             -- Check if we can pay the stamina cost
             if self:useStamina(1) then
-                self.soundEffects['jump']:play()
+                self:playSound('jump')
                 self.jumpVelocity   = self.jumpHeight
                 self.isJumping      = true
                 self.canDoubleJump  = true
@@ -277,7 +277,7 @@ function Lancer:processInput(dt, input, otherPlayer)
         -- Double jump
         elseif self.canDoubleJump then
             if self:useStamina(1) then
-                self.soundEffects['jump']:play()
+                self:playSound('jump')
                 self.isDownAir    = false
                 self:resetGravity()
                 self.jumpVelocity  = self.jumpHeight
@@ -293,7 +293,7 @@ function Lancer:processInput(dt, input, otherPlayer)
     -- Dash
     if input.dash and self:canPerformAction("dash") then
         if self:useStamina(1) then
-            self.soundEffects['dash']:play()
+            self:playSound('dash')
             self.isDashing    = true
             self.dashTimer    = self.dashDuration
             self.dashVelocity = self.dashSpeed * self.direction
@@ -373,7 +373,7 @@ function Lancer:handleAttacks(dt, otherPlayer)
        (self.lightAttackTimer <= self.lightAttackDuration - self.lightAttackNoDamageDuration)
     then
         if self:checkHit(otherPlayer, "lightAttack") then
-            self.soundEffects['lightAttack']:play()
+            self:playSound('lightAttack')
             otherPlayer:handleAttackEffects(self, dt, 0.5, "lightAttack")
             self.hasHitLight = true
         end

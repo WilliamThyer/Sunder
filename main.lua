@@ -171,9 +171,9 @@ function startGame(mode)
         world:add(p, p.x+1, p.y, p.width-2, p.height-1)
     end
     
-    -- Set up fight start sequence: "Ready" for 2 seconds
+    -- Set up fight start sequence: "Ready" for 1 second
     GameInfo.fightStartPhase = "ready"
-    GameInfo.fightStartTimer = 2.0
+    GameInfo.fightStartTimer = 1.0
 end
 
 function love.gamepadpressed(joystick, button)
@@ -445,12 +445,12 @@ function love.update(dt)
     else
         -- Handle fight start sequence
         if GameInfo.fightStartPhase == "ready" then
-            -- Countdown "Ready" phase (2 seconds)
+            -- Countdown "Ready" phase (1 second)
             GameInfo.fightStartTimer = GameInfo.fightStartTimer - dt
             if GameInfo.fightStartTimer <= 0 then
-                -- Transition to "Fight!" phase (1 second)
+                -- Transition to "Fight!" phase (0.5 second)
                 GameInfo.fightStartPhase = "fight"
-                GameInfo.fightStartTimer = 1.0
+                GameInfo.fightStartTimer = 0.5
                 -- Play fight start sound
                 if fightStartSound then
                     fightStartSound:stop()
@@ -458,7 +458,7 @@ function love.update(dt)
                 end
             end
         elseif GameInfo.fightStartPhase == "fight" then
-            -- Countdown "Fight!" phase (1 second)
+            -- Countdown "Fight!" phase (0.5 second)
             GameInfo.fightStartTimer = GameInfo.fightStartTimer - dt
             if GameInfo.fightStartTimer <= 0 then
                 -- Sequence complete, allow gameplay

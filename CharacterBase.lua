@@ -272,6 +272,36 @@ function CharacterBase:heal(amount)
     self.health = math.min(self.maxHealth, self.health + amount)
 end
 
+--------------------------------------------------
+-- Sound Effect Helpers
+--------------------------------------------------
+function CharacterBase:canPlaySounds()
+    -- Don't play sounds if dead, dying, or respawning
+    return not (self.isDead or self.isDying or self.isRespawning)
+end
+
+function CharacterBase:stopAllSounds()
+    -- Stop all currently playing sound effects, except die and finalDie
+    -- (these should play in their entirety)
+    if self.soundEffects then
+        for soundName, sound in pairs(self.soundEffects) do
+            if sound and sound:isPlaying() then
+                -- Don't stop die or finalDie sounds - let them play fully
+                if soundName ~= 'die' and soundName ~= 'finalDie' then
+                    sound:stop()
+                end
+            end
+        end
+    end
+end
+
+function CharacterBase:playSound(soundName)
+    -- Safely play a sound effect only if character can play sounds
+    if self:canPlaySounds() and self.soundEffects and self.soundEffects[soundName] then
+        self.soundEffects[soundName]:play()
+    end
+end
+
 function CharacterBase:updateStamina(dt)
     self.timeSinceStaminaUse = self.timeSinceStaminaUse + dt
     if self.timeSinceStaminaUse > self.staminaRegenDelay then
@@ -350,14 +380,14 @@ function CharacterBase:handleAttackEffects(attacker, dt, knockbackMultiplier, at
            and self:checkShieldBlock(attacker)
            and self:useStamina(blockCost) then
             -- regular shield-block response
-            self.soundEffects['shieldHit']:play()
+            self:playSound('shieldHit')
             self.isShieldKnockback = true
             self.shieldKnockTimer  = self.shieldKnockDuration
             self.shieldKnockDir    = self:getKnockbackDirection(attacker)
             self.shieldKnockSpeed  = self.shieldKnockBase * (knockbackMultiplier or 1)
         else
             -- full damage goes through
-            self.soundEffects['hitHurt']:play()
+            self:playSound('hitHurt')
             self.health = math.max(0, self.health - damage)
             self.isHurt          = true
             self.hurtTimer       = 0.2
@@ -374,7 +404,7 @@ function CharacterBase:handleAttackEffects(attacker, dt, knockbackMultiplier, at
 end
 
 function CharacterBase:triggerSuccessfulCounter(attacker)
-    self.soundEffects['successfulCounter']:play()
+    self:playSound('successfulCounter')
     self.isCountering = false
     self.counterTimer = 0
     self.counterActive = false
@@ -397,6 +427,8 @@ function CharacterBase:updateHurtState(dt)
         self.isDying = true
         self.isDyingTimer = self.timeToDeath
         self.canMove = false
+        -- Stop all sounds when dying
+        self:stopAllSounds()
         -- Play finalDie.wav if this is the last stock, otherwise play die.wav
         if self.stocks == 1 then
             self.soundEffects['finalDie']:play()
@@ -412,20 +444,28 @@ function CharacterBase:updateHurtState(dt)
                 self.stocks = self.stocks - 1
                 self.isDying = false
                 self.isRespawning = true
-                self.respawnDelayTimer = 0.5  -- 0.5 second delay before respawn
+                self.respawnDelayTimer = 1.0  -- 1.0 second delay before respawn
+                -- Stop all sounds when respawning
+                self:stopAllSounds()
             else
                 -- No stocks left, player is dead
                 self.isDead = true
                 self.isDying = false
+                -- Stop all sounds when fully dead
+                self:stopAllSounds()
             end
         end
     elseif self.isRespawning then
+        -- Set stamina to max while respawning
+        self.stamina = self.maxStamina
         -- If player has no stocks left, convert to dead state
         if self.stocks <= 0 then
             self.isRespawning = false
             self.isDead = true
             self.canMove = false
             self.y = -10
+            -- Stop all sounds when fully dead
+            self:stopAllSounds()
         -- Handle respawn delay
         elseif self.respawnDelayTimer > 0 then
             self.respawnDelayTimer = self.respawnDelayTimer - dt
@@ -438,6 +478,8 @@ function CharacterBase:updateHurtState(dt)
     elseif self.isDead then
         self.canMove = false
         self.y = -10
+        -- Set stamina to max while dead
+        self.stamina = self.maxStamina
     end
 
     if self.isHurt then
@@ -655,7 +697,7 @@ end
 
 function CharacterBase:triggerDownAir()
     if not self:useStamina(self.staminaMapping['downAir']) then return end
-    self.soundEffects['downAir']:play()
+    self:playSound('downAir')
     self.isAttacking  = true
     self.isDownAir    = true
     self.downAirTimer = self.downAirDuration
@@ -706,7 +748,7 @@ function CharacterBase:resetGravity()
 end
 
 function CharacterBase:triggerCounter()
-    self.soundEffects['counter']:play()
+    self:playSound('counter')
     self.isCountering = true
     self.counterTimer = self.counterDuration
     self.counterActive = true
