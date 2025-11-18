@@ -385,6 +385,7 @@ function CharacterSelect.update(GameInfo)
             if (justPressed[jid] and justPressed[jid]["a"]) and (GameInfo.p1InputType ~= js:getID()) then
                 GameInfo.p2InputType = js:getID()
                 GameInfo.player2Controller = js:getID()
+                playCharacterSelectSound("downAir")
                 justPressed[jid]["a"] = nil
                 break
             end
@@ -404,6 +405,7 @@ function CharacterSelect.update(GameInfo)
             else
                 GameInfo.p2KeyboardMapping = 1
             end
+            playCharacterSelectSound("downAir")
             CharacterSelect._p2KpenterReleased = false
             CharacterSelect._p2ReturnReleased = false
         end
