@@ -37,6 +37,7 @@ GameInfo = {
     gameStartDelay = nil,      -- Delay timer before starting the game (in seconds)
     pauseSelectedOption = 1,   -- which pause menu option is highlighted (1 = Resume, 2 = Return to Menu)
     restartSelectedOption = 1,  -- which restart menu option is highlighted (1 = Restart Fight, 2 = Return to Menu)
+    storyMenuSelectedOption = 1,  -- which story menu option is highlighted (1 = Next Fight/Try Again, 2 = Return to Menu)
     -- Story mode tracking
     storyMode = false,        -- flag to track if in story mode
     storyOpponentIndex = 1,   -- current opponent (1, 2, or 3)
@@ -519,27 +520,16 @@ function love.update(dt)
         updateGame(dt)
         -- Handle story mode fight completion
         if GameInfo.gameState == "game_story" then
-            if players[1].stocks == 0 then
-                -- Player lost: return to main menu
-                GameInfo.storyMode = false
-                GameInfo.storyOpponentIndex = 1
-                GameInfo.storyOpponents = {}
-                GameInfo.storyOpponentColors = {}
-                GameInfo.storyPlayerCharacter = nil
-                GameInfo.storyPlayerColor = nil
-                GameInfo.gameState = "menu"
-                GameInfo.selectedOption = 1
-            elseif players[2].stocks == 0 then
-                -- Player won: advance to next opponent or show victory
-                if GameInfo.storyOpponentIndex < 3 then
-                    -- Advance to next opponent
-                    GameInfo.storyOpponentIndex = GameInfo.storyOpponentIndex + 1
-                    GameInfo.gameStartDelay = 0.5
-                    GameInfo.gameState = "game_starting"
-                else
-                    -- All opponents defeated: show victory screen
-                    GameInfo.gameState = "story_victory"
+            if players[1].stocks == 0 or players[2].stocks == 0 then
+                -- Show story menu when fight ends
+                Menu.storyMenu = true
+                if not Menu.storyMenuOpenedAt then
+                    -- Clear all queued button presses to prevent inputs from the fight affecting the menu
+                    justPressed = {}
+                    Menu.storyMenuOpenedAt = love.timer.getTime() -- Reset input delay timer only once
                 end
+                local playerWon = (players[2].stocks == 0)
+                Menu.updateStoryMenu(GameInfo, playerWon)
             end
         end
         
@@ -556,7 +546,6 @@ function love.update(dt)
                 Menu.restartMenuOpenedAt = love.timer.getTime() -- Reset input delay timer only once
             end
             Menu.updateRestartMenu(GameInfo)
-            Menu.drawRestartMenu(players)
         end
         if Menu.paused then
             Menu.drawPauseOverlay()
@@ -643,6 +632,11 @@ function love.draw()
                 Menu.restartMenuOpenedAt = love.timer.getTime() -- Reset input delay timer only once
             end
             Menu.drawRestartMenu(players)
+        end
+        -- Show story menu when story mode fight ends
+        if Menu.storyMenu and GameInfo.gameState == "game_story" then
+            local playerWon = (players[2].stocks == 0)
+            Menu.drawStoryMenu(playerWon)
         end
         if Menu.paused then
             Menu.drawPauseOverlay()

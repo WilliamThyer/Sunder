@@ -5,6 +5,9 @@ Menu.pausePlayer = nil
 Menu.restartMenu = false
 Menu.restartMenuOpenedAt = nil -- Timestamp when restart menu was opened
 Menu.restartMenuInputDelay = 0.5 -- Seconds to wait before accepting input
+Menu.storyMenu = false
+Menu.storyMenuOpenedAt = nil -- Timestamp when story menu was opened
+Menu.storyMenuInputDelay = 0.5 -- Seconds to wait before accepting input
 Menu.menuMoveCooldown = 0 -- Cooldown timer for menu navigation
 
 love.graphics.setDefaultFilter("nearest","nearest")
@@ -765,6 +768,170 @@ function Menu.updateRestartMenu(GameInfo)
     clearKeyboardEdgeDetection()
 end
 
+-- Track previous story menu selection to detect actual changes
+local previousStoryMenuSelectedOption = nil
+
+function Menu.updateStoryMenu(GameInfo, playerWon)
+    -- Wait for input delay to prevent immediate inputs from the fight affecting the menu
+    -- This ensures players have time to see the menu before any input is accepted
+    if not Menu.storyMenuOpenedAt then
+        Menu.storyMenuOpenedAt = love.timer.getTime()
+        -- Clear keyboard edge detection state to prevent any queued inputs
+        clearKeyboardEdgeDetection()
+        return  -- Return early on first call, before delay period
+    end
+    local now = love.timer.getTime()
+    if now - Menu.storyMenuOpenedAt < Menu.storyMenuInputDelay then
+        -- Clear keyboard edge detection state during delay period to prevent any queued inputs
+        clearKeyboardEdgeDetection()
+        return  -- Return early if delay hasn't passed yet, preventing all input processing
+    end
+
+    -- Initialize storyMenuSelectedOption if not set (defaults to option 1)
+    if not GameInfo.storyMenuSelectedOption then
+        GameInfo.storyMenuSelectedOption = 1
+    end
+
+    -- Update keyboard edge detection
+    updateKeyboardEdgeDetection()
+
+    -- Story mode is always 1P mode: Only P1 (the human player) can input
+    local p1Input = nil
+    local p1JustStates = {}
+    
+    -- Check keyboard input for P1 (only if P1 is using keyboard)
+    if GameInfo.p1InputType == "keyboard" then
+        p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
+        -- Merge keyboard edge detection
+        for k, v in pairs(keyboardJustPressed) do
+            if v then
+                p1JustStates[k] = true
+            end
+        end
+    end
+    
+    -- Check controller input for P1 (only if P1 is using a controller)
+    -- Explicitly filter to only accept inputs from P1's assigned controller ID
+    if GameInfo.p1InputType ~= "keyboard" and GameInfo.player1Controller then
+        local js1 = InputManager.getJoystick(GameInfo.player1Controller)
+        if js1 then
+            p1Input = InputManager.get(GameInfo.player1Controller)
+            local p1Jid = js1:getID()
+            -- Only check justPressed for P1's specific controller ID
+            -- Ignore all other joystick IDs to prevent CPU or other controllers from affecting the menu
+            if justPressed[p1Jid] then
+                p1JustStates = justPressed[p1Jid]
+                justPressed[p1Jid] = nil
+            end
+        end
+    end
+
+    -- Get joystick object for arrow navigation
+    local js1 = nil
+    if GameInfo.p1InputType and GameInfo.p1InputType ~= "keyboard" then
+        js1 = InputManager.getJoystick(GameInfo.player1Controller)
+    end
+
+    -- Allow arrow navigation
+    local moveUp = false
+    local moveDown = false
+    
+    if js1 and p1Input and (p1Input.moveY < -0.5) then
+        moveUp = true
+    elseif keyboardJustPressed.up then
+        moveUp = true
+    end
+    
+    if js1 and p1Input and (p1Input.moveY > 0.5) then
+        moveDown = true
+    elseif keyboardJustPressed.down then
+        moveDown = true
+    end
+    
+    -- Track current selection before updating
+    local currentSelection = GameInfo.storyMenuSelectedOption or 1
+    
+    -- Update selection and play sound only if it actually changed
+    if moveUp then
+        if currentSelection ~= 1 then
+            playMenuSound("counter")
+        end
+        GameInfo.storyMenuSelectedOption = 1
+        previousStoryMenuSelectedOption = 1
+    elseif moveDown then
+        if currentSelection ~= 2 then
+            playMenuSound("counter")
+        end
+        GameInfo.storyMenuSelectedOption = 2
+        previousStoryMenuSelectedOption = 2
+    else
+        -- No movement, preserve previous selection for next frame comparison
+        previousStoryMenuSelectedOption = currentSelection
+    end
+
+    -- Handle selection with 'a' button or START button
+    local aPressed = p1JustStates["a"] or false
+    local startPressed = p1JustStates["start"] or false
+    
+    if aPressed or startPressed then
+        -- Play selection sound
+        playMenuSound("downAir")
+        
+        if GameInfo.storyMenuSelectedOption == 1 then
+            -- Option 1: Next Fight (if won) or Try Again (if lost)
+            -- Capture button state to prevent carryover
+            if p1Input then
+                local p1InputSource = nil
+                if GameInfo.p1InputType == "keyboard" then
+                    p1InputSource = "keyboard_P1"
+                else
+                    p1InputSource = tostring(GameInfo.player1Controller)
+                end
+                if p1InputSource then
+                    setButtonReleaseWait(1, p1InputSource, p1Input)
+                end
+            end
+            
+            Menu.storyMenu = false
+            Menu.storyMenuOpenedAt = nil
+            
+            if playerWon then
+                -- Player won: advance to next opponent or show victory
+                if GameInfo.storyOpponentIndex < 3 then
+                    -- Advance to next opponent
+                    GameInfo.storyOpponentIndex = GameInfo.storyOpponentIndex + 1
+                    GameInfo.gameStartDelay = 0.5
+                    GameInfo.gameState = "game_starting"
+                else
+                    -- All opponents defeated: show victory screen
+                    GameInfo.gameState = "story_victory"
+                end
+            else
+                -- Player lost: restart Story Mode from beginning
+                GameInfo.storyOpponentIndex = 1
+                GameInfo.gameStartDelay = 0.5
+                GameInfo.gameState = "game_starting"
+            end
+        else
+            -- Option 2: Return to Menu
+            Menu.storyMenu = false
+            Menu.storyMenuOpenedAt = nil
+            -- Reset story mode flags
+            GameInfo.storyMode = false
+            GameInfo.storyOpponentIndex = 1
+            GameInfo.storyOpponents = {}
+            GameInfo.storyOpponentColors = {}
+            GameInfo.storyPlayerCharacter = nil
+            GameInfo.storyPlayerColor = nil
+            GameInfo.gameState = "menu"
+            GameInfo.selectedOption = 1
+        end
+    end
+    
+    -- Clear keyboard edge detection after processing
+    clearKeyboardEdgeDetection()
+end
+
 function Menu.drawRestartMenu(players)
     local p1, p2 = players[1], players[2]
 
@@ -818,14 +985,69 @@ function Menu.drawRestartMenu(players)
     love.graphics.setColor(1,1,1,1)  -- reset
 end
 
+function Menu.drawStoryMenu(playerWon)
+    love.graphics.setFont(font)
+    love.graphics.setColor(1, 1, 1, 1)
+    
+    -- Show win/loss message
+    if playerWon then
+        love.graphics.printf("You Triumphed", GameInfo.gameWidth / 4, 20, GameInfo.gameWidth/2, "center", 0, 1, 1)
+    else
+        love.graphics.printf("You Died", GameInfo.gameWidth / 4, 20, GameInfo.gameWidth/2, "center", 0, 1, 1)
+    end
+    
+    -- Blue color matching main menu (127/255, 146/255, 237/255)
+    local blueColor = {127/255, 146/255, 237/255}
+    local arrowSize = 5
+    
+    -- Option 1: Next Fight (if won) or Try Again (if lost)
+    love.graphics.setColor(1, 1, 1, 1)
+    if playerWon then
+        love.graphics.printf("Next Fight", 0, 30, GameInfo.gameWidth, "center", 0, 1, 1)
+    else
+        love.graphics.printf("Try Again", 0, 30, GameInfo.gameWidth, "center", 0, 1, 1)
+    end
+    
+    -- Option 2: Return to Menu
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.printf("Return to Menu", 0, 40, GameInfo.gameWidth, "center", 0, 1, 1)
+    
+    -- Draw blue arrow to the left of selected option
+    local centerX = GameInfo.gameWidth / 2
+    local textOffset = 30  -- Approximate offset to left of centered text
+    local arrowX = centerX - textOffset
+    
+    if GameInfo.storyMenuSelectedOption == 1 then
+        local arrowY = 35
+        love.graphics.setColor(blueColor)
+        love.graphics.polygon(
+            "fill",
+            arrowX, arrowY - arrowSize/2,
+            arrowX, arrowY + arrowSize/2,
+            arrowX + arrowSize, arrowY
+        )
+    elseif GameInfo.storyMenuSelectedOption == 2 then
+        local arrowY = 45
+        love.graphics.setColor(blueColor)
+        love.graphics.polygon(
+            "fill",
+            arrowX, arrowY - arrowSize/2,
+            arrowX, arrowY + arrowSize/2,
+            arrowX + arrowSize, arrowY
+        )
+    end
+    
+    love.graphics.setColor(1,1,1,1)  -- reset
+end
+
 -- called by love.gamepadpressed in main.lua
 function Menu.handlePauseInput(joystick, button)
   -- only during an actual fight
   if not (GameInfo.gameState == "game_1P" or GameInfo.gameState == "game_2P" or GameInfo.gameState == "game_story") then
     return
   end
-  if Menu.restartMenu then
-    -- if we're in the restart menu, we don't handle pause input
+  if Menu.restartMenu or Menu.storyMenu then
+    -- if we're in the restart menu or story menu, we don't handle pause input
     return
   end
 
@@ -847,8 +1069,8 @@ function Menu.handleKeyboardPauseInput(key, playerIndex)
   if not (GameInfo.gameState == "game_1P" or GameInfo.gameState == "game_2P" or GameInfo.gameState == "game_story") then
     return
   end
-  if Menu.restartMenu then
-    -- if we're in the restart menu, we don't handle pause input
+  if Menu.restartMenu or Menu.storyMenu then
+    -- if we're in the restart menu or story menu, we don't handle pause input
     return
   end
 
