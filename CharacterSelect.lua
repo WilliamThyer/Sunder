@@ -1104,7 +1104,7 @@ function CharacterSelect.draw(GameInfo)
     end
     
     -- Show P2 assignment prompt if needed
-    if not isOnePlayer and not isP2Assigned() then
+    if not isOnePlayer and not isStoryMode and not isP2Assigned() then
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.printf(
             "P2: Press to Join",
