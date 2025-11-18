@@ -1043,6 +1043,8 @@ function CharacterSelect.draw(GameInfo)
                 -- Hide P2 cursor in story mode
             elseif isOnePlayer and playerIndex == 2 and (not playerSelections[1].locked) then
                 -- Hide CPU's cursor until P1 locks
+            elseif not isOnePlayer and not isStoryMode and playerIndex == 2 and not isP2Assigned() then
+                -- Hide P2 cursor in 2P mode until P2 joins
             else
                 local cs = playerSelections[playerIndex]
                 -- Only draw arrow if back button is not selected for this player
