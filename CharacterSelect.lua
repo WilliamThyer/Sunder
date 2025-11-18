@@ -890,6 +890,10 @@ function CharacterSelect.draw(GameInfo)
     local gameHeight  = GameInfo.gameHeight
     local isOnePlayer = (GameInfo.previousMode == "game_1P")
     local isStoryMode = (GameInfo.previousMode == "game_story")
+    
+    -- Check if all players are locked (same condition as "Press A to begin!" message)
+    local allPlayersLocked = (isStoryMode and playerSelections[1].locked) or
+                             (not isStoryMode and playerSelections[1].locked and playerSelections[2].locked)
 
     -- === Draw player info boxes at the top ===
     local boxWidth   = 16
@@ -972,87 +976,90 @@ function CharacterSelect.draw(GameInfo)
     end
 
     -- === Draw character boxes in the center ===
-    local charBoxWidth   = 16
-    local charBoxHeight  = 16
-    local startX         = 6
-    local startY         = p1BoxY + boxHeight + 12 
-    local charBoxPadding = 16
+    -- Only draw if not all players are locked
+    if not allPlayersLocked then
+        local charBoxWidth   = 16
+        local charBoxHeight  = 16
+        local startX         = 6
+        local startY         = p1BoxY + boxHeight + 12 
+        local charBoxPadding = 16
 
-    for i, charName in ipairs(characters) do
-        local x = startX + (i - 1) * (charBoxWidth + charBoxPadding)
-        local y = startY
-        love.graphics.rectangle("line", x, y, charBoxWidth, charBoxHeight)
+        for i, charName in ipairs(characters) do
+            local x = startX + (i - 1) * (charBoxWidth + charBoxPadding)
+            local y = startY
+            love.graphics.rectangle("line", x, y, charBoxWidth, charBoxHeight)
 
-        -- Draw a gray preview if we have a sprite
-        if charName == "Warrior" then
-            local image, quad = sprites.Warrior["Gray"], warriorQuad
-            local spriteW, spriteH = 8, 8
-            local offsetX = (charBoxWidth - spriteW) / 2
-            local offsetY = (charBoxHeight - spriteH) / 2
-            love.graphics.draw(image, quad, x + offsetX, y + offsetY, 0, 1, 1, 0, -1)
-        elseif charName == "Berserk" then
-            local image, quad = sprites.Berserk["Gray"], berserkQuad
-            local spriteW, spriteH = 12, 12
-            local offsetX = (charBoxWidth - spriteW) / 2
-            local offsetY = (charBoxHeight - spriteH) / 2
-            love.graphics.draw(image, quad, x + offsetX, y + offsetY)
-        elseif charName == "Lancer" then
-            local image, quad = sprites.Lancer["Gray"], lancerQuad
-            local spriteW, spriteH = 12, 12
-            local offsetX = (charBoxWidth - spriteW) / 2
-            local offsetY = (charBoxHeight - spriteH) / 2
-            love.graphics.draw(image, quad, x + offsetX, y + offsetY)
-        elseif charName == "Mage" and sprites.Mage["Gray"] then
-            local image, quad = sprites.Mage["Gray"], mageQuad
-            local spriteW, spriteH = 12, 12
-            local offsetX = (charBoxWidth - spriteW) / 2
-            local offsetY = (charBoxHeight - spriteH) / 2
-            love.graphics.draw(image, quad, x + offsetX, y + offsetY)
-        else
-            -- No sprite, so just draw a gray box
-            love.graphics.setColor(0.5, 0.5, 0.5, 1)
-            love.graphics.rectangle("fill", x + 1, y + 1, charBoxWidth - 2, charBoxHeight - 2)
-            love.graphics.setColor(1, 1, 1, 1)
+            -- Draw a gray preview if we have a sprite
+            if charName == "Warrior" then
+                local image, quad = sprites.Warrior["Gray"], warriorQuad
+                local spriteW, spriteH = 8, 8
+                local offsetX = (charBoxWidth - spriteW) / 2
+                local offsetY = (charBoxHeight - spriteH) / 2
+                love.graphics.draw(image, quad, x + offsetX, y + offsetY, 0, 1, 1, 0, -1)
+            elseif charName == "Berserk" then
+                local image, quad = sprites.Berserk["Gray"], berserkQuad
+                local spriteW, spriteH = 12, 12
+                local offsetX = (charBoxWidth - spriteW) / 2
+                local offsetY = (charBoxHeight - spriteH) / 2
+                love.graphics.draw(image, quad, x + offsetX, y + offsetY)
+            elseif charName == "Lancer" then
+                local image, quad = sprites.Lancer["Gray"], lancerQuad
+                local spriteW, spriteH = 12, 12
+                local offsetX = (charBoxWidth - spriteW) / 2
+                local offsetY = (charBoxHeight - spriteH) / 2
+                love.graphics.draw(image, quad, x + offsetX, y + offsetY)
+            elseif charName == "Mage" and sprites.Mage["Gray"] then
+                local image, quad = sprites.Mage["Gray"], mageQuad
+                local spriteW, spriteH = 12, 12
+                local offsetX = (charBoxWidth - spriteW) / 2
+                local offsetY = (charBoxHeight - spriteH) / 2
+                love.graphics.draw(image, quad, x + offsetX, y + offsetY)
+            else
+                -- No sprite, so just draw a gray box
+                love.graphics.setColor(0.5, 0.5, 0.5, 1)
+                love.graphics.rectangle("fill", x + 1, y + 1, charBoxWidth - 2, charBoxHeight - 2)
+                love.graphics.setColor(1, 1, 1, 1)
+            end
+
+            love.graphics.printf(
+              charName,
+              x - charBoxWidth * 2,
+              y - charBoxHeight/2 - 1,
+              charBoxWidth * 5,
+              "center",
+              0, 1, 1
+            )
         end
 
-        love.graphics.printf(
-          charName,
-          x - charBoxWidth * 2,
-          y - charBoxHeight/2 - 1,
-          charBoxWidth * 5,
-          "center",
-          0, 1, 1
-        )
-    end
+        -- === Draw each player's cursor below the character boxes ===
+        local cursorY     = startY + charBoxHeight + 7
+        local arrowSize   = 5
+        local charSpacing = charBoxPadding
 
-    -- === Draw each player's cursor below the character boxes ===
-    local cursorY     = startY + charBoxHeight + 7
-    local arrowSize   = 5
-    local charSpacing = charBoxPadding
+        for playerIndex = 1, 2 do
+            if isStoryMode and playerIndex == 2 then
+                -- Hide P2 cursor in story mode
+            elseif isOnePlayer and playerIndex == 2 and (not playerSelections[1].locked) then
+                -- Hide CPU's cursor until P1 locks
+            else
+                local cs = playerSelections[playerIndex]
+                -- Only draw arrow if back button is not selected for this player
+                if not cs.backButtonSelected then
+                    local cursorIndex = cs.cursor
+                    local offsetX = (playerIndex == 1) and -3 or 3
+                    local x = startX + (cursorIndex - 1) * (charBoxWidth + charSpacing)
+                             + charBoxWidth/2 + offsetX
+                    local y = cursorY
 
-    for playerIndex = 1, 2 do
-        if isStoryMode and playerIndex == 2 then
-            -- Hide P2 cursor in story mode
-        elseif isOnePlayer and playerIndex == 2 and (not playerSelections[1].locked) then
-            -- Hide CPU's cursor until P1 locks
-        else
-            local cs = playerSelections[playerIndex]
-            -- Only draw arrow if back button is not selected for this player
-            if not cs.backButtonSelected then
-                local cursorIndex = cs.cursor
-                local offsetX = (playerIndex == 1) and -3 or 3
-                local x = startX + (cursorIndex - 1) * (charBoxWidth + charSpacing)
-                         + charBoxWidth/2 + offsetX
-                local y = cursorY
-
-                love.graphics.setColor(getPlayerColor(playerIndex))
-                love.graphics.polygon(
-                  "fill",
-                  x - arrowSize/2, y,
-                  x + arrowSize/2, y,
-                  x, y - arrowSize
-                )
-                love.graphics.setColor(1, 1, 1, 1)
+                    love.graphics.setColor(getPlayerColor(playerIndex))
+                    love.graphics.polygon(
+                      "fill",
+                      x - arrowSize/2, y,
+                      x + arrowSize/2, y,
+                      x, y - arrowSize
+                    )
+                    love.graphics.setColor(1, 1, 1, 1)
+                end
             end
         end
     end
@@ -1061,13 +1068,15 @@ function CharacterSelect.draw(GameInfo)
     if isStoryMode and playerSelections[1].locked then
         love.graphics.printf(
           "Press A to begin!",
-          0, gameHeight - 10,
+          0,
+          gameHeight/2,
           gameWidth, "center", 0, 1, 1
         )
     elseif not isStoryMode and playerSelections[1].locked and playerSelections[2].locked then
         love.graphics.printf(
           "Press A to begin!",
-          0, gameHeight - 10,
+          0,
+          gameHeight/2,
           gameWidth, "center", 0, 1, 1
         )
     end
@@ -1108,17 +1117,17 @@ function CharacterSelect.draw(GameInfo)
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.printf(
             "P2: Press to Join",
-            0, gameHeight / 2 + 20,
+            0, gameHeight - 10,
             gameWidth, "center"
         )
         return
     end
 
     -- Show keyboard controls if keyboard is enabled
-    if GameInfo.p1InputType == "keyboard" or GameInfo.p2InputType == "keyboard" then
-        love.graphics.setColor(0.7, 0.7, 0.7, 1)
-        love.graphics.printf("P1: WASD/Space, P2: Arrows/Keypad0, K/L: Color, Shift: Back", 0, gameHeight - 20, gameWidth, "center", 0, 1, 1)
-    end
+    -- if GameInfo.p1InputType == "keyboard" or GameInfo.p2InputType == "keyboard" then
+    --     love.graphics.setColor(0.7, 0.7, 0.7, 1)
+    --     love.graphics.printf("P1: WASD/Space, P2: Arrows/Keypad0, K/L: Color, Shift: Back", 0, gameHeight - 20, gameWidth, "center", 0, 1, 1)
+    -- end
 end
 
 return CharacterSelect
