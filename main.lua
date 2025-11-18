@@ -43,7 +43,10 @@ GameInfo = {
     storyOpponents = {},      -- array of 3 opponent characters to fight
     storyOpponentColors = {}, -- array of 3 opponent colors
     storyPlayerCharacter = nil, -- player's selected character
-    storyPlayerColor = nil    -- player's selected color
+    storyPlayerColor = nil,    -- player's selected color
+    -- Fight start sequence
+    fightStartPhase = nil,     -- nil, "ready", or "fight"
+    fightStartTimer = nil      -- timer for current phase
 }
 
 -- track if a button was pressed this frame
@@ -51,6 +54,20 @@ justPressed = {}
 
 local world, map
 local players = {}
+
+-- Fight start sound effect
+local fightStartSound = nil
+
+-- Initialize fight start sound
+local function initFightStartSound()
+    local success, sound = pcall(love.audio.newSource, "assets/soundEffects/fightStart.wav", "static")
+    if success then
+        fightStartSound = sound
+        fightStartSound:setLooping(false)
+    else
+        print("Warning: Could not load fightStart.wav")
+    end
+end
 
 -- Add at the top, after GameInfo definition:
 local inputAssignSpaceReleased = true
@@ -89,6 +106,9 @@ end
 function love.load()
     -- Initialize InputManager
     InputManager.initialize()
+    
+    -- Initialize fight start sound
+    initFightStartSound()
     
     -- For pixel art
     push:setupScreen(
@@ -148,6 +168,10 @@ function startGame(mode)
     for _, p in ipairs(players) do
         world:add(p, p.x+1, p.y, p.width-2, p.height-1)
     end
+    
+    -- Set up fight start sequence: "Ready" for 2 seconds
+    GameInfo.fightStartPhase = "ready"
+    GameInfo.fightStartTimer = 2.0
 end
 
 function love.gamepadpressed(joystick, button)
@@ -279,6 +303,14 @@ function updateGame(dt)
         p2Input = filterButtonInput(p2Input, p2InputSource, waitForButtonRelease.p2, 2)
     end
 
+    -- Block all player updates during fight start sequence
+    if GameInfo.fightStartPhase then
+        -- Don't update players at all during fight start sequence
+        -- Just update the map
+        map:update(dt)
+        return
+    end
+
     -- Update each player with their input (only pass input to human players)
     p1:update(dt, p2, p1Input)
     -- p1.stamina = 10
@@ -400,17 +432,12 @@ function love.update(dt)
     elseif GameInfo.gameState == "characterselect" then
         CharacterSelect.update(GameInfo)
     elseif GameInfo.gameState == "game_starting" then
-        -- Handle delay before starting the game
-        if GameInfo.gameStartDelay then
-            GameInfo.gameStartDelay = GameInfo.gameStartDelay - dt
-            if GameInfo.gameStartDelay <= 0 then
-                -- Delay elapsed, start the game
-                GameInfo.gameStartDelay = nil
-                local mode = GameInfo.previousMode
-                GameInfo.gameState = mode
-                startGame(mode)
-            end
-        end
+        -- Initialize game immediately (startGame will set up fight start sequence)
+        local mode = GameInfo.previousMode
+        startGame(mode)
+        -- Transition to actual game state (fight sequence will run during gameplay)
+        GameInfo.gameState = mode
+        GameInfo.gameStartDelay = nil
     elseif GameInfo.gameState == "story_victory" then
         -- Victory screen: wait for A button press
         -- Initialize delay if not set
@@ -465,6 +492,30 @@ function love.update(dt)
             GameInfo.selectedOption = 1
         end
     else
+        -- Handle fight start sequence
+        if GameInfo.fightStartPhase == "ready" then
+            -- Countdown "Ready" phase (2 seconds)
+            GameInfo.fightStartTimer = GameInfo.fightStartTimer - dt
+            if GameInfo.fightStartTimer <= 0 then
+                -- Transition to "Fight!" phase (1 second)
+                GameInfo.fightStartPhase = "fight"
+                GameInfo.fightStartTimer = 1.0
+                -- Play fight start sound
+                if fightStartSound then
+                    fightStartSound:stop()
+                    fightStartSound:play()
+                end
+            end
+        elseif GameInfo.fightStartPhase == "fight" then
+            -- Countdown "Fight!" phase (1 second)
+            GameInfo.fightStartTimer = GameInfo.fightStartTimer - dt
+            if GameInfo.fightStartTimer <= 0 then
+                -- Sequence complete, allow gameplay
+                GameInfo.fightStartPhase = nil
+                GameInfo.fightStartTimer = nil
+            end
+        end
+        
         updateGame(dt)
         -- Handle story mode fight completion
         if GameInfo.gameState == "game_story" then
@@ -558,6 +609,26 @@ function love.draw()
         if map then map:draw(0, 0, 1, 1) end
         for _, player in ipairs(players) do
             player:draw()
+        end
+        -- Draw fight start sequence text overlay
+        if GameInfo.fightStartPhase then
+            love.graphics.setColor(1, 1, 1, 1)
+            local text = ""
+            if GameInfo.fightStartPhase == "ready" then
+                text = "Ready"
+            elseif GameInfo.fightStartPhase == "fight" then
+                text = "Fight!"
+            end
+            if text ~= "" then
+                -- Calculate center position accounting for scale
+                local scale = 2
+                local font = love.graphics.getFont()
+                local textWidth = font:getWidth(text) * scale
+                local textHeight = font:getHeight() * scale
+                local x = (GameInfo.gameWidth - textWidth) / 2
+                local y = (GameInfo.gameHeight - textHeight) / 2
+                love.graphics.print(text, x, y, 0, scale, scale)
+            end
         end
         -- Show restart menu when either player loses all stocks (stocks == 0)
         local shouldShowRestart = false
