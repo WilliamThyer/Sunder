@@ -304,7 +304,7 @@ function Menu.drawMenu(GameInfo)
 
     -- Draw blue arrow to the left of selected option
     local centerX = GameInfo.gameWidth / 2
-    local textOffset = 25  -- Approximate offset to left of centered text
+    local textOffset = 30  -- Approximate offset to left of centered text
     local arrowX = centerX - textOffset
     
     if GameInfo.selectedOption == 1 then
@@ -983,7 +983,7 @@ function Menu.drawRestartMenu(players)
     
     -- Draw blue arrow to the left of selected option
     local centerX = GameInfo.gameWidth / 2
-    local textOffset = 30  -- Approximate offset to left of centered text
+    local textOffset = 40  -- Approximate offset to left of centered text
     local arrowX = centerX - textOffset
     
     if GameInfo.restartSelectedOption == 1 then
@@ -1041,7 +1041,7 @@ function Menu.drawStoryMenu(playerWon)
         
         -- Draw blue arrow to the left of selected option
         local centerX = GameInfo.gameWidth / 2
-        local textOffset = 30  -- Approximate offset to left of centered text
+        local textOffset = 40  -- Approximate offset to left of centered text
         local arrowX = centerX - textOffset
         
         if GameInfo.storyMenuSelectedOption == 1 then
@@ -1069,7 +1069,7 @@ function Menu.drawStoryMenu(playerWon)
         
         -- Draw blue arrow to the left of selected option
         local centerX = GameInfo.gameWidth / 2
-        local textOffset = 30  -- Approximate offset to left of centered text
+        local textOffset = 40  -- Approximate offset to left of centered text
         local arrowX = centerX - textOffset
         
         if GameInfo.storyMenuSelectedOption == 1 then
@@ -1169,7 +1169,7 @@ function Menu.drawPauseOverlay()
   
   -- Draw blue arrow to the left of selected option
   local centerX = GameInfo.gameWidth / 2
-  local textOffset = 30  -- Approximate offset to left of centered text
+  local textOffset = 40  -- Approximate offset to left of centered text
   local arrowX = centerX - textOffset
   
   if GameInfo.pauseSelectedOption == 1 then
