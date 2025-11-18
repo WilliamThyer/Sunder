@@ -15,12 +15,19 @@ function Lancer:new(x, y, joystickIndex, world, aiController, colorName)
     instance.index    = joystickIndex
     instance.world    = world
     instance.aiController = aiController
+    
+    -- Set initial direction based on player position
+    if instance.index == 2 then
+        instance.direction = -1  -- Face left (right player)
+    else
+        instance.direction = 1   -- Face right (left player)
+    end
 
     instance.colorName        = colorName or "Blue"
 
     -- Position & Size
     instance.x = x or 0
-    instance.y = y or 0
+    instance.y = (y or 0) - 2
     instance.width = 10
     instance.height = 10
     instance.groundY = instance.y

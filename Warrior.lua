@@ -23,6 +23,13 @@ function Warrior:new(x, y, joystickIndex, world, aiController, colorName)
     instance.world    = world
     instance.aiController = aiController
     instance.colorName        = colorName or "Blue"
+    
+    -- Set initial direction based on player position
+    if instance.index == 2 then
+        instance.direction = -1  -- Face left (right player)
+    else
+        instance.direction = 1   -- Face right (left player)
+    end
 
     instance.hasHitHeavy   = false
     instance.hasHitLight   = false
