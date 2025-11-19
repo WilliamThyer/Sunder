@@ -300,7 +300,7 @@ function Menu.drawMenu(GameInfo)
 
     -- Option 3: STORY MODE
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.printf("STORY MODE", 0, 50, GameInfo.gameWidth, "center", 0, 1, 1)
+    love.graphics.printf("GAUNTLET", 0, 50, GameInfo.gameWidth, "center", 0, 1, 1)
 
     -- Draw blue arrow to the left of selected option
     local centerX = GameInfo.gameWidth / 2
@@ -1019,11 +1019,9 @@ function Menu.drawStoryMenu(playerWon)
     -- Show win/loss message
     if playerWon then
         if isFinalFight then
-            love.graphics.printf("You Are The Champion", GameInfo.gameWidth / 4, 20, GameInfo.gameWidth/2, "center", 0, 1, 1)
+            love.graphics.printf("You Are The Champion!", 0, 20, GameInfo.gameWidth, "center", 0, 1, 1)
         else
-            -- love.graphics.printf("You Are The Champion", GameInfo.gameWidth / 12, 20, GameInfo.gameWidth, "center", 0, 1, 1)
-            love.graphics.printf("You Are The Champion", 0, 20, GameInfo.gameWidth, "center", 0, 1, 1)
-            -- love.graphics.printf("You Triumphed", GameInfo.gameWidth / 4, 20, GameInfo.gameWidth/2, "center", 0, 1, 1)
+            love.graphics.printf("You Triumphed, For Now ", 0, 20, GameInfo.gameWidth, "center", 0, 1, 1)
         end
     else
         love.graphics.printf("You Died", GameInfo.gameWidth / 4, 20, GameInfo.gameWidth/2, "center", 0, 1, 1)
