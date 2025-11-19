@@ -427,6 +427,10 @@ function CharacterBase:updateHurtState(dt)
         self.isDying = true
         self.isDyingTimer = self.timeToDeath
         self.canMove = false
+        -- Immediately update world position to move collision body off-screen
+        if self.world then
+            self.world:update(self, self.x+1, -10, self.width-2, self.height-1)
+        end
         -- Stop all sounds when dying
         self:stopAllSounds()
         -- Play finalDie.wav if this is the last stock, otherwise play die.wav
@@ -445,12 +449,22 @@ function CharacterBase:updateHurtState(dt)
                 self.isDying = false
                 self.isRespawning = true
                 self.respawnDelayTimer = 1.0  -- 1.0 second delay before respawn
+                self.y = -10
+                -- Immediately update world position to move collision body off-screen
+                if self.world then
+                    self.world:update(self, self.x+1, -10, self.width-2, self.height-1)
+                end
                 -- Stop all sounds when respawning
                 self:stopAllSounds()
             else
                 -- No stocks left, player is dead
                 self.isDead = true
                 self.isDying = false
+                self.y = -10
+                -- Immediately update world position to move collision body off-screen
+                if self.world then
+                    self.world:update(self, self.x+1, -10, self.width-2, self.height-1)
+                end
                 -- Stop all sounds when fully dead
                 self:stopAllSounds()
             end
@@ -471,6 +485,10 @@ function CharacterBase:updateHurtState(dt)
             self.respawnDelayTimer = self.respawnDelayTimer - dt
             self.canMove = false
             self.y = -10  -- Keep player off-screen during delay
+            -- Immediately update world position to move collision body off-screen
+            if self.world then
+                self.world:update(self, self.x+1, -10, self.width-2, self.height-1)
+            end
         else
             -- Delay complete, respawn will be triggered from main.lua
             -- (we need the other player's position to calculate spawn)
@@ -478,6 +496,10 @@ function CharacterBase:updateHurtState(dt)
     elseif self.isDead then
         self.canMove = false
         self.y = -10
+        -- Immediately update world position to move collision body off-screen
+        if self.world then
+            self.world:update(self, self.x+1, -10, self.width-2, self.height-1)
+        end
         -- Set stamina to max while dead
         self.stamina = self.maxStamina
     end
@@ -623,6 +645,10 @@ end
 --------------------------------------------------
 function CharacterBase:collisionFilter(item, other)
     if other and other.isPlayer then
+        -- Exclude dead/dying players from collision detection
+        if other.isDead or other.isDying or other.isRespawning then
+            return nil
+        end
         return "slide"
     end
     return "slide"

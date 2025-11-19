@@ -167,7 +167,7 @@ function startGame(mode)
     end
     
     -- DEBUG: Set P2 health to 1
-    -- players[2].health = 1
+    players[2].health = 1
 
     for _, p in ipairs(players) do
         world:add(p, p.x+1, p.y, p.width-2, p.height-1)
@@ -327,7 +327,7 @@ function updateGame(dt)
     end
     -- p2.stamina = 10
     -- DEBUG: Set P2 health to 1
-    -- p2.health = 1
+    p2.health = 1
 
     -- Check if game is over (any player has 0 stocks)
     local gameOver = (p1.stocks == 0 or p2.stocks == 0)
