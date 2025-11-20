@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.11.1.1" orientation="orthogonal" renderorder="right-down" width="16" height="9" tilewidth="8" tileheight="8" infinite="0" backgroundcolor="#000000" nextlayerid="5" nextobjectid="1">
+ <editorsettings>
+  <export target="desert.lua" format="lua"/>
+ </editorsettings>
+ <tileset firstgid="1" name="Overworld" tilewidth="8" tileheight="8" tilecount="1120" columns="35">
+  <image source="Overworld.png" trans="000000" width="280" height="256"/>
+  <tile id="436">
+   <properties>
+    <property name="collidable" type="bool" value="true"/>
+   </properties>
+  </tile>
+ </tileset>
+ <tileset firstgid="1121" name="Foliage" tilewidth="8" tileheight="8" tilecount="960" columns="24">
+  <image source="Chroma Noir/Chroma-Noir-Jungle-Documented-8x8/Foliage.png" trans="000000" width="192" height="320"/>
+ </tileset>
+ <tileset firstgid="2081" name="Overworld" tilewidth="8" tileheight="8" tilecount="2223" columns="57">
+  <image source="Chroma Noir/Chroma-Noir-Jungle-Documented-8x8/Overworld.png" trans="000000" width="456" height="312"/>
+ </tileset>
+ <tileset firstgid="4304" name="Sky" tilewidth="8" tileheight="8" tilecount="459" columns="17">
+  <image source="Chroma Noir/Chroma-Noir-8x8/Sky.png" trans="000000" width="136" height="216"/>
+ </tileset>
+ <tileset firstgid="4763" name="Sky" tilewidth="8" tileheight="8" tilecount="952" columns="34">
+  <image source="Chroma Noir/Chroma-Noir-Jungle-Documented-8x8/Sky.png" trans="000000" width="272" height="224"/>
+ </tileset>
+ <tileset firstgid="5715" name="Trees" tilewidth="8" tileheight="8" tilecount="2992" columns="34">
+  <image source="Chroma Noir/Chroma-Noir-8x8/Trees.png" trans="000000" width="272" height="704"/>
+ </tileset>
+ <layer id="4" name="bg" width="16" height="9">
+  <data encoding="csv">
+0,0,0,0,4361,4362,4363,0,0,0,0,0,0,0,0,0,
+0,0,4458,4459,4378,4379,4380,0,4412,4413,0,0,0,0,0,0,
+0,0,0,0,4395,4396,4397,0,0,0,0,0,4415,4475,4476,0,
+0,4407,0,4409,4410,0,0,0,0,0,0,4431,0,0,0,0,
+0,0,0,0,4427,0,0,0,0,0,0,4448,4449,4450,0,0,
+0,0,4442,4443,0,4459,4460,0,4412,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+</data>
+ </layer>
+ <layer id="1" name="Tile Layer 1" width="16" height="9">
+  <data encoding="csv">
+8309,0,0,0,0,0,0,0,0,0,0,0,0,0,8435,8324,
+8343,0,0,0,0,4564,4565,0,0,0,0,0,0,0,8323,8392,
+8377,8319,0,0,0,4581,4582,4583,4584,0,0,0,0,0,8357,8307,
+8352,8353,0,0,4616,4598,4599,4600,4601,0,0,0,0,0,4518,8341,
+8386,8440,0,0,4633,4597,0,0,0,0,8545,8643,0,4534,4535,8375,
+8343,0,8135,8136,0,0,0,0,0,0,8579,8575,0,0,0,8375,
+8377,0,8169,8170,0,0,0,0,0,0,8613,8609,8615,0,0,8375,
+8240,8240,8240,8240,8240,8240,8240,8240,8240,8240,8240,8240,8240,8240,8240,8241,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+</data>
+ </layer>
+ <layer id="2" name="collision" width="16" height="9" opacity="0">
+  <data encoding="csv">
+437,437,437,437,437,437,437,437,437,437,437,437,437,437,437,437,
+437,0,0,0,0,0,0,0,0,0,0,0,0,0,0,437,
+437,0,0,0,0,0,0,0,0,0,0,0,0,0,0,437,
+437,0,0,0,0,0,0,0,0,0,0,0,0,0,0,437,
+437,0,0,0,0,0,0,0,0,0,0,0,0,0,0,437,
+437,0,0,0,0,0,0,0,0,0,0,0,0,0,0,437,
+437,0,0,0,0,0,0,0,0,0,0,0,0,0,0,437,
+437,437,437,437,437,437,437,437,437,437,437,437,437,437,437,437,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+</data>
+ </layer>
+</map>

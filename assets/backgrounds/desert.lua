@@ -1,0 +1,294 @@
+return {
+  version = "1.10",
+  luaversion = "5.1",
+  tiledversion = "1.11.1.1",
+  class = "",
+  orientation = "orthogonal",
+  renderorder = "right-down",
+  width = 16,
+  height = 9,
+  tilewidth = 8,
+  tileheight = 8,
+  nextlayerid = 5,
+  nextobjectid = 1,
+  backgroundcolor = { 0, 0, 0 },
+  properties = {},
+  tilesets = {
+    {
+      name = "Overworld",
+      firstgid = 1,
+      class = "",
+      tilewidth = 8,
+      tileheight = 8,
+      spacing = 0,
+      margin = 0,
+      columns = 35,
+      image = "Overworld.png",
+      imagewidth = 280,
+      imageheight = 256,
+      transparentcolor = "#000000",
+      objectalignment = "unspecified",
+      tilerendersize = "tile",
+      fillmode = "stretch",
+      tileoffset = {
+        x = 0,
+        y = 0
+      },
+      grid = {
+        orientation = "orthogonal",
+        width = 8,
+        height = 8
+      },
+      properties = {},
+      wangsets = {},
+      tilecount = 1120,
+      tiles = {
+        {
+          id = 436,
+          properties = {
+            ["collidable"] = true
+          }
+        }
+      }
+    },
+    {
+      name = "Foliage",
+      firstgid = 1121,
+      class = "",
+      tilewidth = 8,
+      tileheight = 8,
+      spacing = 0,
+      margin = 0,
+      columns = 24,
+      image = "Chroma Noir/Chroma-Noir-Jungle-Documented-8x8/Foliage.png",
+      imagewidth = 192,
+      imageheight = 320,
+      transparentcolor = "#000000",
+      objectalignment = "unspecified",
+      tilerendersize = "tile",
+      fillmode = "stretch",
+      tileoffset = {
+        x = 0,
+        y = 0
+      },
+      grid = {
+        orientation = "orthogonal",
+        width = 8,
+        height = 8
+      },
+      properties = {},
+      wangsets = {},
+      tilecount = 960,
+      tiles = {}
+    },
+    {
+      name = "Overworld",
+      firstgid = 2081,
+      class = "",
+      tilewidth = 8,
+      tileheight = 8,
+      spacing = 0,
+      margin = 0,
+      columns = 57,
+      image = "Chroma Noir/Chroma-Noir-Jungle-Documented-8x8/Overworld.png",
+      imagewidth = 456,
+      imageheight = 312,
+      transparentcolor = "#000000",
+      objectalignment = "unspecified",
+      tilerendersize = "tile",
+      fillmode = "stretch",
+      tileoffset = {
+        x = 0,
+        y = 0
+      },
+      grid = {
+        orientation = "orthogonal",
+        width = 8,
+        height = 8
+      },
+      properties = {},
+      wangsets = {},
+      tilecount = 2223,
+      tiles = {}
+    },
+    {
+      name = "Sky",
+      firstgid = 4304,
+      class = "",
+      tilewidth = 8,
+      tileheight = 8,
+      spacing = 0,
+      margin = 0,
+      columns = 17,
+      image = "Chroma Noir/Chroma-Noir-8x8/Sky.png",
+      imagewidth = 136,
+      imageheight = 216,
+      transparentcolor = "#000000",
+      objectalignment = "unspecified",
+      tilerendersize = "tile",
+      fillmode = "stretch",
+      tileoffset = {
+        x = 0,
+        y = 0
+      },
+      grid = {
+        orientation = "orthogonal",
+        width = 8,
+        height = 8
+      },
+      properties = {},
+      wangsets = {},
+      tilecount = 459,
+      tiles = {}
+    },
+    {
+      name = "Sky",
+      firstgid = 4763,
+      class = "",
+      tilewidth = 8,
+      tileheight = 8,
+      spacing = 0,
+      margin = 0,
+      columns = 34,
+      image = "Chroma Noir/Chroma-Noir-Jungle-Documented-8x8/Sky.png",
+      imagewidth = 272,
+      imageheight = 224,
+      transparentcolor = "#000000",
+      objectalignment = "unspecified",
+      tilerendersize = "tile",
+      fillmode = "stretch",
+      tileoffset = {
+        x = 0,
+        y = 0
+      },
+      grid = {
+        orientation = "orthogonal",
+        width = 8,
+        height = 8
+      },
+      properties = {},
+      wangsets = {},
+      tilecount = 952,
+      tiles = {}
+    },
+    {
+      name = "Trees",
+      firstgid = 5715,
+      class = "",
+      tilewidth = 8,
+      tileheight = 8,
+      spacing = 0,
+      margin = 0,
+      columns = 34,
+      image = "Chroma Noir/Chroma-Noir-8x8/Trees.png",
+      imagewidth = 272,
+      imageheight = 704,
+      transparentcolor = "#000000",
+      objectalignment = "unspecified",
+      tilerendersize = "tile",
+      fillmode = "stretch",
+      tileoffset = {
+        x = 0,
+        y = 0
+      },
+      grid = {
+        orientation = "orthogonal",
+        width = 8,
+        height = 8
+      },
+      properties = {},
+      wangsets = {},
+      tilecount = 2992,
+      tiles = {}
+    }
+  },
+  layers = {
+    {
+      type = "tilelayer",
+      x = 0,
+      y = 0,
+      width = 16,
+      height = 9,
+      id = 4,
+      name = "bg",
+      class = "",
+      visible = true,
+      opacity = 1,
+      offsetx = 0,
+      offsety = 0,
+      parallaxx = 1,
+      parallaxy = 1,
+      properties = {},
+      encoding = "lua",
+      data = {
+        0, 0, 0, 0, 4361, 4362, 4363, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 4458, 4459, 4378, 4379, 4380, 0, 4412, 4413, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 4395, 4396, 4397, 0, 0, 0, 0, 0, 4415, 4475, 4476, 0,
+        0, 4407, 0, 4409, 4410, 0, 0, 0, 0, 0, 0, 4431, 0, 0, 0, 0,
+        0, 0, 0, 0, 4427, 0, 0, 0, 0, 0, 0, 4448, 4449, 4450, 0, 0,
+        0, 0, 4442, 4443, 0, 4459, 4460, 0, 4412, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+      }
+    },
+    {
+      type = "tilelayer",
+      x = 0,
+      y = 0,
+      width = 16,
+      height = 9,
+      id = 1,
+      name = "Tile Layer 1",
+      class = "",
+      visible = true,
+      opacity = 1,
+      offsetx = 0,
+      offsety = 0,
+      parallaxx = 1,
+      parallaxy = 1,
+      properties = {},
+      encoding = "lua",
+      data = {
+        8309, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8435, 8324,
+        8343, 0, 0, 0, 0, 4564, 4565, 0, 0, 0, 0, 0, 0, 0, 8323, 8392,
+        8377, 8319, 0, 0, 0, 4581, 4582, 4583, 4584, 0, 0, 0, 0, 0, 8357, 8307,
+        8352, 8353, 0, 0, 4616, 4598, 4599, 4600, 4601, 0, 0, 0, 0, 0, 4518, 8341,
+        8386, 8440, 0, 0, 4633, 4597, 0, 0, 0, 0, 8545, 8643, 0, 4534, 4535, 8375,
+        8343, 0, 8135, 8136, 0, 0, 0, 0, 0, 0, 8579, 8575, 0, 0, 0, 8375,
+        8377, 0, 8169, 8170, 0, 0, 0, 0, 0, 0, 8613, 8609, 8615, 0, 0, 8375,
+        8240, 8240, 8240, 8240, 8240, 8240, 8240, 8240, 8240, 8240, 8240, 8240, 8240, 8240, 8240, 8241,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+      }
+    },
+    {
+      type = "tilelayer",
+      x = 0,
+      y = 0,
+      width = 16,
+      height = 9,
+      id = 2,
+      name = "collision",
+      class = "",
+      visible = true,
+      opacity = 0,
+      offsetx = 0,
+      offsety = 0,
+      parallaxx = 1,
+      parallaxy = 1,
+      properties = {},
+      encoding = "lua",
+      data = {
+        437, 437, 437, 437, 437, 437, 437, 437, 437, 437, 437, 437, 437, 437, 437, 437,
+        437, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 437,
+        437, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 437,
+        437, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 437,
+        437, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 437,
+        437, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 437,
+        437, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 437,
+        437, 437, 437, 437, 437, 437, 437, 437, 437, 437, 437, 437, 437, 437, 437, 437,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+      }
+    }
+  }
+}
