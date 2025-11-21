@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.11.1.1" orientation="orthogonal" renderorder="right-down" width="16" height="9" tilewidth="8" tileheight="8" infinite="0" backgroundcolor="#000000" nextlayerid="6" nextobjectid="1">
  <editorsettings>
-  <export target="desert.lua" format="lua"/>
+  <export target="laboratory.lua" format="lua"/>
  </editorsettings>
  <tileset firstgid="1" name="Overworld" tilewidth="8" tileheight="8" tilecount="1120" columns="35">
   <image source="Overworld.png" trans="000000" width="280" height="256"/>
@@ -38,7 +38,7 @@
  <tileset firstgid="7130" name="Underground" tilewidth="8" tileheight="8" tilecount="1118" columns="26">
   <image source="Chroma Noir/Chroma-Noir-8x8/Underground.png" trans="000000" width="208" height="344"/>
  </tileset>
- <layer id="4" name="bg" width="16" height="9" opacity="0.42">
+ <layer id="4" name="bg" width="16" height="9" opacity="0.72">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,7345,7292,6974,6974,1198,1199,1200,6974,6974,7191,7192,6974,6974,7191,0,
@@ -51,7 +51,7 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
- <layer id="5" name="extra bg" width="16" height="9" opacity="0.72">
+ <layer id="5" name="extra bg" width="16" height="9" opacity="0.87">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,1610620660,0,2684362484,0,0,0,0,0,0,0,0,

@@ -127,10 +127,34 @@ function love.load()
     )
 end
 
+-- Select map based on game mode
+-- For 1P/2P: random selection from all maps
+-- For story mode: map determined by opponent character
+local function selectMap(mode)
+    if mode == "game_story" then
+        -- Story mode: map based on opponent character
+        local opponentChar = GameInfo.storyOpponents[GameInfo.storyOpponentIndex]
+        local mapMapping = {
+            Warrior = "dungeon",
+            Berserk = "desert",
+            Lancer = "forest",
+            Mage = "laboratory"
+        }
+        local mapName = mapMapping[opponentChar] or "dungeon"  -- fallback to dungeon
+        return "assets/backgrounds/" .. mapName .. ".lua"
+    else
+        -- 1P or 2P mode: random selection
+        local maps = {"desert", "dungeon", "forest", "laboratory"}
+        local randomIndex = math.random(1, #maps)
+        return "assets/backgrounds/" .. maps[randomIndex] .. ".lua"
+    end
+end
+
 function startGame(mode)
     GameInfo.gameState = mode
     world = bump.newWorld(8)
-    map = sti("assets/backgrounds/dungeon.lua", {"bump"})
+    local mapPath = selectMap(mode)
+    map = sti(mapPath, {"bump"})
     map:bump_init(world)
 
     -- read both character *and* color
