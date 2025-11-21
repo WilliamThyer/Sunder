@@ -145,7 +145,7 @@ local function selectMap(mode)
     else
         -- 1P or 2P mode: random selection
         local maps = {"desert", "dungeon", "forest", "laboratory"}
-        local randomIndex = math.random(1, #maps)
+        local randomIndex = love.math.random(1, #maps)
         return "assets/backgrounds/" .. maps[randomIndex] .. ".lua"
     end
 end
