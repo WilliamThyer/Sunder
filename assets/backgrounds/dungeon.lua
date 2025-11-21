@@ -82,14 +82,18 @@ return {
       }
     },
     {
-      name = "Underground",
+      name = "Extras",
       firstgid = 2239,
       class = "",
-      tilewidth = 32,
-      tileheight = 32,
+      tilewidth = 8,
+      tileheight = 8,
       spacing = 0,
       margin = 0,
-      columns = 0,
+      columns = 23,
+      image = "Chroma Noir/Chroma-Noir-8x8/Extras.png",
+      imagewidth = 184,
+      imageheight = 80,
+      transparentcolor = "#000000",
       objectalignment = "unspecified",
       tilerendersize = "tile",
       fillmode = "stretch",
@@ -99,38 +103,12 @@ return {
       },
       grid = {
         orientation = "orthogonal",
-        width = 32,
-        height = 32
+        width = 8,
+        height = 8
       },
       properties = {},
       wangsets = {},
-      tilecount = 0,
-      tiles = {}
-    },
-    {
-      name = "Overworld",
-      firstgid = 2239,
-      class = "",
-      tilewidth = 32,
-      tileheight = 32,
-      spacing = 0,
-      margin = 0,
-      columns = 0,
-      objectalignment = "unspecified",
-      tilerendersize = "tile",
-      fillmode = "stretch",
-      tileoffset = {
-        x = 0,
-        y = 0
-      },
-      grid = {
-        orientation = "orthogonal",
-        width = 32,
-        height = 32
-      },
-      properties = {},
-      wangsets = {},
-      tilecount = 0,
+      tilecount = 230,
       tiles = {}
     }
   },
@@ -153,14 +131,14 @@ return {
       properties = {},
       encoding = "lua",
       data = {
-        27, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 28,
-        83, 0, 2226, 2227, 0, 0, 0, 0, 0, 0, 0, 0, 0, 71, 21, 85,
-        83, 0, 0, 0, 0, 0, 285, 286, 0, 0, 0, 236, 0, 71, 47, 85,
-        83, 0, 0, 271, 0, 0, 311, 0, 0, 0, 0, 0, 543, 151, 0, 85,
-        83, 0, 0, 297, 0, 0, 0, 0, 0, 0, 0, 0, 486, 0, 0, 85,
-        83, 0, 0, 323, 0, 0, 0, 0, 0, 337, 338, 0, 323, 0, 0, 85,
-        83, 1499, 1500, 349, 0, 0, 1209, 1210, 0, 0, 0, 0, 349, 1301, 0, 85,
-        53, 108, 108, 108, 108, 108, 108, 108, 108, 108, 108, 108, 108, 108, 108, 54,
+        209, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 209,
+        271, 2195, 2226, 2227, 2233, 0, 0, 0, 0, 1642, 0, 2393, 2394, 2395, 73, 271,
+        299, 0, 0, 0, 0, 0, 285, 286, 0, 0, 0, 2416, 2417, 2418, 99, 297,
+        325, 0, 0, 317, 262, 0, 311, 0, 0, 0, 0, 2439, 2440, 2441, 0, 323,
+        299, 0, 0, 343, 376, 0, 0, 0, 0, 0, 0, 0, 0, 0, 371, 299,
+        325, 0, 0, 317, 411, 133, 0, 0, 0, 337, 338, 0, 0, 0, 0, 325,
+        349, 1499, 1500, 0, 133, 1769, 1776, 1777, 0, 0, 0, 0, 0, 2019, 0, 349,
+        210, 108, 108, 108, 108, 108, 108, 108, 108, 108, 108, 108, 108, 108, 108, 210,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
       }
     },

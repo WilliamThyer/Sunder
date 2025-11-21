@@ -18,10 +18,10 @@ love.graphics.setDefaultFilter("nearest", "nearest")
 local colorOptions = {
     {127/255, 146/255, 237/255},  -- Blue
     {234/255,  94/255,  94/255},  -- Red
-    {141/255, 141/255, 141/255},  -- Gray
+    {181/255, 26/255, 223/255},  -- Purple
     {241/255, 225/255, 115/255},  -- Yellow
 }
-local colorNames = {"Blue", "Red", "Gray", "Yellow"}
+local colorNames = {"Blue", "Red", "Purple", "Yellow", "Gray"}
 
 -- List of characters
 local characters = {"Warrior", "Berserk", "Lancer", "Mage"}
@@ -32,24 +32,28 @@ local sprites = {
        Red    = love.graphics.newImage("assets/sprites/WarriorRed.png"),
        Blue   = love.graphics.newImage("assets/sprites/WarriorBlue.png"),
        Yellow = love.graphics.newImage("assets/sprites/WarriorYellow.png"),
+       Purple   = love.graphics.newImage("assets/sprites/WarriorPurple.png"),
        Gray   = love.graphics.newImage("assets/sprites/WarriorGray.png")
     },
     Berserk = {
        Red    = love.graphics.newImage("assets/sprites/BerserkRed.png"),
        Blue   = love.graphics.newImage("assets/sprites/BerserkBlue.png"),
        Yellow = love.graphics.newImage("assets/sprites/BerserkYellow.png"),
+       Purple   = love.graphics.newImage("assets/sprites/BerserkPurple.png"),
        Gray   = love.graphics.newImage("assets/sprites/BerserkGray.png")
     },
     Lancer = {
         Red    = love.graphics.newImage("assets/sprites/LancerRed.png"),
         Blue   = love.graphics.newImage("assets/sprites/LancerBlue.png"),
         Yellow = love.graphics.newImage("assets/sprites/LancerYellow.png"),
+        Purple   = love.graphics.newImage("assets/sprites/LancerPurple.png"),
         Gray   = love.graphics.newImage("assets/sprites/LancerGray.png")
         },
     Mage = {
         Red    = love.graphics.newImage("assets/sprites/MageRed.png"),
         Blue   = love.graphics.newImage("assets/sprites/MageBlue.png"),
         Yellow = love.graphics.newImage("assets/sprites/MageYellow.png"),
+        Purple   = love.graphics.newImage("assets/sprites/MagePurple.png"),
         Gray   = love.graphics.newImage("assets/sprites/MageGray.png")
         }
 }
@@ -865,8 +869,8 @@ function CharacterSelect.beginGame(GameInfo)
             end
         end
         
-        -- Calculate opponent colors: exclude player's color from [Blue, Red, Yellow, Gray]
-        local allColors = {"Blue", "Red", "Yellow", "Gray"}
+        -- Calculate opponent colors: exclude player's color from [Blue, Red, Yellow, Purple]
+        local allColors = {"Blue", "Red", "Yellow", "Purple"}
         GameInfo.storyOpponentColors = {}
         for _, color in ipairs(allColors) do
             if color ~= GameInfo.storyPlayerColor then
@@ -1010,7 +1014,7 @@ function CharacterSelect.draw(GameInfo)
             local y = startY
             love.graphics.rectangle("line", x, y, charBoxWidth, charBoxHeight)
 
-            -- Draw a gray preview if we have a sprite
+            -- Draw a preview with gray sprite 
             if charName == "Warrior" then
                 local image, quad = sprites.Warrior["Gray"], warriorQuad
                 local spriteW, spriteH = 8, 8
@@ -1029,7 +1033,7 @@ function CharacterSelect.draw(GameInfo)
                 local offsetX = (charBoxWidth - spriteW) / 2
                 local offsetY = (charBoxHeight - spriteH) / 2
                 love.graphics.draw(image, quad, x + offsetX, y + offsetY)
-            elseif charName == "Mage" and sprites.Mage["Gray"] then
+            elseif charName == "Mage" then
                 local image, quad = sprites.Mage["Gray"], mageQuad
                 local spriteW, spriteH = 12, 12
                 local offsetX = (charBoxWidth - spriteW) / 2

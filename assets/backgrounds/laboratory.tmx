@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.11.1.1" orientation="orthogonal" renderorder="right-down" width="16" height="9" tilewidth="8" tileheight="8" infinite="0" backgroundcolor="#000000" nextlayerid="6" nextobjectid="1">
+ <editorsettings>
+  <export target="desert.lua" format="lua"/>
+ </editorsettings>
+ <tileset firstgid="1" name="Overworld" tilewidth="8" tileheight="8" tilecount="1120" columns="35">
+  <image source="Overworld.png" trans="000000" width="280" height="256"/>
+  <tile id="436">
+   <properties>
+    <property name="collidable" type="bool" value="true"/>
+   </properties>
+  </tile>
+ </tileset>
+ <tileset firstgid="1121" name="Sky" tilewidth="8" tileheight="8" tilecount="459" columns="17">
+  <image source="Chroma Noir/Chroma-Noir-8x8/Sky.png" trans="000000" width="136" height="216"/>
+ </tileset>
+ <tileset firstgid="1580" name="Trees" tilewidth="8" tileheight="8" tilecount="2992" columns="34">
+  <image source="Chroma Noir/Chroma-Noir-8x8/Trees.png" trans="000000" width="272" height="704"/>
+ </tileset>
+ <tileset firstgid="4572" name="Buildings" tilewidth="8" tileheight="8" tilecount="240" columns="24">
+  <image source="Chroma Noir/Chroma-Noir-8x8/Buildings.png" trans="000000" width="192" height="80"/>
+ </tileset>
+ <tileset firstgid="4812" name="Enemies" tilewidth="8" tileheight="8" tilecount="1032" columns="12">
+  <image source="Chroma Noir/Chroma-Noir-8x8/Enemies.png" trans="000000" width="96" height="688"/>
+ </tileset>
+ <tileset firstgid="5844" name="Extras" tilewidth="8" tileheight="8" tilecount="230" columns="23">
+  <image source="Chroma Noir/Chroma-Noir-8x8/Extras.png" trans="000000" width="184" height="80"/>
+ </tileset>
+ <tileset firstgid="6074" name="Interactables" tilewidth="8" tileheight="8" tilecount="672" columns="14">
+  <image source="Chroma Noir/Chroma-Noir-8x8/Interactables.png" trans="000000" width="112" height="384"/>
+ </tileset>
+ <tileset firstgid="6746" name="Items" tilewidth="8" tileheight="8" tilecount="80" columns="10">
+  <image source="Chroma Noir/Chroma-Noir-8x8/Items.png" trans="000000" width="80" height="64"/>
+ </tileset>
+ <tileset firstgid="6826" name="Patterns-and-Symbols" tilewidth="8" tileheight="8" tilecount="304" columns="8">
+  <image source="Chroma Noir/Chroma-Noir-8x8/Patterns-and-Symbols.png" trans="000000" width="64" height="304"/>
+ </tileset>
+ <tileset firstgid="7130" name="Underground" tilewidth="8" tileheight="8" tilecount="1118" columns="26">
+  <image source="Chroma Noir/Chroma-Noir-8x8/Underground.png" trans="000000" width="208" height="344"/>
+ </tileset>
+ <layer id="4" name="bg" width="16" height="9" opacity="0.42">
+  <data encoding="csv">
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,7345,7292,6974,6974,1198,1199,1200,6974,6974,7191,7192,6974,6974,7191,0,
+0,7345,7292,6974,6974,1215,1216,1217,6974,6974,7191,7192,6464,6465,7191,0,
+0,7345,7292,6372,6974,6974,6073,6974,6974,4733,7191,7192,6478,6479,7191,0,
+0,7191,4781,4782,4783,4778,4779,4780,4766,4767,7191,7192,6478,6479,7191,0,
+0,8018,4805,4806,4807,4802,4803,4804,4790,4791,8017,8070,6052,6052,8070,0,
+0,0,8069,8069,8069,8069,8069,8069,8069,8070,7859,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+</data>
+ </layer>
+ <layer id="5" name="extra bg" width="16" height="9" opacity="0.72">
+  <data encoding="csv">
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,1610620660,0,2684362484,0,0,0,0,0,0,0,0,
+0,0,0,0,0,1610620660,1073749261,2684362484,0,0,0,0,0,0,0,0,
+0,0,0,0,0,7924,7924,7924,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+</data>
+ </layer>
+ <layer id="1" name="Tile Layer 1" width="16" height="9">
+  <data encoding="csv">
+2147489509,7983,7983,7983,7983,7983,7983,7983,7983,7983,7983,7983,7983,7983,7983,5861,
+2147489580,8009,0,0,0,0,0,0,0,0,0,0,0,0,8009,5932,
+2147489580,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5932,
+2147489580,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5932,
+2147489580,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5932,
+2147489580,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5932,
+2147489603,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5955,
+7963,7963,7963,7963,7963,7963,7963,7963,7963,7963,7963,7963,7963,7963,7963,7963,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+</data>
+ </layer>
+ <layer id="2" name="collision" width="16" height="9" visible="0" opacity="0.14">
+  <data encoding="csv">
+437,437,437,437,437,437,437,437,437,437,437,437,437,437,437,437,
+437,0,0,0,0,0,0,0,0,0,0,0,0,0,0,437,
+437,0,0,0,0,0,0,0,0,0,0,0,0,0,0,437,
+437,0,0,0,0,0,0,0,0,0,0,0,0,0,0,437,
+437,0,0,0,0,0,0,0,0,0,0,0,0,0,0,437,
+437,0,0,0,0,0,0,0,0,0,0,0,0,0,0,437,
+437,0,0,0,0,0,0,0,0,0,0,0,0,0,0,437,
+437,437,437,437,437,437,437,437,437,437,437,437,437,437,437,437,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+</data>
+ </layer>
+</map>

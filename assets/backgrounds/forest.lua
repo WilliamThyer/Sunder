@@ -9,7 +9,7 @@ return {
   height = 9,
   tilewidth = 8,
   tileheight = 8,
-  nextlayerid = 5,
+  nextlayerid = 6,
   nextobjectid = 1,
   backgroundcolor = { 0, 0, 0 },
   properties = {},
@@ -80,58 +80,6 @@ return {
           }
         }
       }
-    },
-    {
-      name = "Underground",
-      firstgid = 2239,
-      class = "",
-      tilewidth = 32,
-      tileheight = 32,
-      spacing = 0,
-      margin = 0,
-      columns = 0,
-      objectalignment = "unspecified",
-      tilerendersize = "tile",
-      fillmode = "stretch",
-      tileoffset = {
-        x = 0,
-        y = 0
-      },
-      grid = {
-        orientation = "orthogonal",
-        width = 32,
-        height = 32
-      },
-      properties = {},
-      wangsets = {},
-      tilecount = 0,
-      tiles = {}
-    },
-    {
-      name = "Overworld",
-      firstgid = 2239,
-      class = "",
-      tilewidth = 32,
-      tileheight = 32,
-      spacing = 0,
-      margin = 0,
-      columns = 0,
-      objectalignment = "unspecified",
-      tilerendersize = "tile",
-      fillmode = "stretch",
-      tileoffset = {
-        x = 0,
-        y = 0
-      },
-      grid = {
-        orientation = "orthogonal",
-        width = 32,
-        height = 32
-      },
-      properties = {},
-      wangsets = {},
-      tilecount = 0,
-      tiles = {}
     },
     {
       name = "Foliage",
@@ -234,7 +182,36 @@ return {
       id = 4,
       name = "bg",
       class = "",
-      visible = false,
+      visible = true,
+      opacity = 0.59,
+      offsetx = 0,
+      offsety = 0,
+      parallaxx = 1,
+      parallaxy = 1,
+      properties = {},
+      encoding = "lua",
+      data = {
+        10993, 0, 9360, 9361, 9362, 9363, 0, 5588, 5589, 7223, 0, 0, 0, 0, 0, 0,
+        0, 0, 9462, 10788, 9464, 9465, 0, 5690, 5691, 7325, 7223, 0, 0, 6915, 6505, 0,
+        0, 0, 9564, 10890, 9566, 9567, 0, 5792, 5793, 7325, 7325, 5797, 6605, 6606, 6607, 0,
+        8552, 8552, 0, 10992, 10993, 0, 0, 5894, 5895, 10785, 10786, 5899, 6707, 10893, 6709, 0,
+        8552, 0, 0, 0, 0, 0, 0, 5996, 5997, 10887, 10888, 5992, 11616, 10995, 10996, 0,
+        10887, 0, 0, 0, 0, 0, 0, 7546, 10988, 10989, 10990, 5992, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+      }
+    },
+    {
+      type = "tilelayer",
+      x = 0,
+      y = 0,
+      width = 16,
+      height = 9,
+      id = 5,
+      name = "tt",
+      class = "",
+      visible = true,
       opacity = 1,
       offsetx = 0,
       offsety = 0,
@@ -243,13 +220,13 @@ return {
       properties = {},
       encoding = "lua",
       data = {
-        0, 6101, 6102, 6103, 0, 0, 6617, 6618, 6619, 6620, 6621, 0, 0, 0, 0, 0,
-        0, 6203, 6204, 6205, 0, 0, 6719, 10785, 6721, 6722, 6723, 0, 0, 0, 0, 6103,
-        0, 10791, 6306, 6307, 0, 0, 6821, 10887, 6823, 6824, 8033, 0, 8441, 8142, 8442, 8443,
-        0, 10893, 6408, 6409, 0, 0, 10988, 10989, 10990, 0, 0, 0, 8543, 10791, 8544, 8545,
-        0, 10995, 10996, 0, 0, 0, 11090, 11091, 11092, 0, 0, 0, 0, 10995, 10996, 6409,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11090, 11091, 11092, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
       }
