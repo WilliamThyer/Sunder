@@ -860,23 +860,36 @@ function CharacterSelect.beginGame(GameInfo)
         GameInfo.storyPlayerCharacter = characters[playerSelections[1].cursor]
         GameInfo.storyPlayerColor = colorNames[playerSelections[1].colorIndex]
         
-        -- Calculate opponents: exclude player's character from [Warrior, Berserk, Lancer, Mage]
-        local allCharacters = {"Warrior", "Berserk", "Lancer", "Mage"}
+        -- Character-specific opponent order mapping
+        -- Each character fights the others in a specific order, then fights themselves last
+        local opponentOrder = {
+            Warrior = {"Lancer", "Berserk", "Mage", "Warrior"},
+            Berserk = {"Warrior", "Lancer", "Mage", "Berserk"},
+            Lancer = {"Warrior", "Berserk", "Mage", "Lancer"},
+            Mage = {"Warrior", "Lancer", "Berserk", "Mage"}
+        }
+        
+        -- Set opponents based on player's character
         GameInfo.storyOpponents = {}
-        for _, char in ipairs(allCharacters) do
-            if char ~= GameInfo.storyPlayerCharacter then
+        local order = opponentOrder[GameInfo.storyPlayerCharacter]
+        if order then
+            for _, char in ipairs(order) do
                 table.insert(GameInfo.storyOpponents, char)
             end
         end
         
-        -- Calculate opponent colors: exclude player's color from [Blue, Red, Yellow, Purple]
+        -- Calculate opponent colors: use all colors, excluding player's color
         local allColors = {"Blue", "Red", "Yellow", "Purple"}
         GameInfo.storyOpponentColors = {}
+        -- First 3 opponents get colors excluding player's color
         for _, color in ipairs(allColors) do
             if color ~= GameInfo.storyPlayerColor then
                 table.insert(GameInfo.storyOpponentColors, color)
             end
         end
+        -- Final opponent (mirror) gets a different color than player
+        -- Reuse the first available color from the non-player colors
+        table.insert(GameInfo.storyOpponentColors, GameInfo.storyOpponentColors[1])
         
         -- Set up for first opponent
         GameInfo.storyOpponentIndex = 1

@@ -849,7 +849,7 @@ function Menu.updateStoryMenu(GameInfo, playerWon)
     end
     
     -- Check if this is the final fight
-    local isFinalFight = GameInfo.storyOpponentIndex == 3 and playerWon
+    local isFinalFight = GameInfo.storyOpponentIndex == 4 and playerWon
     
     -- Track current selection before updating
     local currentSelection = GameInfo.storyMenuSelectedOption or 1
@@ -910,7 +910,7 @@ function Menu.updateStoryMenu(GameInfo, playerWon)
             Menu.storyMenuOpenedAt = nil
             
             -- Check if this is the final fight
-            local isFinalFight = GameInfo.storyOpponentIndex == 3 and playerWon
+            local isFinalFight = GameInfo.storyOpponentIndex == 4 and playerWon
             
             if isFinalFight then
                 -- Final fight won: return directly to menu (skip victory screen)
@@ -924,7 +924,7 @@ function Menu.updateStoryMenu(GameInfo, playerWon)
                 GameInfo.selectedOption = 1
             elseif playerWon then
                 -- Player won: advance to next opponent
-                if GameInfo.storyOpponentIndex < 3 then
+                if GameInfo.storyOpponentIndex < 4 then
                     -- Advance to next opponent
                     GameInfo.storyOpponentIndex = GameInfo.storyOpponentIndex + 1
                     GameInfo.gameStartDelay = 0.5
@@ -1014,7 +1014,7 @@ function Menu.drawStoryMenu(playerWon)
     love.graphics.setColor(1, 1, 1, 1)
     
     -- Check if this is the final fight
-    local isFinalFight = GameInfo.storyOpponentIndex == 3 and playerWon
+    local isFinalFight = GameInfo.storyOpponentIndex == 4 and playerWon
     
     -- Show win/loss message
     if playerWon then

@@ -40,9 +40,9 @@ GameInfo = {
     storyMenuSelectedOption = 1,  -- which story menu option is highlighted (1 = Next Fight/Try Again, 2 = Return to Menu)
     -- Story mode tracking
     storyMode = false,        -- flag to track if in story mode
-    storyOpponentIndex = 1,   -- current opponent (1, 2, or 3)
-    storyOpponents = {},      -- array of 3 opponent characters to fight
-    storyOpponentColors = {}, -- array of 3 opponent colors
+    storyOpponentIndex = 1,   -- current opponent (1, 2, 3, or 4)
+    storyOpponents = {},      -- array of 4 opponent characters to fight
+    storyOpponentColors = {}, -- array of 4 opponent colors
     storyPlayerCharacter = nil, -- player's selected character
     storyPlayerColor = nil,    -- player's selected color
     -- Fight start sequence
