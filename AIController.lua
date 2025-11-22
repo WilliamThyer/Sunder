@@ -35,6 +35,14 @@ local SEQUENCES = {
         { duration = math.random(.1, .3), input = {} }
       }
     },
+    -- Longer "Approach"
+    {
+      name = "LongApproach",
+      steps = {
+        -- Move toward opponent
+        { duration = math.random(.3, .5), input = { moveX = "faceOpponent" } }
+      }
+    },
     {
     -- Single-step "Dash Away"
       name = "DashAway",
@@ -242,6 +250,80 @@ local SEQUENCES = {
       }
     },
 
+    ----------------------------------------------------------------------------
+    -- Mage-Specific Sequences
+    ----------------------------------------------------------------------------
+
+    -- Mage Hover Approach - Hold jump to hover while moving toward opponent
+    {
+      name = "Mage Hover Approach",
+      steps = {
+        { duration = math.random(.4, .6), input = { moveX = "faceOpponent", jump = true } }
+      }
+    },
+
+    -- Mage Hover Away - Hold jump to hover while moving away (for positioning)
+    {
+      name = "Mage Hover Away",
+      steps = {
+        { duration = math.random(.4, .6), input = { moveX = "awayFromOpponent", jump = true } }
+      }
+    },
+
+    -- Mage Hover HeavyAttack - Hover, position above opponent, then heavy attack
+    {
+      name = "Mage Hover HeavyAttack",
+      steps = {
+        { duration = math.random(.1, .2), input = { moveX = "faceOpponent" } },
+        { duration = math.random(.4, .6), input = { moveX = "onOpponent", jump = true } },
+        { duration = 0.1, input = { moveX = "faceOpponent" } },
+        { duration = 0.5, input = { heavyAttack = true, attack = true } }
+      }
+    },
+
+    -- Mage Hover LightAttack - Hover, position, then light attack
+    {
+      name = "Mage Hover LightAttack",
+      steps = {
+        { duration = math.random(.1, .2), input = { moveX = "faceOpponent" } },
+        { duration = math.random(.4, .6), input = { moveX = "onOpponent", jump = true } },
+        { duration = 0.1, input = { moveX = "faceOpponent" } },
+        { duration = 0.4, input = { lightAttack = true, attack = true } }
+      }
+    },
+
+    -- Mage Teleport Light Attack - Dash toward opponent (teleports through, appearing behind), wait for teleport, turn, then light attack
+    {
+      name = "Mage Teleport Light Attack",
+      steps = {
+        { duration = 0.01, input = { moveX = "faceOpponent" } },  -- Face opponent first
+        { duration = 0.05, input = { moveX = "faceOpponent", dash = true } },  -- Dash toward (teleports through opponent)
+        { duration = 0.4, input = { } },  -- Wait for teleport animation to complete
+        { duration = 0.1, input = { moveX = "faceOpponent" } },  -- Turn to face opponent (now behind them)
+        { duration = 0.4, input = { lightAttack = true, attack = true } }
+      }
+    },
+
+    -- Mage Teleport Heavy Attack - Dash toward opponent (teleports through, appearing behind), wait for teleport, turn, then heavy attack
+    {
+      name = "Mage Teleport Heavy Attack",
+      steps = {
+        { duration = 0.01, input = { moveX = "faceOpponent" } },  -- Face opponent first
+        { duration = 0.05, input = { moveX = "faceOpponent", dash = true } },  -- Dash toward (teleports through opponent)
+        { duration = 0.4, input = { } },  -- Wait for teleport animation to complete
+        { duration = 0.01, input = { moveX = "faceOpponent" } },  -- Turn to face opponent (now behind them)
+        { duration = 0.5, input = { heavyAttack = true, attack = true } }
+      }
+    },
+
+    -- Mage MissileHover - Hold jump to hover above incoming missiles
+    {
+      name = "Mage MissileHover",
+      steps = {
+        { duration = math.random(.4, .8), input = { jump = true } }
+      }
+    },
+
 }
 
 --------------------------------------------------------------------------------
@@ -342,7 +424,7 @@ function AIController:decideAction(player, opponent)
 
     -- Avoid downair 
     if opponent.isDownAir and absDistX < 10 then
-      if myStamina > 3 and r < .5 then
+      if myStamina > 3 and r < .3 then
         self:startSequence("DashAway")
       else 
         self:startSequence("Retreat")
@@ -353,15 +435,13 @@ function AIController:decideAction(player, opponent)
       self:startSequence("Retreat")
     
     -- Chill
-    elseif myStamina < 4 then
-      if r < .2 then
+    elseif myStamina < 4 and absDistX < 10 then
+      if r < .4 then
           self:startSequence("Retreat")
       elseif r < .6 then
-          self:startSequence("ShieldOnly")
+        self:startSequence("ShieldOnly")
       else
-        if absDistX < 10 then
-          self:startSequence("LightAttack MoveAway")
-        end
+        self:startSequence("LightAttack MoveAway")
       end
 
     -- Long range: Character-specific behavior
@@ -395,6 +475,18 @@ function AIController:decideAction(player, opponent)
       local choice = options[math.random(#options)]
       self:startSequence(choice)
 
+    -- Mage-specific mid-range behavior
+    elseif characterType == "Mage" and absDistX > 10 then
+        local options = {
+          "Mage Teleport Light Attack",
+          "Mage Teleport Heavy Attack",
+          "Mage Hover Approach",
+          "Approach",
+          "Mage Hover HeavyAttack",
+        }
+        local choice = options[math.random(#options)]
+        self:startSequence(choice)
+
     elseif absDistX > 10 then
         local options = {
           "Dash Light Attack",
@@ -407,32 +499,62 @@ function AIController:decideAction(player, opponent)
 
     -- On top of
     elseif absDistX < 4 and distY > 0 then
-        local options = {
-          "Jump DownAir",
-          "DoubleJump HeavyAttack",
-          "Jump Away DownAir"
-        }
-        local choice = options[math.random(#options)]
-        self:startSequence(choice)
+        if characterType == "Mage" then
+            local options = {
+              "Mage Teleport Heavy Attack",
+              "Dash Away",
+              "Jump DownAir"
+            }
+            local choice = options[math.random(#options)]
+            self:startSequence(choice)
+        else
+            local options = {
+              "Jump DownAir",
+              "DoubleJump HeavyAttack",
+              "Jump Away DownAir"
+            }
+            local choice = options[math.random(#options)]
+            self:startSequence(choice)
+        end
 
     -- Very close (absDistX < 10):
     else 
-        local options = {
-          "Approach",
-          "Retreat",
-          "ShieldOnly",
-          "ShieldOnly",
-          "Counter Heavy",
-          "Shield Counter Heavy",
-          "LightAttack MoveAway",
-          "LightAttack Shield Heavy",
-          "Jump LightAttack",
-          "Jump DownAir",
-          "Jump HeavyAttack",
-          "DoubleJump HeavyAttack",
-        }
-        local choice = options[math.random(#options)]
-        self:startSequence(choice)
+        if characterType == "Mage" then
+            -- Mage-specific close-range options
+            local options = {
+              "Approach",
+              "Retreat",
+              "ShieldOnly",
+              "ShieldOnly",
+              "Counter Heavy",
+              "Shield Counter Heavy",
+              "LightAttack MoveAway",
+              "LightAttack Shield Heavy",
+              "Mage Hover LightAttack",
+              "Mage Hover HeavyAttack",
+              "Mage Teleport Light Attack",
+              "Mage Teleport Heavy Attack",
+            }
+            local choice = options[math.random(#options)]
+            self:startSequence(choice)
+        else
+            local options = {
+              "Approach",
+              "Retreat",
+              "ShieldOnly",
+              "ShieldOnly",
+              "Counter Heavy",
+              "Shield Counter Heavy",
+              "LightAttack MoveAway",
+              "LightAttack Shield Heavy",
+              "Jump LightAttack",
+              "Jump DownAir",
+              "Jump HeavyAttack",
+              "DoubleJump HeavyAttack",
+            }
+            local choice = options[math.random(#options)]
+            self:startSequence(choice)
+        end
     end
 
 end
@@ -620,6 +742,7 @@ function AIController:startProjectileResponse(projectile, player, opponent)
     local distX = projectile.x - player.x
     local absDistX = math.abs(distX)
     local r = math.random()
+    local characterType = player.characterType
     
     local responseSequence = nil
     
@@ -637,11 +760,16 @@ function AIController:startProjectileResponse(projectile, player, opponent)
           responseSequence = "MissileShield"
         end
       else
-        -- Further away - mostly jump, sometimes shield
+        -- Further away - mostly jump/hover, sometimes shield
         if r < 0.3 then  -- 30% chance to shield
             responseSequence = "MissileShield"
         elseif r < 0.5 then
-            responseSequence = "MissileJump"
+            -- Use mage hover for mage characters, regular jump for others
+            if characterType == "Mage" then
+                responseSequence = "Mage MissileHover"
+            else
+                responseSequence = "MissileJump"
+            end
         else
           responseSequence = "JumpApproach"
         end
