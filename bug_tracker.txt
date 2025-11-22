@@ -1,5 +1,4 @@
 To Do
-- Make 3 more stages.
 - Button remapping?
 - Sounds effects for Mage (just need jump and shield?)
 

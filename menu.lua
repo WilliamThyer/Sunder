@@ -532,6 +532,8 @@ function Menu.updatePauseMenu(GameInfo)
                 GameInfo.storyOpponentColors = {}
                 GameInfo.storyPlayerCharacter = nil
                 GameInfo.storyPlayerColor = nil
+                GameInfo.storyPlayerHealth = nil
+                GameInfo.storyPlayerStocks = nil
             end
             GameInfo.gameState = "characterselect"
             GameInfo.justEnteredCharacterSelect = true
@@ -758,6 +760,8 @@ function Menu.updateRestartMenu(GameInfo)
                 GameInfo.storyOpponentColors = {}
                 GameInfo.storyPlayerCharacter = nil
                 GameInfo.storyPlayerColor = nil
+                GameInfo.storyPlayerHealth = nil
+                GameInfo.storyPlayerStocks = nil
             end
             GameInfo.gameState = "characterselect"
             GameInfo.justEnteredCharacterSelect = true
@@ -920,6 +924,8 @@ function Menu.updateStoryMenu(GameInfo, playerWon)
                 GameInfo.storyOpponentColors = {}
                 GameInfo.storyPlayerCharacter = nil
                 GameInfo.storyPlayerColor = nil
+                GameInfo.storyPlayerHealth = nil
+                GameInfo.storyPlayerStocks = nil
                 GameInfo.gameState = "menu"
                 GameInfo.selectedOption = 1
             elseif playerWon then
@@ -933,6 +939,9 @@ function Menu.updateStoryMenu(GameInfo, playerWon)
             else
                 -- Player lost: restart Story Mode from beginning
                 GameInfo.storyOpponentIndex = 1
+                -- Reset health and stocks for fresh start when restarting after loss
+                GameInfo.storyPlayerHealth = nil
+                GameInfo.storyPlayerStocks = nil
                 GameInfo.gameStartDelay = 0.5
                 GameInfo.gameState = "game_starting"
             end
@@ -947,6 +956,8 @@ function Menu.updateStoryMenu(GameInfo, playerWon)
             GameInfo.storyOpponentColors = {}
             GameInfo.storyPlayerCharacter = nil
             GameInfo.storyPlayerColor = nil
+            GameInfo.storyPlayerHealth = nil
+            GameInfo.storyPlayerStocks = nil
             GameInfo.gameState = "menu"
             GameInfo.selectedOption = 1
         end

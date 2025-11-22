@@ -45,6 +45,8 @@ GameInfo = {
     storyOpponentColors = {}, -- array of 4 opponent colors
     storyPlayerCharacter = nil, -- player's selected character
     storyPlayerColor = nil,    -- player's selected color
+    storyPlayerHealth = nil,   -- player's health to persist between battles (nil = start fresh)
+    storyPlayerStocks = nil,   -- player's stocks to persist between battles (nil = start fresh)
     -- Fight start sequence
     fightStartPhase = nil,     -- nil, "ready", or "fight"
     fightStartTimer = nil      -- timer for current phase
@@ -188,6 +190,12 @@ function startGame(mode)
             Player:new(p1Char, p1Color, 20, 49, 1, world, nil),
             Player:new(p2Char, p2Color, 100, 49, 2, world, nil)
         }
+    end
+    
+    -- In gauntlet mode (story mode), restore player health and stocks from previous battle
+    if mode == "game_story" and GameInfo.storyPlayerHealth ~= nil and GameInfo.storyPlayerStocks ~= nil then
+        players[1].health = GameInfo.storyPlayerHealth
+        players[1].stocks = GameInfo.storyPlayerStocks
     end
     
     -- DEBUG: Set P2 health to 1
@@ -505,6 +513,11 @@ function love.update(dt)
                     Menu.storyMenuOpenedAt = love.timer.getTime() -- Reset input delay timer only once
                 end
                 local playerWon = (players[2].stocks == 0)
+                -- Store player health and stocks for gauntlet mode persistence before advancing
+                if playerWon then
+                    GameInfo.storyPlayerHealth = players[1].health
+                    GameInfo.storyPlayerStocks = players[1].stocks
+                end
                 Menu.updateStoryMenu(GameInfo, playerWon)
             end
         end

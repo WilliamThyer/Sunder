@@ -381,6 +381,9 @@ function CharacterSelect.update(GameInfo)
             GameInfo.storyOpponentIndex = 1
             GameInfo.storyOpponents = {}
             GameInfo.storyOpponentColors = {}
+            -- Reset health and stocks for fresh start of gauntlet mode
+            GameInfo.storyPlayerHealth = nil
+            GameInfo.storyPlayerStocks = nil
         end
         -- Clear all justPressed entries so A/Y presses that opened this screen are ignored:
         justPressed = {}
