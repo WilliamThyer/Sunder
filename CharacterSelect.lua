@@ -444,12 +444,15 @@ function CharacterSelect.update(GameInfo)
     CharacterSelect._p2ReturnReleased = CharacterSelect._p2ReturnReleased ~= false
     if not isOnePlayer and not isP2Assigned() then
         -- Allow P2 to assign controller or keyboard ONLY with A (controller) or Enter (keyboard)
+        -- Check all joysticks for A press, but don't consume justPressed yet (will be consumed in edge detection)
         for _, js in ipairs(love.joystick.getJoysticks()) do
             local jid = js:getID()
+            -- Check if this controller is not P1's controller and A was just pressed
             if (justPressed[jid] and justPressed[jid]["a"]) and (GameInfo.p1InputType ~= js:getID()) then
                 GameInfo.p2InputType = js:getID()
                 GameInfo.player2Controller = js:getID()
                 playCharacterSelectSound("downAir")
+                -- Consume the justPressed entry so it doesn't get processed again
                 justPressed[jid]["a"] = nil
                 break
             end
@@ -475,33 +478,12 @@ function CharacterSelect.update(GameInfo)
         end
         -- Do not process any other input for P2 until assigned
     end
-    -- Unassign P2 if back is pressed and not locked
-    if not isOnePlayer and isP2Assigned() and not playerSelections[2].locked then
-        local unassign = false
-        if GameInfo.p2InputType == "keyboard" then
-            local kb = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2)
-            if kb.b then unassign = true end
-        else
-            for _, js in ipairs(love.joystick.getJoysticks()) do
-                if js:getID() == GameInfo.p2InputType and js:isGamepadDown("b") then
-                    unassign = true
-                end
-            end
-        end
-        if unassign then
-            GameInfo.p2InputType = nil
-            GameInfo.player2Controller = nil
-            GameInfo.p2KeyboardMapping = nil
-            return
-        end
-    end
-
-    -- Edge detection for both players
+    -- Edge detection for both players (needed early for P2 join check)
     local justStates = {}
     for i = 1, 2 do
         justStates[i] = {}
     end
-    -- P1 edge detection
+    -- P1 edge detection (only consume justPressed for P1's assigned controller)
     local p1Input = nil
     if GameInfo.p1InputType == "keyboard" then
         local kb = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
@@ -510,7 +492,8 @@ function CharacterSelect.update(GameInfo)
             if v then justStates[1][k] = true end
         end
         p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
-    else
+    elseif GameInfo.p1InputType then
+        -- Only consume justPressed if P1 has an assigned controller (not nil)
         local js = InputManager.getJoystick(GameInfo.player1Controller)
         if js then
             local jid = js:getID()
@@ -519,7 +502,7 @@ function CharacterSelect.update(GameInfo)
             p1Input = InputManager.get(GameInfo.player1Controller)
         end
     end
-    -- P2 edge detection
+    -- P2 edge detection (also check for unassigned controllers for join)
     local p2Input = nil
     if isOnePlayer then
         p2Input = p1Input
@@ -538,6 +521,33 @@ function CharacterSelect.update(GameInfo)
             justStates[2] = justPressed[jid] or {}
             justPressed[jid] = nil
             p2Input = InputManager.get(GameInfo.player2Controller)
+        end
+    end
+
+    -- Unassign P2 if back is pressed and not locked (using edge detection)
+    if not isOnePlayer and isP2Assigned() and not playerSelections[2].locked then
+        local unassign = false
+        if GameInfo.p2InputType == "keyboard" then
+            local p2Mapping = GameInfo.p2KeyboardMapping or 2
+            if keyboardJustPressed[p2Mapping].b then
+                unassign = true
+            end
+        else
+            -- Use edge-detected justStates instead of isGamepadDown
+            if justStates[2] and justStates[2].b then
+                unassign = true
+            end
+        end
+        if unassign then
+            GameInfo.p2InputType = nil
+            GameInfo.player2Controller = nil
+            GameInfo.p2KeyboardMapping = nil
+            -- Clear the edge state since we consumed it
+            if justStates[2] then
+                justStates[2].b = nil
+            end
+            clearKeyboardEdgeDetection()
+            return
         end
     end
 
@@ -590,39 +600,39 @@ function CharacterSelect.update(GameInfo)
             end
         end
     end
-    -- 2P mode: handle P2 B for deselect or unassign
-    if not isOnePlayer and isP2Assigned() and GameInfo.p2InputType == "keyboard" then
-        local kb = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2)
-        if kb.b then
+    -- 2P mode: handle P2 B for deselect or unassign (using edge detection)
+    if not isOnePlayer and isP2Assigned() then
+        local p2BPressed = false
+        if GameInfo.p2InputType == "keyboard" then
+            local p2Mapping = GameInfo.p2KeyboardMapping or 2
+            p2BPressed = keyboardJustPressed[p2Mapping].b or false
+        elseif GameInfo.p2InputType and GameInfo.p2InputType ~= "keyboard" then
+            -- Use edge-detected justStates instead of isGamepadDown
+            p2BPressed = (justStates[2] and justStates[2].b) or false
+        end
+        
+        if p2BPressed then
             if playerSelections[2].locked then
+                -- Only deselect, don't unassign
                 playCharacterSelectSound("shield")
                 playerSelections[2].locked = false
+                -- Clear the edge state since we consumed it
+                if justStates[2] then
+                    justStates[2].b = nil
+                end
                 clearKeyboardEdgeDetection()
                 return
             else
+                -- Unassign only if not locked (handled earlier, but keep for safety)
                 GameInfo.p2InputType = nil
                 GameInfo.player2Controller = nil
                 GameInfo.p2KeyboardMapping = nil
+                -- Clear the edge state since we consumed it
+                if justStates[2] then
+                    justStates[2].b = nil
+                end
                 clearKeyboardEdgeDetection()
                 return
-            end
-        end
-    end
-    if not isOnePlayer and isP2Assigned() and GameInfo.p2InputType and GameInfo.p2InputType ~= "keyboard" then
-        for _, js in ipairs(love.joystick.getJoysticks()) do
-            if js:getID() == GameInfo.p2InputType and js:isGamepadDown("b") then
-                if playerSelections[2].locked then
-                    playCharacterSelectSound("shield")
-                    playerSelections[2].locked = false
-                    clearKeyboardEdgeDetection()
-                    return
-                else
-                    GameInfo.p2InputType = nil
-                    GameInfo.player2Controller = nil
-                    GameInfo.p2KeyboardMapping = nil
-                    clearKeyboardEdgeDetection()
-                    return
-                end
             end
         end
     end
