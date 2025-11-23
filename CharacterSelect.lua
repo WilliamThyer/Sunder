@@ -1103,8 +1103,22 @@ function CharacterSelect.draw(GameInfo)
             end
         end
         love.graphics.draw(boxImage, getBoxQuad(row, col), p2BoxX, p2BoxY)
+        -- In 2P mode, show "Press to Join" text inside the box when P2 hasn't joined
+        if not isOnePlayer and not isP2Assigned() then
+            love.graphics.setColor(1, 1, 1, 1)
+            love.graphics.printf(
+                "Press to Join",
+                p2BoxX - boxWidth/2 - 22,
+                p2BoxY + 3,
+                boxWidth*5,
+                "center",
+                0, 1, 1
+            )
+            -- love.graphics.printf("Player 2", p2BoxX - boxWidth/2 - 22, p2BoxY - 9, boxWidth*5, "center", 0, 1, 1)
+        end
         -- Only draw warrior sprite if P2 has a color assigned (in 1P mode, this means P1 has locked)
-        if playerSelections[2].colorIndex ~= nil then
+        -- In 2P mode, also require that P2 has joined
+        if playerSelections[2].colorIndex ~= nil and (isOnePlayer or isP2Assigned()) then
             local p2Char = characters[playerSelections[2].cursor]
             if p2Char == "Warrior" or p2Char == "Berserk" or p2Char == "Lancer" or p2Char == "Mage" then
                 local colName = colorNames[playerSelections[2].colorIndex]
@@ -1272,16 +1286,6 @@ function CharacterSelect.draw(GameInfo)
         end
     end
     
-    -- Show P2 assignment prompt if needed
-    if not isOnePlayer and not isStoryMode and not isP2Assigned() then
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.printf(
-            "P2: Press to Join",
-            0, gameHeight - 12,
-            gameWidth, "center"
-        )
-        return
-    end
 
     -- Show keyboard controls if keyboard is enabled
     -- if GameInfo.p1InputType == "keyboard" or GameInfo.p2InputType == "keyboard" then
