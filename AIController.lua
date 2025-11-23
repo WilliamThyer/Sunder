@@ -1,349 +1,675 @@
 local AIController = {}
 AIController.__index = AIController
 
--- A library of "sequences" (aka combos).
--- Each sequence has a `name` and a list of `steps`.
--- Each step has:
---   duration = how long (in seconds) to hold these inputs
---   input    = table of input flags to apply
--- 
--- To allow simple "faceOpponent" or "awayFromOpponent,"
--- we'll use special strings in `moveX` that we interpret in code.
+--------------------------------------------------------------------------------
+-- PARAM Table (Tuning Constants)
+--------------------------------------------------------------------------------
+local PARAM = {
+    HEAVY_COUNTER_RANGE = 15,
+    HEAVY_REACTION_TIME = 0.04,  -- very fast
+    HEAVY_SHIELD_HOLD_TIME = 0.5,
+    LIGHT_BLOCK_RANGE = 10,
+    PROJ_SHIELD_THRESHOLD = 30,
+    PROJ_PERFECT_COUNTER_WINDOW = 0.22, -- seconds before impact
+    PROJ_SHIELD_HOLD_TIME = 0.6,
+    JUMP_WINDOW = 0.25,
+    APPROACH_IDEAL_DIST = 8,
+    APPROACH_TOLERANCE = 1.5,
+    STAMINA_HEAVY_COST = 2,
+    STAMINA_COUNTER_COST = 1,
+    EDGE_MARGIN = 6,
+    MAX_ACTION_DURATION = 1.2
+}
 
-local SEQUENCES = {
-    -- Single-step "Retreat"
-    {
-      name = "Retreat",
-      steps = {
-        -- Move away from opponent
-        { duration = math.random(.1, .3), input = { moveX = "awayFromOpponent" } }
-      }
+--------------------------------------------------------------------------------
+-- CharacterProfile Table
+--------------------------------------------------------------------------------
+local CharacterProfile = {
+    Mage = {
+        preferHoverOnProjectile = true,
+        heavyRange = 14,
+        teleportCooldown = 1.2,
+        mobility = 0.7,
+        idealDistance = 8,
+        aggressiveBias = 0.3
     },
-    -- Single-step "Approach"
-    {
-      name = "Approach",
-      steps = {
-        -- Move toward opponent
-        { duration = math.random(.1, .3), input = { moveX = "faceOpponent" } }
-      }
+    Lancer = {
+        preferHeavyAtMid = true,
+        heavyRange = 12,
+        mobility = 0.4,
+        idealDistance = 12,
+        aggressiveBias = 0.5
     },
-    {
-    -- Single-step "Wait"
-      name = "Wait",
-      steps = {
-        -- Move toward opponent for 0.8s
-        { duration = math.random(.1, .3), input = {} }
-      }
+    Berserker = {
+        aggressiveBias = 0.8,
+        heavyThreshold = 3,
+        idealDistance = 6,
+        mobility = 0.6
     },
-    -- Longer "Approach"
-    {
-      name = "LongApproach",
-      steps = {
-        -- Move toward opponent
-        { duration = math.random(.3, .5), input = { moveX = "faceOpponent" } }
-      }
-    },
-    {
-    -- Single-step "Dash Away"
-      name = "DashAway",
-      steps = {
-        -- Dash away too avoid downair 
-        { duration = 0.1, input = {"awayFromOpponent"} },
-        { duration = 0.1, input = {dash = true} }
-      }
-    },
-    ----------------------------------------------------------------------------
-    -- Character-specific sequences
-    ----------------------------------------------------------------------------
+    Warrior = {
+        idealDistance = 8,
+        mobility = 0.5,
+        aggressiveBias = 0.5
+    }
+}
+
+
+--------------------------------------------------------------------------------
+-- Helper Methods
+--------------------------------------------------------------------------------
+
+-- Calculate projectile threat (distance, time to impact, urgency)
+function AIController:calculateProjectileThreat(projectile, player)
+    local distX = projectile.x - player.x
+    local distY = projectile.y - player.y
+    local distance = math.sqrt(distX * distX + distY * distY)
+    
+    -- Determine projectile speed
+    local speed = 70  -- default missile speed
+    if projectile.speed then
+        speed = projectile.speed
+    elseif projectile.direction then
+        speed = 50  -- shockwave speed
+    end
+    
+    -- Calculate time to impact
+    local timeToImpact = distance / speed
+    
+    -- Calculate urgency (higher = more urgent)
+    local urgency = 1 / (timeToImpact + 0.1)  -- add small value to avoid division by zero
+    
+    -- Determine type
+    local projType = "missile"
+    if projectile.direction and not projectile.dir then
+        projType = "shockwave"
+    end
+    
+    return {
+        projectile = projectile,
+        distance = distance,
+        timeToImpact = timeToImpact,
+        urgency = urgency,
+        type = projType
+    }
+end
+
+-- Wrapper for character's canPerformAction
+function AIController:canPerformAction(action, player)
+    if not player.canPerformAction then
+        return false
+    end
+    return player:canPerformAction(action)
+end
+
+-- Get ideal distance from CharacterProfile
+function AIController:getIdealDistance(characterType)
+    local profile = CharacterProfile[characterType]
+    if profile and profile.idealDistance then
+        return profile.idealDistance
+    end
+    return PARAM.APPROACH_IDEAL_DIST
+end
+
+-- Check if distance is within tolerance
+function AIController:isWithinTolerance(distance, ideal, tolerance)
+    return math.abs(distance - ideal) <= tolerance
+end
+
+-- Face opponent by setting moveX direction
+function AIController:faceOpponent(input, player, opponent)
+    local distX = opponent.x - player.x
+    local absDistX = math.abs(distX)
+    if absDistX > 8 then
+        input.moveX = (distX > 0) and 1 or -1
+    else
+        input.moveX = input.moveX * 0.5
+    end
+end
+
+-- Update cooldowns
+function AIController:updateCooldowns(dt)
+    for key, cooldown in pairs(self.blackboard.cooldowns) do
+        self.blackboard.cooldowns[key] = math.max(0, cooldown - dt)
+    end
+end
+
+--------------------------------------------------------------------------------
+-- Core Methods
+--------------------------------------------------------------------------------
+
+-- Update blackboard with current game state
+function AIController:updateBlackboard(dt, player, opponent)
+    local bb = self.blackboard
+    
+    -- Calculate distances
+    bb.distX = opponent.x - player.x
+    bb.distY = opponent.y - player.y
+    bb.absDistX = math.abs(bb.distX)
+    
+    -- Resources
+    bb.stamina = player.stamina
+    bb.health = player.health
+    
+    -- Character state
+    bb.characterState.isAttacking = player.isAttacking
+    bb.characterState.isDashing = player.isDashing
+    bb.characterState.isHurt = player.isHurt
+    bb.characterState.isStunned = player.isStunned
+    bb.characterState.isLanding = player.isLanding
+    bb.characterState.isCountering = player.isCountering
+    bb.characterState.canDash = player.canDash
+    bb.characterState.dashPhase = player.dashPhase
+    
+    -- Opponent attack states
+    bb.opponentHeavyAttacking = opponent.isHeavyAttacking
+    bb.opponentLightAttacking = opponent.isLightAttacking
+    
+    -- Detect heavy attack startup
+    if opponent.isHeavyAttacking and opponent.heavyAttackTimer then
+        local startupThreshold = opponent.heavyAttackDuration - (opponent.heavyAttackNoDamageDuration or 0.35)
+        bb.opponentHeavyStartup = opponent.heavyAttackTimer > startupThreshold
+        
+        -- Track when first detected
+        if bb.opponentHeavyStartup and not bb.threatDetectedAt.heavyAttack then
+            bb.threatDetectedAt.heavyAttack = 0  -- current time (will be updated with dt)
+        end
+    else
+        bb.opponentHeavyStartup = false
+        bb.threatDetectedAt.heavyAttack = nil
+    end
+    
+    -- Update threat detection timers
+    if bb.threatDetectedAt.heavyAttack then
+        bb.threatDetectedAt.heavyAttack = bb.threatDetectedAt.heavyAttack + dt
+    end
+    if bb.threatDetectedAt.projectile then
+        bb.threatDetectedAt.projectile = bb.threatDetectedAt.projectile + dt
+    end
+    
+    -- Evaluate ALL projectiles, find most urgent
+    bb.incomingProjectile = nil
+    local mostUrgent = nil
+    local highestUrgency = 0
+    
+    -- Check missiles
+    if opponent.missiles and #opponent.missiles > 0 then
+        for _, missile in ipairs(opponent.missiles) do
+            if missile.active then
+                local distX = missile.x - player.x
+                local isIncoming = false
+                if missile.dir == 1 and distX < 0 then
+                    isIncoming = true
+                elseif missile.dir == -1 and distX > 0 then
+                    isIncoming = true
+                end
+                
+                if isIncoming then
+                    local threat = self:calculateProjectileThreat(missile, player)
+                    if threat.urgency > highestUrgency and threat.distance < PARAM.PROJ_SHIELD_THRESHOLD then
+                        mostUrgent = threat
+                        highestUrgency = threat.urgency
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Check shockwaves
+    if opponent.shockwaves and #opponent.shockwaves > 0 then
+        for _, shockwave in ipairs(opponent.shockwaves) do
+            if shockwave.active then
+                local distX = shockwave.x - player.x
+                local isIncoming = false
+                if shockwave.direction == 1 and distX < 0 then
+                    isIncoming = true
+                elseif shockwave.direction == -1 and distX > 0 then
+                    isIncoming = true
+                end
+                
+                if isIncoming then
+                    local threat = self:calculateProjectileThreat(shockwave, player)
+                    if threat.urgency > highestUrgency and threat.distance < PARAM.PROJ_SHIELD_THRESHOLD then
+                        mostUrgent = threat
+                        highestUrgency = threat.urgency
+                    end
+                end
+            end
+        end
+    end
+    
+    bb.incomingProjectile = mostUrgent
+    
+    -- Update cooldowns
+    self:updateCooldowns(dt)
+    
+    -- Calculate edge distance
+    bb.edgeDistance = math.min(player.x - self.stageLeft, self.stageRight - player.x)
+end
+
+-- Validate action before execution
+function AIController:validateAction(action, player)
+    -- Map action types to character action names
+    local actionMap = {
+        shield = "shield",
+        counter = "counter",
+        dash = "dash",
+        jump = "jump",
+        heavyAttack = "heavyAttack",
+        lightAttack = "lightAttack",
+        move = "move"
+    }
+    
+    local charAction = actionMap[action.type] or action.type
+    
+    -- Check canPerformAction
+    if not self:canPerformAction(charAction, player) then
+        return false
+    end
+    
+    -- Check stamina requirements
+    if action.staminaCost then
+        if player.stamina < action.staminaCost then
+            return false
+        end
+    end
+    
+    -- Check cooldowns
+    if action.cooldownType then
+        if self.blackboard.cooldowns[action.cooldownType] > 0 then
+            return false
+        end
+    end
+    
+    return true
+end
+
+-- Check priority interrupts
+function AIController:checkPriorityInterrupts(player, opponent)
+    local bb = self.blackboard
+    
+    -- 1. Incoming Projectile (highest priority)
+    if bb.incomingProjectile then
+        local proj = bb.incomingProjectile
+        
+        -- Priority 1: If within perfect counter window, counter (all characters)
+        if proj.timeToImpact <= PARAM.PROJ_PERFECT_COUNTER_WINDOW then
+            if self:validateAction({type = "counter", staminaCost = PARAM.STAMINA_COUNTER_COST}, player) then
+                return {type = "counter", followUp = {type = "heavyAttack"}}
+            end
+        end
+        
+        -- Priority 2: If close, shield (all characters)
+        if proj.distance < 15 then
+            if self:validateAction({type = "shield"}, player) then
+                return {type = "shield", duration = PARAM.PROJ_SHIELD_HOLD_TIME}
+            end
+        end
+        
+        -- Priority 3: Jump/hover (Mage can hover, others jump)
+        if player.characterType == "Mage" then
+            if self:validateAction({type = "jump"}, player) then
+                return {type = "jump", hold = true}
+            end
+        else
+            -- Other characters jump to avoid
+            if self:validateAction({type = "jump"}, player) then
+                return {type = "jump"}
+            end
+        end
+    end
+    
+    -- 2. Opponent Heavy Attack (within range, reaction time window)
+    if bb.opponentHeavyStartup and bb.absDistX < PARAM.HEAVY_COUNTER_RANGE then
+        local reactionTime = bb.threatDetectedAt.heavyAttack or 999
+        -- Wait 0.2 seconds after detecting heavy attack to account for charge up time
+        if reactionTime >= 0.2 then
+            -- Counter if stamina available
+            if self:validateAction({type = "counter", staminaCost = PARAM.STAMINA_COUNTER_COST}, player) then
+                return {type = "counter", followUp = {type = "heavyAttack"}}
+            end
+            -- Else shield
+            if self:validateAction({type = "shield"}, player) then
+                return {type = "shield", duration = PARAM.HEAVY_SHIELD_HOLD_TIME}
+            end
+        end
+    end
+    
+    -- 3. Opponent Light Attack (within range)
+    if bb.opponentLightAttacking and bb.absDistX < PARAM.LIGHT_BLOCK_RANGE then
+        if bb.stamina > 0 and self:validateAction({type = "shield"}, player) then
+            return {type = "shield", duration = 0.3}
+        end
+    end
+    
+    return nil  -- No interrupt
+end
+
+-- Select tactic using utility scoring
+function AIController:selectTactic(player, opponent)
+    local bb = self.blackboard
+    local profile = CharacterProfile[player.characterType] or CharacterProfile.Warrior
+    local idealDist = self:getIdealDistance(player.characterType)
+    
+    local tactics = {}
+    
+    -- Score each tactic
+    -- Approach
+    if bb.absDistX > idealDist + PARAM.APPROACH_TOLERANCE then
+        local score = 1.0 - (bb.absDistX - idealDist) / 40
+        -- All characters should approach when far away
+        if bb.absDistX > 40 then
+            score = 1.5  -- High priority to approach when very far (all characters)
+        elseif bb.absDistX > 20 then
+            score = 1.2  -- Good priority when moderately far
+        end
+        if bb.edgeDistance < PARAM.EDGE_MARGIN and bb.distX > 0 then
+            score = score * 0.3  -- Penalize moving toward edge
+        end
+        tactics.approach = math.max(0, score)
+    else
+        tactics.approach = 0
+    end
+    
+    -- Retreat
+    -- Retreat when stamina < 3 (not just < 2) to prevent stamina loop
+    if bb.stamina < 3 or bb.absDistX < idealDist - PARAM.APPROACH_TOLERANCE then
+        local score = 0.5
+        if bb.stamina < 3 then
+            score = score + 0.5  -- Higher priority when low stamina
+        end
+        if bb.edgeDistance < PARAM.EDGE_MARGIN then
+            score = score + 0.3  -- Retreat from edge
+        end
+        tactics.retreat = score
+    else
+        tactics.retreat = 0
+    end
+    
+    -- Mage: retreat to create space for heavy attack when at medium range (20-30)
+    if player.characterType == "Mage" and bb.absDistX >= 20 and bb.absDistX <= 30 then
+        if self:validateAction({type = "heavyAttack", staminaCost = PARAM.STAMINA_HEAVY_COST}, player) then
+            local retreatScore = 0.6  -- Moderate priority to retreat and create space
+            if tactics.retreat < retreatScore then
+                tactics.retreat = retreatScore
+            end
+        end
+    end
     
     -- Heavy Attack
-    {
-      name = "HeavyAttack",
-      steps = {
-        { duration = 0.01, input = { moveX = "faceOpponent" } },
-        { duration = 0.5, input = { heavyAttack = true, attack = true } },
-      }
-    },
+    if self:validateAction({type = "heavyAttack", staminaCost = PARAM.STAMINA_HEAVY_COST}, player) then
+        local distScore = 1.0 - math.abs(bb.absDistX - idealDist) / 10
+        
+        -- Mage: only use heavy attack at long range (> 30), not at close range
+        if player.characterType == "Mage" then
+            if bb.absDistX > 30 then
+                distScore = 0.8  -- Good score for long range heavy attack
+            else
+                distScore = 0  -- Don't use heavy attack when close (< 30)
+            end
+        -- Berserker: can use heavy attack at both close and far range (> 30)
+        elseif player.characterType == "Berserker" then
+            if bb.absDistX > 30 then
+                distScore = 0.8  -- Good score for long range heavy attack (occasional use)
+            elseif bb.absDistX < idealDist + PARAM.APPROACH_TOLERANCE then
+                -- At close range, reduce heavy attack score to encourage light attacks
+                distScore = distScore * 0.4  -- Reduce score at close range
+            end
+        -- Lancer: prefer closer range (8-14 instead of 10-20)
+        elseif player.characterType == "Lancer" then
+            if profile.preferHeavyAtMid and bb.absDistX > 8 and bb.absDistX < 14 then
+                distScore = distScore + 0.5
+            end
+        elseif profile.preferHeavyAtMid and bb.absDistX > 10 and bb.absDistX < 20 then
+            distScore = distScore + 0.5
+        end
+        
+        tactics.attack_heavy = math.max(0, distScore * (1 + profile.aggressiveBias))
+    else
+        tactics.attack_heavy = 0
+    end
     
-    ----------------------------------------------------------------------------
-    -- Mid-range sequences (distX < 40 and distX > 10)
-    ----------------------------------------------------------------------------
+    -- Light Attack
+    if self:validateAction({type = "lightAttack", staminaCost = 2}, player) then
+        local distScore = 1.0 - math.abs(bb.absDistX - 6) / 8
+        -- Berserker: favor light attacks at close range to avoid predictable heavy attacks
+        if player.characterType == "Berserker" and bb.absDistX < idealDist + PARAM.APPROACH_TOLERANCE then
+            distScore = distScore * 1.5  -- Boost light attack score at close range
+        end
+        tactics.attack_light = math.max(0, distScore * (1 + profile.aggressiveBias * 0.5))
+    else
+        tactics.attack_light = 0
+    end
+    
+    -- Defend
+    if bb.absDistX < 10 and self:validateAction({type = "shield"}, player) then
+        tactics.defend = 0.3
+    else
+        tactics.defend = 0
+    end
+    
+    -- Reposition (dash/jump)
+    -- Only dash during final approach (close to ideal distance) to avoid excessive dashing
+    -- Also prevent dashing when stamina is low (< 3) to prevent stamina loop
+    if bb.stamina >= 3 and bb.absDistX < idealDist + 5 and bb.absDistX > idealDist - 2 and bb.characterState.canDash then
+        if self:validateAction({type = "dash"}, player) then
+            tactics.reposition = 0.4
+        else
+            tactics.reposition = 0
+        end
+    else
+        tactics.reposition = 0
+    end
+    
+    -- Special (character-specific)
+    if player.characterType == "Mage" then
+        -- Don't teleport when very far (> 40) - prefer approach instead
+        if self.blackboard.cooldowns.teleport <= 0 and bb.absDistX > 10 and bb.absDistX <= 40 then
+            tactics.special = 0.6
+        else
+            tactics.special = 0
+        end
+    elseif player.characterType == "Lancer" and bb.absDistX > 8 and bb.absDistX < 14 then
+        tactics.special = 0.5
+    else
+        tactics.special = 0
+    end
+    
+    -- Wait (fallback, always available)
+    tactics.wait = 0.1
+    
+    -- Find highest scoring tactic
+    local bestTactic = "wait"
+    local bestScore = tactics.wait
+    
+    for tactic, score in pairs(tactics) do
+        if score > bestScore then
+            bestScore = score
+            bestTactic = tactic
+        end
+    end
+    
+    return bestTactic
+end
 
-    -- Jump Approach 
-    {
-      name = "Jump Approach",
-      steps = {
-        { duration = 0.1, input = { moveX = "faceOpponent" , jump = true } },
-      }
-    },
-    -- Dash + Light Attack
-    {
-      name = "Dash Light Attack",
-      steps = {
-        { duration = math.random(.05, .1), input = { moveX = "faceOpponent" } },
-        { duration = 0.25, input = { dash = true } },
-        { duration = 0.01, input = { moveX = "faceOpponent" } },
-        { duration = 0.4, input = { lightAttack = true, attack = true } }
-      }
-    },
-    -- Jump + Down-Air
-    {
-      name = "Jump DownAir",
-      steps = {
-        { duration = math.random(.1, .2), input = { moveX = "faceOpponent"} },
-        { duration = 0.01, input = { jump = true} },
-        { duration = math.random(.3, .6), input = { moveX = "onOpponent"} },
-        { duration = 0.4, input = { down = true, attack = true } }
-      }
-    },
+-- Execute action
+function AIController:executeAction(action, input, player, opponent)
+    if not action or not action.type then
+        return
+    end
+    
+    -- Validate before execution
+    if not self:validateAction(action, player) then
+        return
+    end
+    
+    local actionType = action.type
+    
+    if actionType == "shield" then
+        input.shield = true
+        self:faceOpponent(input, player, opponent)
+    elseif actionType == "counter" then
+        -- Edge detection: only set if wasn't pressed last frame
+        if not self.prevInput.counter then
+            input.counter = true
+        end
+        self:faceOpponent(input, player, opponent)
+    elseif actionType == "move" then
+        if action.direction == "toward" then
+            self:faceOpponent(input, player, opponent)
+        elseif action.direction == "away" then
+            local distX = opponent.x - player.x
+            input.moveX = (distX > 0) and -1 or 1
+        end
+    elseif actionType == "dash" then
+        -- Edge detection: only set if wasn't pressed last frame
+        if not self.prevInput.dash and self.blackboard.characterState.canDash then
+            input.dash = true
+        end
+        if action.direction then
+            if action.direction == "toward" then
+                self:faceOpponent(input, player, opponent)
+            elseif action.direction == "away" then
+                local distX = opponent.x - player.x
+                input.moveX = (distX > 0) and -1 or 1
+            end
+        end
+    elseif actionType == "jump" then
+        input.jump = true
+        if action.hold then
+            -- Keep jump held (for Mage hover)
+        end
+        -- If jumping forward as part of approach, also move forward
+        if action.direction == "toward" then
+            self:faceOpponent(input, player, opponent)
+        end
+    elseif actionType == "heavyAttack" then
+        input.heavyAttack = true
+        input.attack = true
+        self:faceOpponent(input, player, opponent)
+    elseif actionType == "lightAttack" then
+        input.lightAttack = true
+        input.attack = true
+        self:faceOpponent(input, player, opponent)
+    elseif actionType == "special" then
+        -- Character-specific actions
+        if player.characterType == "Mage" then
+            -- Mage teleport (dash toward)
+            if self.blackboard.cooldowns.teleport <= 0 then
+                input.dash = true
+                self:faceOpponent(input, player, opponent)
+                self.blackboard.cooldowns.teleport = (CharacterProfile.Mage.teleportCooldown or 1.2)
+            end
+        elseif player.characterType == "Lancer" then
+            -- Lancer heavy attack at mid range
+            if self:validateAction({type = "heavyAttack", staminaCost = PARAM.STAMINA_HEAVY_COST}, player) then
+                input.heavyAttack = true
+                input.attack = true
+                self:faceOpponent(input, player, opponent)
+            end
+        end
+    end
+end
 
-    ----------------------------------------------------------------------------
-    -- Close-range sequences (distX < 10)
-    ----------------------------------------------------------------------------
-
-    -- 6) Shield only
-    {
-      name = "ShieldOnly",
-      steps = {
-        { duration = 0.01, input = { moveX = "faceOpponent" } },
-        { duration = math.random(.5, .8), input = { shield = true } }
-      }
-    },
-    -- Counter + Heavy Attack
-    {
-      name = "Counter Heavy",
-      steps = {
-        { duration = 0.01, input = { moveX = "faceOpponent" } },
-        { duration = 0.6, input = { counter = true } },
-        { duration = 0.01, input = { moveX = "faceOpponent" } },
-        { duration = 0.5, input = { heavyAttack = true, attack = true } }
-      }
-    },
-    -- Wait + Counter + Heavy Attack
-    {
-      name = "Wait Counter Heavy",
-      steps = {
-        { duration = math.random(.1, .2), input = { } },
-        { duration = 0.01, input = { moveX = "faceOpponent" } },
-        { duration = 0.6, input = { counter = true } },
-        { duration = 0.01, input = { moveX = "faceOpponent" } },
-        { duration = 0.5, input = { heavyAttack = true, attack = true } }
-      }
-    },
-    -- Shield + Counter + Heavy Attack
-    {
-      name = "Shield Counter Heavy",
-      steps = {
-        { duration = 0.01, input = { moveX = "faceOpponent" } },
-        { duration = math.random(.2, .4), input = { shield = true } },
-        { duration = 0.01, input = { moveX = "faceOpponent" } },
-        { duration = 0.6, input = { counter = true } },
-        { duration = 0.01, input = { moveX = "faceOpponent" } },
-        { duration = 0.5, input = { heavyAttack = true, attack = true } }
-      }
-    },
-    -- Light Attack + Move Away
-    {
-      name = "LightAttack MoveAway",
-      steps = {
-        { duration = 0.01, input = { moveX = "faceOpponent" } },
-        { duration = 0.4, input = { lightAttack = true, attack = true } },
-        { duration = math.random(.1, .3), input = { moveX = "awayFromOpponent" } },
-      }
-    },
-    -- Light Attack + Shield + Heavy Attack
-    {
-      name = "LightAttack Shield Heavy",
-      steps = {
-        { duration = 0.01, input = { moveX = "faceOpponent" } },
-        { duration = 0.4, input = { lightAttack = true, attack = true } },
-        { duration = math.random(.05, .2), input = { moveX = "faceOpponent" } },
-        { duration = math.random(.1, .4), input = { shield = true } },
-        { duration = 0.01, input = { moveX = "faceOpponent" } },
-        { duration = 0.5, input = { heavyAttack = true, attack = true } }
-      }
-    },
-    -- Jump + Light Attack
-    {
-      name = "Jump LightAttack",
-      steps = {
-        { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
-        { duration = math.random(.1, .2), input = { moveX = "awayFromOpponent" } },
-        { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
-        { duration = math.random(.4, .5), input = { moveX = "faceOpponent" } },
-        { duration = 0.2, input = { lightAttack = true, attack = true } },
-        { duration = 0.4, input = { moveX = "faceOpponent" } },
-      }
-    },
-    -- Jump + Heavy Attack
-    {
-      name = "Jump HeavyAttack",
-      steps = {
-        { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
-        { duration = math.random(.1, .3), input = { moveX = "faceOpponent" } },
-        { duration = 0.2, input = { heavyAttack = true, attack = true } },
-        { duration = 0.5, input = { moveX = "faceOpponent" } },
-      }
-    },
-    -- Double Jump + Heavy Attack
-    {
-      name = "DoubleJump HeavyAttack",
-      steps = {
-        { duration = 0.01, input = { moveX = "awayFromOpponent" , jump = true} },
-        { duration = math.random(.2, .3), input = { moveX = "awayFromOpponent" } },
-        { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
-        { duration = math.random(.3, .5), input = { moveX = "faceOpponent" } },
-        { duration = 0.01, input = { heavyAttack = true, attack = true , moveX = "faceOpponent"} },
-        { duration = 0.5, input = { moveX = "faceOpponent" } },
-      }
-    },
-    -- Jump Away + Down Air
-    {
-      name = "Jump Away DownAir",
-      steps = {
-        { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
-        { duration = math.random(.2, .4), input = { moveX = "awayFromOpponent" } },
-        { duration = 0.1, input = { moveX = "faceOpponent"} },
-        { duration = 0.01, input = { moveX = "faceOpponent" , jump = true} },
-        { duration = 0.2, input = { moveX = "faceOpponent"} },
-        { duration = math.random(.1, .2), input = { moveX = "onOpponent" } },
-        { duration = 0.05, input = { down = true, attack = true } },
-      }
-    },
-
-    ----------------------------------------------------------------------------
-    -- Missile Response Sequences (high priority, can interrupt other sequences)
-    ----------------------------------------------------------------------------
-
-    -- Jump to avoid missile
-    {
-      name = "MissileJump",
-      steps = {
-        { duration = 0.1, input = { jump = true } },
-        { duration = 0.1, input = {} },
-        { duration = 0.1, input = { jump = true } }  -- Double jump
-      }
-    },
-    -- Shield to block missile
-    {
-      name = "MissileShield",
-      steps = {
-        { duration = 0.01, input = { moveX = "faceOpponent" } },  -- Face the missile
-        { duration = 0.5, input = { shield = true } }  -- Hold shield
-      }
-    },
-    -- Counter the missile 
-    {
-      name = "MissileCounter",
-      steps = {
-        { duration = 0.01, input = { moveX = "faceOpponent" } },  -- Face the missile
-        { duration = 0.3, input = { counter = true } }  -- Counter window
-      }
-    },
-    -- Delayed Missile Counter
-    {
-      name = "DelayedMissileCounter",
-      steps = {
-        { duration = 0.01, input = { moveX = "faceOpponent" } },  -- Face the missile
-        { duration = 0.1, input = { } },  -- Wait for the missile to get closer
-        { duration = 0.3, input = { counter = true } }  -- Counter window
-      }
-    },
-
-    ----------------------------------------------------------------------------
-    -- Mage-Specific Sequences
-    ----------------------------------------------------------------------------
-
-    -- Mage Hover Approach - Hold jump to hover while moving toward opponent
-    {
-      name = "Mage Hover Approach",
-      steps = {
-        { duration = math.random(.4, .6), input = { moveX = "faceOpponent", jump = true } }
-      }
-    },
-
-    -- Mage Hover Away - Hold jump to hover while moving away (for positioning)
-    {
-      name = "Mage Hover Away",
-      steps = {
-        { duration = math.random(.4, .6), input = { moveX = "awayFromOpponent", jump = true } }
-      }
-    },
-
-    -- Mage Hover HeavyAttack - Hover, position above opponent, then heavy attack
-    {
-      name = "Mage Hover HeavyAttack",
-      steps = {
-        { duration = math.random(.1, .2), input = { moveX = "faceOpponent" } },
-        { duration = math.random(.4, .6), input = { moveX = "onOpponent", jump = true } },
-        { duration = 0.1, input = { moveX = "faceOpponent" } },
-        { duration = 0.5, input = { heavyAttack = true, attack = true } }
-      }
-    },
-
-    -- Mage Hover LightAttack - Hover, position, then light attack
-    {
-      name = "Mage Hover LightAttack",
-      steps = {
-        { duration = math.random(.1, .2), input = { moveX = "faceOpponent" } },
-        { duration = math.random(.4, .6), input = { moveX = "onOpponent", jump = true } },
-        { duration = 0.1, input = { moveX = "faceOpponent" } },
-        { duration = 0.4, input = { lightAttack = true, attack = true } }
-      }
-    },
-
-    -- Mage Teleport Light Attack - Dash toward opponent (teleports through, appearing behind), wait for teleport, turn, then light attack
-    {
-      name = "Mage Teleport Light Attack",
-      steps = {
-        { duration = 0.01, input = { moveX = "faceOpponent" } },  -- Face opponent first
-        { duration = 0.05, input = { moveX = "faceOpponent", dash = true } },  -- Dash toward (teleports through opponent)
-        { duration = 0.4, input = { } },  -- Wait for teleport animation to complete
-        { duration = 0.1, input = { moveX = "faceOpponent" } },  -- Turn to face opponent (now behind them)
-        { duration = 0.4, input = { lightAttack = true, attack = true } }
-      }
-    },
-
-    -- Mage Teleport Heavy Attack - Dash toward opponent (teleports through, appearing behind), wait for teleport, turn, then heavy attack
-    {
-      name = "Mage Teleport Heavy Attack",
-      steps = {
-        { duration = 0.01, input = { moveX = "faceOpponent" } },  -- Face opponent first
-        { duration = 0.05, input = { moveX = "faceOpponent", dash = true } },  -- Dash toward (teleports through opponent)
-        { duration = 0.4, input = { } },  -- Wait for teleport animation to complete
-        { duration = 0.01, input = { moveX = "faceOpponent" } },  -- Turn to face opponent (now behind them)
-        { duration = 0.5, input = { heavyAttack = true, attack = true } }
-      }
-    },
-
-    -- Mage MissileHover - Hold jump to hover above incoming missiles
-    {
-      name = "Mage MissileHover",
-      steps = {
-        { duration = math.random(.4, .8), input = { jump = true } }
-      }
-    },
-
-}
+-- Update action queue
+function AIController:updateActionQueue(dt, input, player, opponent)
+    local queue = self.actionQueue
+    
+    if queue.activeAction then
+        queue.elapsedTime = queue.elapsedTime + dt
+        
+        -- Check hard cap
+        if queue.elapsedTime > PARAM.MAX_ACTION_DURATION then
+            queue.activeAction = nil
+            queue.elapsedTime = 0
+            return
+        end
+        
+        -- Check if action duration exceeded
+        if queue.activeAction.duration and queue.elapsedTime >= queue.activeAction.duration then
+            -- Action complete, check for follow-up
+            if queue.activeAction.followUp then
+                queue.activeAction = queue.activeAction.followUp
+                queue.activeAction.startTime = 0
+                queue.elapsedTime = 0
+            else
+                queue.activeAction = nil
+                queue.elapsedTime = 0
+            end
+        else
+            -- Continue executing current action
+            self:executeAction(queue.activeAction, input, player, opponent)
+        end
+    end
+end
 
 --------------------------------------------------------------------------------
 -- AIController
 --------------------------------------------------------------------------------
 function AIController:new()
     local ai = {
-        -- Sequence-related tracking
-        activeSequence = nil,  -- The currently executing sequence (table)
+        -- Blackboard (state management)
+        blackboard = {
+            distX = 0,
+            distY = 0,
+            absDistX = 0,
+            stamina = 0,
+            health = 0,
+            opponentHeavyAttacking = false,
+            opponentLightAttacking = false,
+            opponentHeavyStartup = false,
+            incomingProjectile = nil,  -- { projectile, distance, timeToImpact, urgency, type }
+            cooldowns = {
+                teleport = 0,
+                dash = 0
+            },
+            edgeDistance = 0,
+            characterState = {
+                isAttacking = false,
+                isDashing = false,
+                isHurt = false,
+                isStunned = false,
+                isLanding = false,
+                isCountering = false,
+                canDash = true,
+                dashPhase = nil
+            },
+            threatDetectedAt = {
+                heavyAttack = nil,
+                projectile = nil
+            }
+        },
+        
+        -- Action queue
+        actionQueue = {
+            activeAction = nil,  -- { type, startTime, duration, followUp }
+            elapsedTime = 0
+        },
+        
+        -- Approach variation state
+        approachVariation = {
+            lastVariation = 0,  -- Time since last variation
+            variationCooldown = 0.5,  -- Cooldown between variations
+            currentDirection = "toward",  -- Current approach direction (toward/away)
+            directionChangeTime = 0  -- Time since last direction change
+        },
+        
+        -- Previous input state for edge detection
+        prevInput = {
+            counter = false,
+            dash = false
+        },
+        
+        -- Stage boundaries
+        stageLeft = 0,
+        stageRight = 128,
+        
+        -- Legacy fields (will be removed after migration)
+        activeSequence = nil,
         activeSequenceName = nil,
-        stepIndex      = 1,    -- Which step in the sequence we're on
-        stepTime       = 0,    -- How long we've been in the current step
-
-        -- Projectile response tracking
-        isRespondingToProjectile = false,  -- True if currently in a projectile response sequence
-        projectileResponseTimer = 0,       -- Time since last projectile response (to prevent spam)
-
-        -- Stage boundaries, etc.
-        stageLeft  = 0,
-        stageRight = 128
+        stepIndex = 1,
+        stepTime = 0,
+        isRespondingToProjectile = false,
+        projectileResponseTimer = 0
     }
     setmetatable(ai, AIController)
     return ai
@@ -368,272 +694,144 @@ function AIController:getInput(dt, player, opponent)
         return input
     end
 
-    -- Update projectile response timer
-    if self.projectileResponseTimer > 0 then
-        self.projectileResponseTimer = self.projectileResponseTimer - dt
-    end
-
-    -- Check for incoming projectiles first (highest priority)
-    local hasIncomingProjectile, projectile = self:detectIncomingProjectile(player, opponent)
-    if hasIncomingProjectile then
-        -- Interrupt current sequence to respond to projectile
-        if self.activeSequence and not self.isRespondingToProjectile then
-            self:stopSequence()
+    -- Step 1: Update blackboard (first step, always)
+    self:updateBlackboard(dt, player, opponent)
+    
+    -- Update approach variation cooldown
+    self.approachVariation.lastVariation = self.approachVariation.lastVariation + dt
+    self.approachVariation.directionChangeTime = self.approachVariation.directionChangeTime + dt
+    
+    -- Step 2: Check priority interrupts (can preempt any action)
+    local interrupt = self:checkPriorityInterrupts(player, opponent)
+    if interrupt then
+        -- Interrupt current action
+        self.actionQueue.activeAction = nil
+        self.actionQueue.elapsedTime = 0
+        
+        -- Set up interrupt action
+        interrupt.startTime = 0
+        if not interrupt.duration then
+            -- Default durations
+            if interrupt.type == "shield" then
+                interrupt.duration = 0.5
+            elseif interrupt.type == "counter" then
+                interrupt.duration = 0.6
+            elseif interrupt.type == "jump" then
+                interrupt.duration = 0.3
+            end
         end
-        self:startProjectileResponse(projectile, player, opponent)
+
+        self.actionQueue.activeAction = interrupt
+        self:executeAction(interrupt, input, player, opponent)
+        
+        -- Update previous input state
+        self.prevInput.counter = input.counter
+        self.prevInput.dash = input.dash
+        
+        return input
+    end
+    
+    -- Step 3: If no active action, select and execute tactic
+    if not self.actionQueue.activeAction then
+        local tactic = self:selectTactic(player, opponent)
+        
+        -- Convert tactic to action
+        local action = nil
+        if tactic == "approach" then
+            -- Vary approach behavior: sometimes dash, sometimes stop, sometimes jump, sometimes walk
+            -- Add back-and-forth movement to make approach less predictable
+            local bb = self.blackboard
+            local variationReady = self.approachVariation.lastVariation >= self.approachVariation.variationCooldown
+            local rand = math.random()
+            
+            -- Determine movement direction with back-and-forth pattern
+            local moveDirection = "toward"
+            local directionChangeInterval = 0.4  -- Change direction every 0.4 seconds
+            if self.approachVariation.directionChangeTime >= directionChangeInterval then
+                -- Randomly decide to move away briefly (20% chance when ready to change)
+                if rand < 0.2 then
+                    moveDirection = "away"
+                    self.approachVariation.currentDirection = "away"
+                else
+                    moveDirection = "toward"
+                    self.approachVariation.currentDirection = "toward"
+                end
+                self.approachVariation.directionChangeTime = 0
+            else
+                -- Continue in current direction
+                moveDirection = self.approachVariation.currentDirection
+            end
+            
+            if variationReady and rand < 0.25 and bb.stamina >= 3 and bb.characterState.canDash and moveDirection == "toward" then
+                -- 25% chance: Dash forward (if stamina available and moving toward)
+                if self:validateAction({type = "dash"}, player) then
+                    action = {type = "dash", direction = "toward", duration = 0.25}
+                    self.approachVariation.lastVariation = 0
+                else
+                    action = {type = "move", direction = moveDirection, duration = 0.3}
+                end
+            elseif variationReady and rand < 0.45 and moveDirection == "toward" then
+                -- 20% chance: Jump forward (only when moving toward)
+                if self:validateAction({type = "jump"}, player) then
+                    action = {type = "jump", direction = "toward", duration = 0.2}
+                    self.approachVariation.lastVariation = 0
+                else
+                    action = {type = "move", direction = moveDirection, duration = 0.3}
+                end
+            elseif variationReady and rand < 0.6 then
+                -- 15% chance: Stop briefly (wait)
+                action = {type = "move", direction = moveDirection, duration = 0.15}
+                self.approachVariation.lastVariation = 0
+            else
+                -- 40% chance: Normal walk (can be toward or away)
+                action = {type = "move", direction = moveDirection, duration = 0.3}
+                if variationReady then
+                    self.approachVariation.lastVariation = 0
+                end
+            end
+        elseif tactic == "retreat" then
+            -- Longer retreat duration when stamina is low to prevent stamina loop
+            local retreatDuration = 0.3
+            if self.blackboard.stamina < 3 then
+                retreatDuration = 0.7  -- Longer retreat when low stamina
+            end
+            action = {type = "move", direction = "away", duration = retreatDuration}
+        elseif tactic == "attack_heavy" then
+            action = {type = "heavyAttack", staminaCost = PARAM.STAMINA_HEAVY_COST, duration = 0.5}
+        elseif tactic == "attack_light" then
+            action = {type = "lightAttack", staminaCost = 2, duration = 0.4}
+        elseif tactic == "defend" then
+            action = {type = "shield", duration = 0.5}
+        elseif tactic == "reposition" then
+            action = {type = "dash", direction = "toward", duration = 0.25}
+        elseif tactic == "special" then
+            if player.characterType == "Mage" then
+                action = {type = "special", cooldownType = "teleport", duration = 0.4}
+            elseif player.characterType == "Lancer" then
+                action = {type = "special", duration = 0.5}
+            end
+        elseif tactic == "wait" then
+            action = {type = "move", duration = 0.2}  -- Minimal action
+        end
+        
+        if action then
+            action.startTime = 0
+            self.actionQueue.activeAction = action
+            self.actionQueue.elapsedTime = 0
+        end
     end
 
-    -- If we are not currently running a sequence, decide 
-    if not self.activeSequence then
-      self:decideAction(player, opponent)
-    end
-
-    self:runSequenceLogic(dt, input, player, opponent)
-
+    -- Step 4: Update action queue (executes current action)
+    self:updateActionQueue(dt, input, player, opponent)
+    
+    -- Update previous input state for edge detection
+    self.prevInput.counter = input.counter
+    self.prevInput.dash = input.dash
+    
     return input
 end
 
---------------------------------------------------------------------------------
--- DECIDE ACTION: Character-specific logic
---------------------------------------------------------------------------------
-function AIController:decideAction(player, opponent)
-    -- Don't start new sequences if we're responding to a projectile
-    if self.isRespondingToProjectile then
-        return
-    end
-
-    local distX     = opponent.x - player.x
-    local distY     = opponent.y - player.y
-    local absDistX  = math.abs(distX)
-    local myStamina = player.stamina
-    local r = math.random()
-    
-    -- Get character type for character-specific logic
-    local characterType = player.characterType
-
-    -- Check for opponent attack and respond (high priority)
-    if (opponent.isHeavyAttacking and absDistX < 15) or (opponent.isLightAttacking and absDistX < 10) then
-        if r < 0.5 then  -- 50% chance to counter
-            print("Opponent is heavy attacking, countering")
-            self:startSequence("Wait Counter Heavy")
-        else  -- 50% chance to shield
-            print("Opponent is heavy attacking, shielding")
-            self:startSequence("ShieldOnly")
-        end
-    end
-
-    -- Avoid downair 
-    if opponent.isDownAir and absDistX < 10 then
-      if myStamina > 3 and r < .3 then
-        self:startSequence("DashAway")
-      else 
-        self:startSequence("Retreat")
-      end
-
-    -- "Retreat"
-    elseif myStamina < 2 then
-      self:startSequence("Retreat")
-    
-    -- Chill
-    elseif myStamina < 4 and absDistX < 10 then
-      if r < .4 then
-          self:startSequence("Retreat")
-      elseif r < .6 then
-        self:startSequence("ShieldOnly")
-      else
-        self:startSequence("LightAttack MoveAway")
-      end
-
-    -- Long range: Character-specific behavior
-    elseif absDistX > 40 then
-        if characterType == "Berserker" or characterType == "Mage" and myStamina >= 3 then
-            if r < 0.4 then
-                self:startSequence("HeavyAttack")
-            elseif r < 0.8 then
-                self:startSequence("Approach")
-            else
-              self:startSequence("Wait")
-            end
-        else
-            -- Other characters approach normally
-            if r < .8 then -- 80%
-                self:startSequence("Approach")
-            else -- 20%
-                self:startSequence("Wait")
-            end
-        end
-
-    -- Mid-range: pick one from
-
-    -- If lancer, use heavy attack from mid-range
-    elseif characterType == "Lancer" and absDistX > 10 then
-      local options = {
-        "Dash Light Attack",
-        "Approach",
-        "HeavyAttack"
-      }
-      local choice = options[math.random(#options)]
-      self:startSequence(choice)
-
-    -- Mage-specific mid-range behavior
-    elseif characterType == "Mage" and absDistX > 10 then
-        local options = {
-          "Mage Teleport Light Attack",
-          "Mage Teleport Heavy Attack",
-          "Mage Hover Approach",
-          "Approach",
-          "Mage Hover HeavyAttack",
-        }
-        local choice = options[math.random(#options)]
-        self:startSequence(choice)
-
-    elseif absDistX > 10 then
-        local options = {
-          "Dash Light Attack",
-          "Approach",
-          "Jump HeavyAttack",
-          "Jump LightAttack",
-        }
-        local choice = options[math.random(#options)]
-        self:startSequence(choice)
-
-    -- On top of
-    elseif absDistX < 4 and distY > 0 then
-        if characterType == "Mage" then
-            local options = {
-              "Mage Teleport Heavy Attack",
-              "Dash Away",
-              "Jump DownAir"
-            }
-            local choice = options[math.random(#options)]
-            self:startSequence(choice)
-        else
-            local options = {
-              "Jump DownAir",
-              "DoubleJump HeavyAttack",
-              "Jump Away DownAir"
-            }
-            local choice = options[math.random(#options)]
-            self:startSequence(choice)
-        end
-
-    -- Very close (absDistX < 10):
-    else 
-        if characterType == "Mage" then
-            -- Mage-specific close-range options
-            local options = {
-              "Approach",
-              "Retreat",
-              "ShieldOnly",
-              "ShieldOnly",
-              "Counter Heavy",
-              "Shield Counter Heavy",
-              "LightAttack MoveAway",
-              "LightAttack Shield Heavy",
-              "Mage Hover LightAttack",
-              "Mage Hover HeavyAttack",
-              "Mage Teleport Light Attack",
-              "Mage Teleport Heavy Attack",
-            }
-            local choice = options[math.random(#options)]
-            self:startSequence(choice)
-        else
-            local options = {
-              "Approach",
-              "Retreat",
-              "ShieldOnly",
-              "ShieldOnly",
-              "Counter Heavy",
-              "Shield Counter Heavy",
-              "LightAttack MoveAway",
-              "LightAttack Shield Heavy",
-              "Jump LightAttack",
-              "Jump DownAir",
-              "Jump HeavyAttack",
-              "DoubleJump HeavyAttack",
-            }
-            local choice = options[math.random(#options)]
-            self:startSequence(choice)
-        end
-    end
-
-end
-
---------------------------------------------------------------------------------
--- Start a particular sequence by name
---------------------------------------------------------------------------------
-function AIController:startSequence(name)
-  -- local r = math.random()
-  -- if r < 0.2 then
-  --   name = "Dash Light Attack"
-  -- else
-  --   name = "Retreat"
-  -- end
-  -- print("Starting sequence: " .. name)
-    self.activeSequenceName = name
-    -- Find the sequence in SEQUENCES
-    for _, seq in ipairs(SEQUENCES) do
-        if seq.name == name then
-            self.activeSequence = seq
-            self.stepIndex      = 1
-            self.stepTime       = 0
-            return
-        end
-    end
-    -- If not found, do nothing (or default to Approach)
-end
-
---------------------------------------------------------------------------------
--- Advance the current sequence step by step
---------------------------------------------------------------------------------
-function AIController:runSequenceLogic(dt, input, player, opponent)
-    local seq  = self.activeSequence
-    if not seq then
-      self:stopSequence()
-      return
-    end
-    local step = seq.steps[self.stepIndex]
-    if not step then
-        -- No step? We're done.
-        self:stopSequence()
-        return
-    end
-
-    -- Apply the step inputs into `input`
-    for k, v in pairs(step.input) do
-        if k == "moveX" then
-            -- Handle special strings like "faceOpponent" or "awayFromOpponent"
-            self:handleMoveX(v, input, player, opponent)
-        else
-            input[k] = v
-        end
-    end
-
-    -- Update time in this step
-    self.stepTime = self.stepTime + dt
-    if self.stepTime >= step.duration then
-        -- Move to next step
-        self.stepIndex = self.stepIndex + 1
-        self.stepTime  = 0
-
-        -- If we finished all steps, stop the sequence
-        if self.stepIndex > #seq.steps then
-            self:stopSequence()
-        end
-    end
-end
-
-function AIController:stopSequence()
-    self.activeSequence = nil
-    self.activeSequenceName = nil
-    self.stepIndex      = 1
-    self.stepTime       = 0
-    
-    -- If we were responding to a projectile, mark that we're done
-    if self.isRespondingToProjectile then
-        self.isRespondingToProjectile = false
-    end
-end
+-- Old sequence-based methods removed - using new architecture
 
 --------------------------------------------------------------------------------
 -- Helper to interpret "moveX" = "faceOpponent" or "awayFromOpponent"
@@ -656,127 +854,6 @@ function AIController:handleMoveX(mode, input, player, opponent)
     end
 end
 
---------------------------------------------------------------------------------
--- Projectile Detection and Response (Missiles and Shockwaves)
---------------------------------------------------------------------------------
-function AIController:detectIncomingProjectile(player, opponent)
-    -- If we're already responding to a projectile, don't check for new ones
-    if self.isRespondingToProjectile then
-        return false
-    end
-    
-    -- If we recently responded to a projectile, wait a bit
-    if self.projectileResponseTimer > 0 then
-        return false
-    end
-    
-    -- Find the closest incoming projectile (missile or shockwave)
-    local closestProjectile = nil
-    local closestDistance = math.huge
-    
-    -- Check for missiles
-    if opponent.missiles and #opponent.missiles > 0 then
-        for _, missile in ipairs(opponent.missiles) do
-            if missile.active then
-                -- Calculate distance to missile
-                local distX = missile.x - player.x
-                local distY = missile.y - player.y
-                local distance = math.sqrt(distX * distX + distY * distY)
-                
-                -- Check if missile is incoming (moving toward player)
-                local isIncoming = false
-                if missile.dir == 1 and distX < 0 then  -- Missile moving right, player is to the right
-                    isIncoming = true
-                elseif missile.dir == -1 and distX > 0 then  -- Missile moving left, player is to the left
-                    isIncoming = true
-                end
-                
-                -- Check if missile is close enough to be a threat
-                local isClose = distance < 30  -- Adjust this threshold as needed
-                
-                if isIncoming and isClose and distance < closestDistance then
-                    closestProjectile = missile
-                    closestDistance = distance
-                end
-            end
-        end
-    end
-    
-    -- Check for shockwaves
-    if opponent.shockwaves and #opponent.shockwaves > 0 then
-        for _, shockwave in ipairs(opponent.shockwaves) do
-            if shockwave.active then
-                -- Calculate distance to shockwave
-                local distX = shockwave.x - player.x
-                local distY = shockwave.y - player.y
-                local distance = math.sqrt(distX * distX + distY * distY)
-                
-                -- Check if shockwave is incoming (moving toward player)
-                local isIncoming = false
-                if shockwave.direction == 1 and distX < 0 then  -- Shockwave moving right, player is to the right
-                    isIncoming = true
-                elseif shockwave.direction == -1 and distX > 0 then  -- Shockwave moving left, player is to the left
-                    isIncoming = true
-                end
-                
-                -- Check if shockwave is close enough to be a threat
-                local isClose = distance < 25  -- Slightly closer threshold for shockwaves
-                
-                if isIncoming and isClose and distance < closestDistance then
-                    closestProjectile = shockwave
-                    closestDistance = distance
-                end
-            end
-        end
-    end
-    
-    return closestProjectile ~= nil, closestProjectile
-end
-
-function AIController:startProjectileResponse(projectile, player, opponent)
-    -- Mark that we're responding to a projectile
-    self.isRespondingToProjectile = true
-    self.projectileResponseTimer = 0.5  -- Prevent immediate re-triggering
-    
-    -- Choose response based on distance and random chance
-    local distX = projectile.x - player.x
-    local absDistX = math.abs(distX)
-    local r = math.random()
-    local characterType = player.characterType
-    
-    local responseSequence = nil
-    
-    if absDistX < 15 then
-        -- Very close - mostly shield, sometimes counter
-        if r < 0.2 then  -- 20% chance to counter
-            responseSequence = "MissileCounter"
-        else
-            responseSequence = "MissileShield"
-        end
-      elseif absDistX < 30 then
-        if r < 0.8 then
-          responseSequence = "DelayedMissileCounter"
-        else
-          responseSequence = "MissileShield"
-        end
-      else
-        -- Further away - mostly jump/hover, sometimes shield
-        if r < 0.3 then  -- 30% chance to shield
-            responseSequence = "MissileShield"
-        elseif r < 0.5 then
-            -- Use mage hover for mage characters, regular jump for others
-            if characterType == "Mage" then
-                responseSequence = "Mage MissileHover"
-            else
-                responseSequence = "MissileJump"
-            end
-        else
-          responseSequence = "JumpApproach"
-        end
-    end
-    
-    -- Start the projectile response sequence
-    self:startSequence(responseSequence)
-end
+-- Old projectile detection methods removed - now handled in updateBlackboard and checkPriorityInterrupts
 
 return AIController
