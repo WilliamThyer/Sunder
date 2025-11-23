@@ -80,15 +80,38 @@ local mageQuad = love.graphics.newQuad(
     sprites.Mage.Blue:getHeight()
 )
 
--- Load box sprite and create quad for 16x16 box in top-left corner
+-- Load box sprite and create quads for all box variants
 local boxImage = love.graphics.newImage("assets/sprites/boxes.png")
 local boxImageWidth = boxImage:getWidth()
 local boxImageHeight = boxImage:getHeight()
-local boxQuad = love.graphics.newQuad(
-    0, 0, 16, 16,
-    boxImageWidth,
-    boxImageHeight
-)
+
+-- Helper function to get box quad based on row (0=deselected, 1=selected) and column (0-4)
+-- Columns: 0=white, 1=yellow, 2=blue, 3=purple, 4=red
+local function getBoxQuad(row, col)
+    local boxSize = 16
+    local x = col * boxSize
+    local y = row * boxSize
+    return love.graphics.newQuad(
+        x, y, boxSize, boxSize,
+        boxImageWidth,
+        boxImageHeight
+    )
+end
+
+-- Map colorIndex to box column
+-- colorIndex 1 = Blue = column 2
+-- colorIndex 2 = Red = column 4
+-- colorIndex 3 = Purple = column 3
+-- colorIndex 4 = Yellow = column 1
+local function getColorColumn(colorIndex)
+    local colorToColumn = {
+        [1] = 2,  -- Blue
+        [2] = 4,  -- Red
+        [3] = 3,  -- Purple
+        [4] = 1   -- Yellow
+    }
+    return colorToColumn[colorIndex] or 0  -- Default to white (column 0)
+end
 
 -- Per-player state (two players: 1 and 2)
 --   locked: whether that player has pressed A to lock in
@@ -969,12 +992,11 @@ function CharacterSelect.draw(GameInfo)
     end
 
     -- --- Draw Player 1's box ---
-    if playerSelections[1].locked then
-        love.graphics.setColor(getPlayerColor(1))
-    else
-        love.graphics.setColor(1, 1, 1, 1)
-    end
-    love.graphics.draw(boxImage, boxQuad, p1BoxX, p1BoxY)
+    love.graphics.setColor(1, 1, 1, 1)
+    -- Before selection: deselected box matching color; after selection: selected box matching color
+    local row = playerSelections[1].locked and 1 or 0  -- 0=deselected, 1=selected
+    local col = getColorColumn(playerSelections[1].colorIndex)
+    love.graphics.draw(boxImage, getBoxQuad(row, col), p1BoxX, p1BoxY)
     local p1Char = characters[playerSelections[1].cursor]
     if p1Char == "Warrior" or p1Char == "Berserk" or p1Char == "Lancer" or p1Char == "Mage" then
         local colName = colorNames[playerSelections[1].colorIndex]
@@ -1001,12 +1023,34 @@ function CharacterSelect.draw(GameInfo)
 
     -- --- Draw Player 2's box ---
     if not isStoryMode then
-        if playerSelections[2].locked then
-            love.graphics.setColor(getPlayerColor(2))
+        love.graphics.setColor(1, 1, 1, 1)
+        local row, col
+        if isOnePlayer then
+            -- In 1P mode (CPU): white until P1 locks, then deselected CPU color, then selected CPU color
+            if not playerSelections[1].locked then
+                -- Before P1 locks: deselected white box
+                row, col = 0, 0
+            elseif playerSelections[2].locked then
+                -- After CPU locks: selected box matching CPU color
+                row, col = 1, getColorColumn(playerSelections[2].colorIndex)
+            else
+                -- After P1 locks but before CPU locks: deselected box matching CPU color
+                row, col = 0, getColorColumn(playerSelections[2].colorIndex)
+            end
         else
-            love.graphics.setColor(1, 1, 1, 1)
+            -- In 2P mode: white deselected until join, then deselected matching color, then selected matching color
+            if not isP2Assigned() then
+                -- Before P2 joins: deselected white box
+                row, col = 0, 0
+            elseif playerSelections[2].locked then
+                -- After selection: selected box matching color
+                row, col = 1, getColorColumn(playerSelections[2].colorIndex)
+            else
+                -- After join but before selection: deselected box matching color
+                row, col = 0, getColorColumn(playerSelections[2].colorIndex)
+            end
         end
-        love.graphics.draw(boxImage, boxQuad, p2BoxX, p2BoxY)
+        love.graphics.draw(boxImage, getBoxQuad(row, col), p2BoxX, p2BoxY)
         local p2Char = characters[playerSelections[2].cursor]
         if p2Char == "Warrior" or p2Char == "Berserk" or p2Char == "Lancer" or p2Char == "Mage" then
             local colName = colorNames[playerSelections[2].colorIndex]
@@ -1045,7 +1089,8 @@ function CharacterSelect.draw(GameInfo)
             local x = startX + (i - 1) * (charBoxWidth + charBoxPadding)
             local y = startY
             love.graphics.setColor(1, 1, 1, 1)
-            love.graphics.draw(boxImage, boxQuad, x, y)
+            -- Character boxes always use selected white box (row 1, column 0)
+            love.graphics.draw(boxImage, getBoxQuad(1, 0), x, y)
 
             -- Draw a preview with gray sprite 
             if charName == "Warrior" then
