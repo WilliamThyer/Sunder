@@ -148,21 +148,29 @@ function Menu.updateMenu(GameInfo)
     -- Update keyboard edge detection
     updateKeyboardEdgeDetection()
     
+    -- Check if P1 is not yet assigned
+    local p1NotAssigned = (GameInfo.p1InputType == nil)
+    
     -- Get input from the correct controllers based on GameInfo assignments
     local p1Input = nil
     local p2Input = nil
     
-    -- Handle P1 input
-    if GameInfo.p1InputType == "keyboard" then
-        p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
-    else
-        p1Input = InputManager.get(GameInfo.player1Controller)
+    -- Handle P1 input (if assigned)
+    if not p1NotAssigned then
+        if GameInfo.p1InputType == "keyboard" then
+            p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
+        else
+            p1Input = InputManager.get(GameInfo.player1Controller)
+        end
     end
     
     -- For menu navigation, we can use any available controller or keyboard
     -- Get joystick objects for edge detection
-    local js1 = InputManager.getJoystick(GameInfo.player1Controller)
+    local js1 = nil
     local js2 = nil
+    if not p1NotAssigned then
+        js1 = InputManager.getJoystick(GameInfo.player1Controller)
+    end
     if GameInfo.p2InputType and GameInfo.p2InputType ~= "keyboard" then
         js2 = InputManager.getJoystick(GameInfo.player2Controller)
     end
@@ -198,20 +206,42 @@ function Menu.updateMenu(GameInfo)
     local moveDown = false
     
     if Menu.menuMoveCooldown <= 0 then
-        if js1 and (p1Input.moveY < -0.5) then
-            moveUp = true
-        elseif js2 and (p2Input and p2Input.moveY < -0.5) then
-            moveUp = true
-        elseif keyboardJustPressed.up then
-            moveUp = true
-        end
-        
-        if js1 and (p1Input.moveY > 0.5) then
-            moveDown = true
-        elseif js2 and (p2Input and p2Input.moveY > 0.5) then
-            moveDown = true
-        elseif keyboardJustPressed.down then
-            moveDown = true
+        -- If P1 not assigned, check all controllers and keyboard for movement
+        if p1NotAssigned then
+            -- Check all controllers for movement
+            for _, js in ipairs(love.joystick.getJoysticks()) do
+                local input = InputManager.get(js:getID())
+                if input.moveY < -0.5 then
+                    moveUp = true
+                    break
+                elseif input.moveY > 0.5 then
+                    moveDown = true
+                    break
+                end
+            end
+            -- Check keyboard for movement
+            if keyboardJustPressed.up then
+                moveUp = true
+            elseif keyboardJustPressed.down then
+                moveDown = true
+            end
+        else
+            -- P1 assigned, use existing logic
+            if js1 and p1Input and (p1Input.moveY < -0.5) then
+                moveUp = true
+            elseif js2 and p2Input and (p2Input.moveY < -0.5) then
+                moveUp = true
+            elseif keyboardJustPressed.up then
+                moveUp = true
+            end
+            
+            if js1 and p1Input and (p1Input.moveY > 0.5) then
+                moveDown = true
+            elseif js2 and p2Input and (p2Input.moveY > 0.5) then
+                moveDown = true
+            elseif keyboardJustPressed.down then
+                moveDown = true
+            end
         end
     end
     
@@ -241,6 +271,35 @@ function Menu.updateMenu(GameInfo)
     -- Check which controller or keyboard pressed A first to determine Player 1
     local p1Pressed = justStates[1] and justStates[1]["a"]
     local p2Pressed = justStates[2] and justStates[2]["a"]
+    local keyboardPressed = keyboardJustPressed.a
+    
+    -- If P1 is not yet assigned, check all controllers and keyboard for A button press
+    if p1NotAssigned then
+        -- Check all controllers for A button press
+        for _, js in ipairs(love.joystick.getJoysticks()) do
+            local jid = js:getID()
+            if justPressed[jid] and justPressed[jid]["a"] then
+                -- Assign this controller as P1
+                GameInfo.p1InputType = jid
+                GameInfo.player1Controller = jid
+                GameInfo.p1KeyboardMapping = nil
+                GameInfo.keyboardPlayer = nil
+                -- Consume the button press
+                justPressed[jid]["a"] = nil
+                p1Pressed = true
+                break
+            end
+        end
+        
+        -- Check keyboard for Space (A) press
+        if not p1Pressed and keyboardPressed then
+            -- Assign keyboard as P1
+            GameInfo.p1InputType = "keyboard"
+            GameInfo.p1KeyboardMapping = 1
+            GameInfo.keyboardPlayer = 1
+            p1Pressed = true
+        end
+    end
     
     if p1Pressed or p2Pressed then
         -- Play selection sound
@@ -248,7 +307,10 @@ function Menu.updateMenu(GameInfo)
         
         if GameInfo.selectedOption == 1 then
             GameInfo.previousMode = "game_1P"
-            GameInfo.keyboardPlayer = 1
+            -- Ensure keyboardPlayer is set for 1P mode
+            if GameInfo.p1InputType == "keyboard" then
+                GameInfo.keyboardPlayer = 1
+            end
             GameInfo.p2InputType = nil
             GameInfo.player2Controller = nil
             GameInfo.p2Assigned = false
@@ -261,7 +323,10 @@ function Menu.updateMenu(GameInfo)
         else
             -- Story Mode
             GameInfo.previousMode = "game_story"
-            GameInfo.keyboardPlayer = 1
+            -- Ensure keyboardPlayer is set for story mode
+            if GameInfo.p1InputType == "keyboard" then
+                GameInfo.keyboardPlayer = 1
+            end
             GameInfo.p2InputType = nil
             GameInfo.player2Controller = nil
             GameInfo.p2Assigned = false

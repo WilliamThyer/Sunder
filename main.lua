@@ -20,7 +20,7 @@ local displayWidth, displayHeight = love.window.getDesktopDimensions()
 
 -- Game info stored in a global table
 GameInfo = {
-    gameState = "inputassign",       -- NEW: "inputassign", "menu", "characterselect", "game_1P", "game_2P", "game_story", "story_victory"
+    gameState = "menu",       -- "menu", "characterselect", "game_1P", "game_2P", "game_story", "story_victory"
     selectedOption = 1,       -- which menu option is highlighted
     gameWidth = 128,          -- internal virtual width
     gameHeight = 72,          -- internal virtual height
@@ -71,11 +71,6 @@ local function initFightStartSound()
         print("Warning: Could not load fightStart.wav")
     end
 end
-
--- Add at the top, after GameInfo definition:
-local inputAssignSpaceReleased = true
-local inputAssignStartReleased = {}
-local blockMenuSpaceUntilRelease = false
 
 -- Button state tracking to prevent carryover from menus
 -- Track last button states per input source (controller ID or "keyboard_P1"/"keyboard_P2")
@@ -420,54 +415,6 @@ function love.update(dt)
         end
         return
     end
-    if GameInfo.gameState == "inputassign" then
-        -- Debug: print all detected joysticks and their IDs
-        print("[DEBUG] Detected joysticks:")
-        for _, js in ipairs(love.joystick.getJoysticks()) do
-            print("  Joystick: ", js:getID(), js:getName())
-        end
-        -- Input assignment screen: P1 chooses input
-        -- Listen for controller A button (edge detection) or Spacebar (keyboard)
-        for _, js in ipairs(love.joystick.getJoysticks()) do
-            local jid = js:getID()
-            if justPressed[jid] and justPressed[jid]["a"] then
-                Menu.playMenuSound("downAir")
-                GameInfo.p1InputType = js:getID()
-                GameInfo.player1Controller = js:getID()
-                GameInfo.p1KeyboardMapping = nil
-                GameInfo.keyboardPlayer = nil
-                GameInfo.gameState = "menu"
-                justPressed[jid]["a"] = nil
-                blockMenuSpaceUntilRelease = false
-                return
-            end
-        end
-        if not love.keyboard.isDown("space") then
-            inputAssignSpaceReleased = true
-            blockMenuSpaceUntilRelease = false
-        end
-        if love.keyboard.isDown("space") and inputAssignSpaceReleased then
-            Menu.playMenuSound("downAir")
-            GameInfo.p1InputType = "keyboard"
-            GameInfo.p1KeyboardMapping = 1
-            GameInfo.keyboardPlayer = 1
-            GameInfo.gameState = "menu"
-            inputAssignSpaceReleased = false
-            blockMenuSpaceUntilRelease = true
-            for _, js in ipairs(love.joystick.getJoysticks()) do
-                justPressed[js:getID()] = nil
-            end
-            return
-        end
-        return
-    end
-    -- Block menu Space input until released after assignment
-    if GameInfo.gameState == "menu" and blockMenuSpaceUntilRelease then
-        if not love.keyboard.isDown("space") then
-            blockMenuSpaceUntilRelease = false
-        end
-        return
-    end
     if GameInfo.gameState == "menu" then
         Menu.updateMenu(GameInfo)
     elseif GameInfo.gameState == "characterselect" then
@@ -548,18 +495,6 @@ end
 function love.draw()
     push:start()
 
-    if GameInfo.gameState == "inputassign" then
-        -- Draw input assignment screen
-        love.graphics.clear(0, 0, 0, 1)
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.printf(
-            "Press A or Space to begin",
-            0, GameInfo.gameHeight / 2 - 8,
-            GameInfo.gameWidth, "center"
-        )
-        push:finish()
-        return
-    end
     if GameInfo.gameState == "menu" then
         Menu.drawMenu(GameInfo)
     elseif GameInfo.gameState == "characterselect" then
