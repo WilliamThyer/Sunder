@@ -79,6 +79,17 @@ local mageQuad = love.graphics.newQuad(
     sprites.Mage.Blue:getWidth(),
     sprites.Mage.Blue:getHeight()
 )
+
+-- Load box sprite and create quad for 16x16 box in top-left corner
+local boxImage = love.graphics.newImage("assets/sprites/boxes.png")
+local boxImageWidth = boxImage:getWidth()
+local boxImageHeight = boxImage:getHeight()
+local boxQuad = love.graphics.newQuad(
+    0, 0, 16, 16,
+    boxImageWidth,
+    boxImageHeight
+)
+
 -- Per-player state (two players: 1 and 2)
 --   locked: whether that player has pressed A to lock in
 --   cursor: which character index is highlighted (1..#characters)
@@ -963,7 +974,7 @@ function CharacterSelect.draw(GameInfo)
     else
         love.graphics.setColor(1, 1, 1, 1)
     end
-    love.graphics.rectangle("line", p1BoxX, p1BoxY, boxWidth, boxHeight)
+    love.graphics.draw(boxImage, boxQuad, p1BoxX, p1BoxY)
     local p1Char = characters[playerSelections[1].cursor]
     if p1Char == "Warrior" or p1Char == "Berserk" or p1Char == "Lancer" or p1Char == "Mage" then
         local colName = colorNames[playerSelections[1].colorIndex]
@@ -995,7 +1006,7 @@ function CharacterSelect.draw(GameInfo)
         else
             love.graphics.setColor(1, 1, 1, 1)
         end
-        love.graphics.rectangle("line", p2BoxX, p2BoxY, boxWidth, boxHeight)
+        love.graphics.draw(boxImage, boxQuad, p2BoxX, p2BoxY)
         local p2Char = characters[playerSelections[2].cursor]
         if p2Char == "Warrior" or p2Char == "Berserk" or p2Char == "Lancer" or p2Char == "Mage" then
             local colName = colorNames[playerSelections[2].colorIndex]
@@ -1033,7 +1044,8 @@ function CharacterSelect.draw(GameInfo)
         for i, charName in ipairs(characters) do
             local x = startX + (i - 1) * (charBoxWidth + charBoxPadding)
             local y = startY
-            love.graphics.rectangle("line", x, y, charBoxWidth, charBoxHeight)
+            love.graphics.setColor(1, 1, 1, 1)
+            love.graphics.draw(boxImage, boxQuad, x, y)
 
             -- Draw a preview with gray sprite 
             if charName == "Warrior" then

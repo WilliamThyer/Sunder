@@ -60,6 +60,7 @@ local players = {}
 
 -- Fight start sound effect
 local fightStartSound = nil
+local menuSoundPlayed = false  -- Track if we've played the sound for the initial menu display
 
 -- Initialize fight start sound
 local function initFightStartSound()
@@ -496,6 +497,11 @@ function love.draw()
     push:start()
 
     if GameInfo.gameState == "menu" then
+        -- Play fight start sound when main menu is first displayed
+        if not menuSoundPlayed and fightStartSound then
+            fightStartSound:play()
+            menuSoundPlayed = true
+        end
         Menu.drawMenu(GameInfo)
     elseif GameInfo.gameState == "characterselect" then
         CharacterSelect.draw(GameInfo)
