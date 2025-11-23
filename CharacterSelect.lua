@@ -1027,11 +1027,11 @@ function CharacterSelect.draw(GameInfo)
     local boxWidth   = 16
     local boxHeight  = 16
     local paddingX   = 32
-    local paddingY   = 10
+    local paddingY   = 12
 
-    local p1BoxX = paddingX
+    local p1BoxX = paddingX + 4
     local p1BoxY = paddingY
-    local p2BoxX = gameWidth - boxWidth - paddingX
+    local p2BoxX = gameWidth - boxWidth - paddingX - 4
     local p2BoxY = paddingY
 
     local function getPlayerColor(playerIndex)
@@ -1136,7 +1136,7 @@ function CharacterSelect.draw(GameInfo)
     if not allPlayersLocked then
         local charBoxWidth   = 16
         local charBoxHeight  = 16
-        local startX         = 6
+        local startX         = 10
         local startY         = p1BoxY + boxHeight + 12 
         local charBoxPadding = 16
 
@@ -1190,7 +1190,7 @@ function CharacterSelect.draw(GameInfo)
         end
 
         -- === Draw each player's cursor below the character boxes ===
-        local cursorY     = startY + charBoxHeight + 7
+        local cursorY     = startY + charBoxHeight + 5
         local arrowSize   = 5
         local charSpacing = charBoxPadding
 
@@ -1244,7 +1244,7 @@ function CharacterSelect.draw(GameInfo)
     -- Draw back button in bottom left
     love.graphics.setColor(1, 1, 1, 1)
     local backTextX = 4
-    local backTextY = gameHeight - 10
+    local backTextY = gameHeight - 12
     love.graphics.printf("Back", backTextX, backTextY, gameWidth, "left", 0, 1, 1)
     
     -- Draw player arrows to the right of "Back" text when back button is selected
@@ -1277,7 +1277,7 @@ function CharacterSelect.draw(GameInfo)
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.printf(
             "P2: Press to Join",
-            0, gameHeight - 10,
+            0, gameHeight - 12,
             gameWidth, "center"
         )
         return

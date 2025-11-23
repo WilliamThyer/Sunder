@@ -1,7 +1,6 @@
 To Do
 - Button remapping?
 - Sounds effects for Mage (just need jump and shield?)
-- Mage AI improvements
 - Stage Select
 - Pit
 - Platforms
