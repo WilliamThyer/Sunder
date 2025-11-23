@@ -389,11 +389,22 @@ function CharacterSelect.update(GameInfo)
     
     -- 1) If we just entered this screen, reset all selections AND clear any leftover justPressed so no input carries over:
     if GameInfo.justEnteredCharacterSelect then
+        -- Check mode before initializing to set P2 colorIndex appropriately
+        local isOnePlayer = (GameInfo.previousMode == "game_1P")
+        local isStoryMode = (GameInfo.previousMode == "game_story")
+        
         for i = 1, 2 do
             playerSelections[i].locked       = false
             playerSelections[i].cursor       = 1
             playerSelections[i].moveCooldown = 0
-            playerSelections[i].colorIndex   = (i == 1) and 1 or 2
+            -- In 1P mode, P2's colorIndex is nil until P1 locks in
+            if i == 1 then
+                playerSelections[i].colorIndex = 1
+            elseif isOnePlayer then
+                playerSelections[i].colorIndex = nil
+            else
+                playerSelections[i].colorIndex = 2
+            end
             playerSelections[i].colorChangeCooldown = 0.5  -- Increased delay to prevent carryover
             playerSelections[i].inputDelay = 0.3  -- 300ms delay to prevent input carryover
             playerSelections[i].backButtonSelected = false
@@ -401,8 +412,6 @@ function CharacterSelect.update(GameInfo)
             playerSelections[i].verticalMoveCooldown = 0
         end
         -- Only reset P2 controller assignment in 2P mode
-        local isOnePlayer = (GameInfo.previousMode == "game_1P")
-        local isStoryMode = (GameInfo.previousMode == "game_story")
         if not isOnePlayer and not isStoryMode then
             GameInfo.p2InputType = nil
             GameInfo.player2Controller = nil
@@ -545,6 +554,10 @@ function CharacterSelect.update(GameInfo)
             elseif playerSelections[1].locked then
                 playCharacterSelectSound("shield")
                 playerSelections[1].locked = false
+                -- In 1P mode, reset P2's colorIndex when P1 unlocks
+                if isOnePlayer then
+                    playerSelections[2].colorIndex = nil
+                end
                 clearKeyboardEdgeDetection()
                 return
             else
@@ -564,6 +577,10 @@ function CharacterSelect.update(GameInfo)
             elseif playerSelections[1].locked then
                 playCharacterSelectSound("shield")
                 playerSelections[1].locked = false
+                -- In 1P mode, reset P2's colorIndex when P1 unlocks
+                if isOnePlayer then
+                    playerSelections[2].colorIndex = nil
+                end
                 return
             else
                 -- Play back to menu sound
@@ -747,10 +764,26 @@ function CharacterSelect.update(GameInfo)
                 local moveX = playerSelections[1].backButtonSelected and 0 or p1Input.moveX
                 local aPressed = (justStates[1] and justStates[1].a) or false
                 local yPressed = (justStates[1] and justStates[1].y) or false
+                local wasLocked = playerSelections[1].locked
                 CharacterSelect.updateCharacter({
                     a = aPressed, b = false, y = yPressed,
                     moveX = moveX, moveY = p1Input.moveY
                 }, 1, dt)
+                -- If P1 just locked in 1P mode, assign P2 a color
+                if isOnePlayer and not wasLocked and playerSelections[1].locked and playerSelections[2].colorIndex == nil then
+                    -- Assign P2 the first color that's different from P1's color
+                    local p1ColorIndex = playerSelections[1].colorIndex
+                    for colorIdx = 1, #colorOptions do
+                        if colorIdx ~= p1ColorIndex then
+                            playerSelections[2].colorIndex = colorIdx
+                            break
+                        end
+                    end
+                    -- Fallback: if somehow all colors match (shouldn't happen), use color 2
+                    if playerSelections[2].colorIndex == nil then
+                        playerSelections[2].colorIndex = 2
+                    end
+                end
                 -- Clear edge-detected states after use
                 if justStates[1] then
                     justStates[1].a = nil
@@ -940,6 +973,21 @@ function CharacterSelect.beginGame(GameInfo)
         GameInfo.player2Character = characters[playerSelections[2].cursor]
 
         GameInfo.player1Color = colorNames[playerSelections[1].colorIndex]
+        -- Safety check: if P2's colorIndex is nil (shouldn't happen, but just in case), assign a default
+        if playerSelections[2].colorIndex == nil then
+            -- Assign first color that's different from P1's color
+            local p1ColorIndex = playerSelections[1].colorIndex
+            for colorIdx = 1, #colorOptions do
+                if colorIdx ~= p1ColorIndex then
+                    playerSelections[2].colorIndex = colorIdx
+                    break
+                end
+            end
+            -- Fallback: if somehow all colors match, use color 2
+            if playerSelections[2].colorIndex == nil then
+                playerSelections[2].colorIndex = 2
+            end
+        end
         GameInfo.player2Color = colorNames[playerSelections[2].colorIndex]
     end
 
@@ -988,6 +1036,10 @@ function CharacterSelect.draw(GameInfo)
 
     local function getPlayerColor(playerIndex)
         local ci = playerSelections[playerIndex].colorIndex
+        if ci == nil or ci < 1 or ci > #colorOptions then
+            -- Return white/default color if colorIndex is invalid
+            return 1, 1, 1
+        end
         return colorOptions[ci][1], colorOptions[ci][2], colorOptions[ci][3]
     end
 
@@ -1026,7 +1078,7 @@ function CharacterSelect.draw(GameInfo)
         love.graphics.setColor(1, 1, 1, 1)
         local row, col
         if isOnePlayer then
-            -- In 1P mode (CPU): white until P1 locks, then deselected CPU color, then selected CPU color
+            -- In 1P mode (CPU): white deselected box until P1 locks, then deselected CPU color, then selected CPU color
             if not playerSelections[1].locked then
                 -- Before P1 locks: deselected white box
                 row, col = 0, 0
@@ -1051,26 +1103,29 @@ function CharacterSelect.draw(GameInfo)
             end
         end
         love.graphics.draw(boxImage, getBoxQuad(row, col), p2BoxX, p2BoxY)
-        local p2Char = characters[playerSelections[2].cursor]
-        if p2Char == "Warrior" or p2Char == "Berserk" or p2Char == "Lancer" or p2Char == "Mage" then
-            local colName = colorNames[playerSelections[2].colorIndex]
-            local image, quad, spriteW, spriteH
-            if p2Char == "Warrior" then
-                image, quad = sprites.Warrior[colName], warriorQuad
-                spriteW, spriteH = 8, 8
-            elseif p2Char == "Berserk" then
-                image, quad = sprites.Berserk[colName], berserkQuad
-                spriteW, spriteH = 12, 12
-            elseif p2Char == "Lancer" then
-                image, quad = sprites.Lancer[colName], lancerQuad
-                spriteW, spriteH = 12, 12
-            elseif p2Char == "Mage" then
-                image, quad = sprites.Mage[colName], mageQuad
-                spriteW, spriteH = 12, 12
+        -- Only draw warrior sprite if P2 has a color assigned (in 1P mode, this means P1 has locked)
+        if playerSelections[2].colorIndex ~= nil then
+            local p2Char = characters[playerSelections[2].cursor]
+            if p2Char == "Warrior" or p2Char == "Berserk" or p2Char == "Lancer" or p2Char == "Mage" then
+                local colName = colorNames[playerSelections[2].colorIndex]
+                local image, quad, spriteW, spriteH
+                if p2Char == "Warrior" then
+                    image, quad = sprites.Warrior[colName], warriorQuad
+                    spriteW, spriteH = 8, 8
+                elseif p2Char == "Berserk" then
+                    image, quad = sprites.Berserk[colName], berserkQuad
+                    spriteW, spriteH = 12, 12
+                elseif p2Char == "Lancer" then
+                    image, quad = sprites.Lancer[colName], lancerQuad
+                    spriteW, spriteH = 12, 12
+                elseif p2Char == "Mage" then
+                    image, quad = sprites.Mage[colName], mageQuad
+                    spriteW, spriteH = 12, 12
+                end
+                local offsetX = (boxWidth - spriteW) / 2
+                local offsetY = (boxHeight - spriteH) / 2
+                love.graphics.draw(image, quad, p2BoxX + offsetX, p2BoxY + offsetY)
             end
-            local offsetX = (boxWidth - spriteW) / 2
-            local offsetY = (boxHeight - spriteH) / 2
-            love.graphics.draw(image, quad, p2BoxX + offsetX, p2BoxY + offsetY)
         end
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.printf("Player 2", p2BoxX - boxWidth/2 - 22, p2BoxY - 9, boxWidth*5, "center", 0, 1, 1)
