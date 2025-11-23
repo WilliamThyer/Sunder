@@ -282,6 +282,11 @@ function Menu.drawMenu(GameInfo)
     -- Clear background to black so the text is visible
     love.graphics.clear(0, 0, 0, 1)
 
+    -- Draw menu background map
+    if GameInfo.menuMap then
+        GameInfo.menuMap:draw(0, 0, 1, 1)
+    end
+
     love.graphics.setFont(font)
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.printf("SUNDER", 0, 10, GameInfo.gameWidth/2, "center", 0, 2, 2)

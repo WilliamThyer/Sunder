@@ -113,6 +113,9 @@ function love.load()
     -- Initialize fight start sound
     initFightStartSound()
     
+    -- Load menu background map
+    GameInfo.menuMap = sti("assets/backgrounds/menu.lua")
+    
     -- For pixel art
     push:setupScreen(
         GameInfo.gameWidth,

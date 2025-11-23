@@ -927,6 +927,11 @@ end
 function CharacterSelect.draw(GameInfo)
     love.graphics.clear(0, 0, 0, 1)
 
+    -- Draw menu background map
+    if GameInfo.menuMap then
+        GameInfo.menuMap:draw(0, 0, 1, 1)
+    end
+
     local gameWidth   = GameInfo.gameWidth
     local gameHeight  = GameInfo.gameHeight
     local isOnePlayer = (GameInfo.previousMode == "game_1P")
