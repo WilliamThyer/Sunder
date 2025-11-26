@@ -1267,8 +1267,8 @@ function CharacterSelect.draw(GameInfo)
     
     -- Draw back button in bottom left
     love.graphics.setColor(1, 1, 1, 1)
-    local backTextX = 4
-    local backTextY = gameHeight - 12
+    local backTextX = 6
+    local backTextY = gameHeight - 13
     love.graphics.printf("Back", backTextX, backTextY, gameWidth, "left", 0, 1, 1)
     
     -- Draw player arrows to the right of "Back" text when back button is selected
