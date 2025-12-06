@@ -330,19 +330,19 @@ function RemapMenu.draw(GameInfo)
     end
     
     -- Draw semi-transparent overlay
-    love.graphics.setColor(0, 0, 0, 0.75)
+    love.graphics.setColor(0, 0, 0, 1)
     love.graphics.rectangle("fill", 0, 0, GameInfo.gameWidth, GameInfo.gameHeight)
     
     love.graphics.setFont(font)
     love.graphics.setColor(1, 1, 1, 1)
     
     -- Draw title
-    local title = "Remap Controls - Player " .. playerIndex
-    love.graphics.printf(title, 0, 5, GameInfo.gameWidth, "center", 0, 1, 1)
+    local title = "Player " .. playerIndex .. " Controls"
+    love.graphics.printf(title, 0, 3, GameInfo.gameWidth, "center", 0, 1, 1)
     
     -- Draw action list
-    local startY = 15
-    local lineHeight = 8
+    local startY = 10
+    local lineHeight = 6
     local leftColumnX = 5
     local rightColumnX = 70
     
