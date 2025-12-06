@@ -15,6 +15,7 @@ local AIController = require("AIController")
 local Menu = require("Menu")
 local CharacterSelect = require("CharacterSelect")
 local InputManager = require("InputManager")
+local RemapMenu = require("RemapMenu")
 
 local displayWidth, displayHeight = love.window.getDesktopDimensions()
 
@@ -55,7 +56,12 @@ GameInfo = {
     freezeFrameEnabled = true,  -- toggle to enable/disable freeze frames
     -- Hit flash system
     hitFlashTimer = 0,         -- current hit flash timer (0 = no flash)
-    hitFlashEnabled = true     -- toggle to enable/disable hit flash
+    hitFlashEnabled = true,     -- toggle to enable/disable hit flash
+    -- Remap menu system
+    remapMenuActive = false,   -- whether remap menu is showing
+    remapMenuPlayer = nil,     -- which player (1 or 2) is remapping
+    remapMenuSelectedOption = 1, -- which action is selected (1-8 for actions, 9-10 for Save/Back)
+    remapMenuRemapping = nil   -- which action is being remapped (nil if not in remap mode)
 }
 
 -- Freeze Frame Configuration
@@ -398,12 +404,12 @@ function updateGame(dt)
     local p1InputSource = nil
     local p2InputSource = nil
     
-    -- Handle P1 input
+    -- Handle P1 input (use custom mappings for gameplay)
     if GameInfo.p1InputType == "keyboard" then
-        p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
+        p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1, false)  -- useMenuDefaults = false for gameplay
         p1InputSource = "keyboard_P1"
     else
-        p1Input = InputManager.get(GameInfo.player1Controller)
+        p1Input = InputManager.get(GameInfo.player1Controller, false)  -- useMenuDefaults = false for gameplay
         p1InputSource = tostring(GameInfo.player1Controller)
     end
     
@@ -413,12 +419,12 @@ function updateGame(dt)
         p2Input = nil
         p2InputSource = nil
     else
-        -- In 2P mode, get P2 input
+        -- In 2P mode, get P2 input (use custom mappings for gameplay)
         if GameInfo.p2InputType == "keyboard" then
-            p2Input = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2)
+            p2Input = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2, false)  -- useMenuDefaults = false for gameplay
             p2InputSource = "keyboard_P2"
         else
-            p2Input = InputManager.get(GameInfo.player2Controller)
+            p2Input = InputManager.get(GameInfo.player2Controller, false)  -- useMenuDefaults = false for gameplay
             p2InputSource = tostring(GameInfo.player2Controller)
         end
     end
@@ -508,6 +514,12 @@ function love.update(dt)
     -- Update InputManager for periodic controller detection
     InputManager.update(dt)
 
+    -- Check for remap menu (takes priority over other game states)
+    if GameInfo.remapMenuActive then
+        RemapMenu.update(GameInfo)
+        return
+    end
+
     if Menu.paused then
         -- Update pause menu navigation when paused
         if GameInfo.gameState == "game_1P" or GameInfo.gameState == "game_2P" or GameInfo.gameState == "game_story" then
@@ -595,6 +607,20 @@ end
 
 function love.draw()
     push:start()
+
+    -- Check for remap menu (draws on top of character select)
+    if GameInfo.remapMenuActive then
+        -- Draw character select background first
+        if GameInfo.gameState == "characterselect" then
+            CharacterSelect.draw(GameInfo)
+        else
+            love.graphics.clear(0, 0, 0, 1)
+        end
+        -- Draw remap menu on top
+        RemapMenu.draw(GameInfo)
+        push:finish()
+        return
+    end
 
     if GameInfo.gameState == "menu" then
         -- Play fight start sound when main menu is first displayed

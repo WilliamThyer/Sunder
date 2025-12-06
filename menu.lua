@@ -158,9 +158,9 @@ function Menu.updateMenu(GameInfo)
     -- Handle P1 input (if assigned)
     if not p1NotAssigned then
         if GameInfo.p1InputType == "keyboard" then
-            p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
+            p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1, true)  -- useMenuDefaults = true
         else
-            p1Input = InputManager.get(GameInfo.player1Controller)
+            p1Input = InputManager.get(GameInfo.player1Controller, true)  -- useMenuDefaults = true
         end
     end
     
@@ -210,7 +210,7 @@ function Menu.updateMenu(GameInfo)
         if p1NotAssigned then
             -- Check all controllers for movement
             for _, js in ipairs(love.joystick.getJoysticks()) do
-                local input = InputManager.get(js:getID())
+                local input = InputManager.get(js:getID(), true)  -- useMenuDefaults = true
                 if input.moveY < -0.5 then
                     moveUp = true
                     break
@@ -456,7 +456,7 @@ function Menu.updatePauseMenu(GameInfo)
     -- Determine which player paused and get their input
     if Menu.pausePlayer == "keyboard" then
         -- Pause player is using keyboard (assume P1)
-        pauseInput = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
+        pauseInput = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1, true)  -- useMenuDefaults = true
         -- Merge keyboard edge detection
         for k, v in pairs(keyboardJustPressed) do
             if v then
@@ -469,7 +469,7 @@ function Menu.updatePauseMenu(GameInfo)
         if GameInfo.player1Controller == Menu.pausePlayer then
             -- P1's controller
             if GameInfo.p1InputType == "keyboard" then
-                pauseInput = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
+                pauseInput = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1, true)  -- useMenuDefaults = true
                 for k, v in pairs(keyboardJustPressed) do
                     if v then
                         pauseJustStates[k] = true
@@ -477,7 +477,7 @@ function Menu.updatePauseMenu(GameInfo)
                 end
             else
                 pauseJoystick = InputManager.getJoystick(GameInfo.player1Controller)
-                pauseInput = InputManager.get(GameInfo.player1Controller)
+                pauseInput = InputManager.get(GameInfo.player1Controller, true)  -- useMenuDefaults = true
                 local jid = pauseJoystick:getID()
                 pauseJustStates = justPressed[jid] or {}
                 justPressed[jid] = nil
@@ -485,7 +485,7 @@ function Menu.updatePauseMenu(GameInfo)
         elseif GameInfo.player2Controller == Menu.pausePlayer then
             -- P2's controller
             if GameInfo.p2InputType == "keyboard" then
-                pauseInput = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2)
+                pauseInput = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2, true)  -- useMenuDefaults = true
                 for k, v in pairs(keyboardJustPressed) do
                     if v then
                         pauseJustStates[k] = true
@@ -493,7 +493,7 @@ function Menu.updatePauseMenu(GameInfo)
                 end
             else
                 pauseJoystick = InputManager.getJoystick(GameInfo.player2Controller)
-                pauseInput = InputManager.get(GameInfo.player2Controller)
+                pauseInput = InputManager.get(GameInfo.player2Controller, true)  -- useMenuDefaults = true
                 local jid = pauseJoystick:getID()
                 pauseJustStates = justPressed[jid] or {}
                 justPressed[jid] = nil
@@ -501,7 +501,7 @@ function Menu.updatePauseMenu(GameInfo)
         elseif Menu.pausePlayer == 1 then
             -- Player index 1
             if GameInfo.p1InputType == "keyboard" then
-                pauseInput = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
+                pauseInput = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1, true)  -- useMenuDefaults = true
                 for k, v in pairs(keyboardJustPressed) do
                     if v then
                         pauseJustStates[k] = true
@@ -509,7 +509,7 @@ function Menu.updatePauseMenu(GameInfo)
                 end
             elseif GameInfo.player1Controller then
                 pauseJoystick = InputManager.getJoystick(GameInfo.player1Controller)
-                pauseInput = InputManager.get(GameInfo.player1Controller)
+                pauseInput = InputManager.get(GameInfo.player1Controller, true)  -- useMenuDefaults = true
                 local jid = pauseJoystick:getID()
                 pauseJustStates = justPressed[jid] or {}
                 justPressed[jid] = nil
@@ -517,7 +517,7 @@ function Menu.updatePauseMenu(GameInfo)
         elseif Menu.pausePlayer == 2 then
             -- Player index 2
             if GameInfo.p2InputType == "keyboard" then
-                pauseInput = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2)
+                pauseInput = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2, true)  -- useMenuDefaults = true
                 for k, v in pairs(keyboardJustPressed) do
                     if v then
                         pauseJustStates[k] = true
@@ -525,7 +525,7 @@ function Menu.updatePauseMenu(GameInfo)
                 end
             elseif GameInfo.player2Controller then
                 pauseJoystick = InputManager.getJoystick(GameInfo.player2Controller)
-                pauseInput = InputManager.get(GameInfo.player2Controller)
+                pauseInput = InputManager.get(GameInfo.player2Controller, true)  -- useMenuDefaults = true
                 local jid = pauseJoystick:getID()
                 pauseJustStates = justPressed[jid] or {}
                 justPressed[jid] = nil
@@ -673,7 +673,7 @@ function Menu.updateRestartMenu(GameInfo)
         -- 2P mode: Either player can input
         -- Check P1 input
         if GameInfo.p1InputType == "keyboard" then
-            p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
+            p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1, true)  -- useMenuDefaults = true
             -- Merge keyboard edge detection
             for k, v in pairs(keyboardJustPressed) do
                 if v then
@@ -683,7 +683,7 @@ function Menu.updateRestartMenu(GameInfo)
         else
             local js1 = InputManager.getJoystick(GameInfo.player1Controller)
             if js1 then
-                p1Input = InputManager.get(GameInfo.player1Controller)
+                p1Input = InputManager.get(GameInfo.player1Controller, true)  -- useMenuDefaults = true
                 local jid = js1:getID()
                 p1JustStates = justPressed[jid] or {}
                 justPressed[jid] = nil
@@ -692,7 +692,7 @@ function Menu.updateRestartMenu(GameInfo)
         
         -- Check P2 input
         if GameInfo.p2InputType == "keyboard" then
-            p2Input = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2)
+            p2Input = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2, true)  -- useMenuDefaults = true
             -- Merge keyboard edge detection for P2 (if different mapping)
             if GameInfo.p2KeyboardMapping == 2 then
                 local keyboardMap2 = InputManager.getKeyboardMapping(2)
@@ -711,7 +711,7 @@ function Menu.updateRestartMenu(GameInfo)
         else
             local js2 = InputManager.getJoystick(GameInfo.player2Controller)
             if js2 then
-                p2Input = InputManager.get(GameInfo.player2Controller)
+                p2Input = InputManager.get(GameInfo.player2Controller, true)  -- useMenuDefaults = true
                 local jid = js2:getID()
                 p2JustStates = justPressed[jid] or {}
                 justPressed[jid] = nil
@@ -721,7 +721,7 @@ function Menu.updateRestartMenu(GameInfo)
         -- 1P mode: Only P1 (the human player) can input - CPU inputs must never affect this menu
         -- Check keyboard input for P1 (only if P1 is using keyboard)
         if GameInfo.p1InputType == "keyboard" then
-            p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
+            p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1, true)  -- useMenuDefaults = true
             -- Merge keyboard edge detection
             for k, v in pairs(keyboardJustPressed) do
                 if v then
@@ -735,7 +735,7 @@ function Menu.updateRestartMenu(GameInfo)
         if GameInfo.p1InputType ~= "keyboard" and GameInfo.player1Controller then
             local js1 = InputManager.getJoystick(GameInfo.player1Controller)
             if js1 then
-                p1Input = InputManager.get(GameInfo.player1Controller)
+                p1Input = InputManager.get(GameInfo.player1Controller, true)  -- useMenuDefaults = true
                 local p1Jid = js1:getID()
                 -- Only check justPressed for P1's specific controller ID
                 -- Ignore all other joystick IDs to prevent CPU or other controllers from affecting the menu
@@ -896,7 +896,7 @@ function Menu.updateStoryMenu(GameInfo, playerWon)
     
     -- Check keyboard input for P1 (only if P1 is using keyboard)
     if GameInfo.p1InputType == "keyboard" then
-        p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
+        p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1, true)  -- useMenuDefaults = true
         -- Merge keyboard edge detection
         for k, v in pairs(keyboardJustPressed) do
             if v then
@@ -910,7 +910,7 @@ function Menu.updateStoryMenu(GameInfo, playerWon)
     if GameInfo.p1InputType ~= "keyboard" and GameInfo.player1Controller then
         local js1 = InputManager.getJoystick(GameInfo.player1Controller)
         if js1 then
-            p1Input = InputManager.get(GameInfo.player1Controller)
+            p1Input = InputManager.get(GameInfo.player1Controller, true)  -- useMenuDefaults = true
             local p1Jid = js1:getID()
             -- Only check justPressed for P1's specific controller ID
             -- Ignore all other joystick IDs to prevent CPU or other controllers from affecting the menu

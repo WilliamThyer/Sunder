@@ -124,9 +124,11 @@ end
 --   backButtonSelected: whether this player has navigated to the back button
 --   previousCursor: cursor position before navigating to back button
 --   verticalMoveCooldown: to prevent rapid vertical navigation
+--   remapButtonSelected: whether this player has navigated to the remap button
+--   remapButtonPreviousCursor: cursor position before navigating to remap button
 local playerSelections = {
-    [1] = { cursor = 1, locked = false, moveCooldown = 0, colorIndex = 1, colorChangeCooldown = 0, inputDelay = 0, backButtonSelected = false, previousCursor = 1, verticalMoveCooldown = 0 },
-    [2] = { cursor = 1, locked = false, moveCooldown = 0, colorIndex = 2, colorChangeCooldown = 0, inputDelay = 0, backButtonSelected = false, previousCursor = 1, verticalMoveCooldown = 0 }
+    [1] = { cursor = 1, locked = false, moveCooldown = 0, colorIndex = 1, colorChangeCooldown = 0, inputDelay = 0, backButtonSelected = false, previousCursor = 1, verticalMoveCooldown = 0, remapButtonSelected = false, remapButtonPreviousCursor = 1 },
+    [2] = { cursor = 1, locked = false, moveCooldown = 0, colorIndex = 2, colorChangeCooldown = 0, inputDelay = 0, backButtonSelected = false, previousCursor = 1, verticalMoveCooldown = 0, remapButtonSelected = false, remapButtonPreviousCursor = 1 }
 }
 
 -- Controller assignment tracking
@@ -410,6 +412,8 @@ function CharacterSelect.update(GameInfo)
             playerSelections[i].backButtonSelected = false
             playerSelections[i].previousCursor = 1
             playerSelections[i].verticalMoveCooldown = 0
+            playerSelections[i].remapButtonSelected = false
+            playerSelections[i].remapButtonPreviousCursor = 1
         end
         -- Only reset P2 controller assignment in 2P mode
         if not isOnePlayer and not isStoryMode then
@@ -486,12 +490,12 @@ function CharacterSelect.update(GameInfo)
     -- P1 edge detection (only consume justPressed for P1's assigned controller)
     local p1Input = nil
     if GameInfo.p1InputType == "keyboard" then
-        local kb = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
+        local kb = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1, true)  -- useMenuDefaults = true
         local p1Mapping = GameInfo.p1KeyboardMapping or 1
         for k,v in pairs(keyboardJustPressed[p1Mapping]) do
             if v then justStates[1][k] = true end
         end
-        p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1)
+        p1Input = InputManager.getKeyboardInput(GameInfo.p1KeyboardMapping or 1, true)  -- useMenuDefaults = true
     elseif GameInfo.p1InputType then
         -- Only consume justPressed if P1 has an assigned controller (not nil)
         local js = InputManager.getJoystick(GameInfo.player1Controller)
@@ -499,7 +503,7 @@ function CharacterSelect.update(GameInfo)
             local jid = js:getID()
             justStates[1] = justPressed[jid] or {}
             justPressed[jid] = nil
-            p1Input = InputManager.get(GameInfo.player1Controller)
+            p1Input = InputManager.get(GameInfo.player1Controller, true)  -- useMenuDefaults = true
         end
     end
     -- P2 edge detection (also check for unassigned controllers for join)
@@ -508,19 +512,19 @@ function CharacterSelect.update(GameInfo)
         p2Input = p1Input
         justStates[2] = justStates[1]
     elseif GameInfo.p2InputType == "keyboard" then
-        local kb = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2)
+        local kb = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2, true)  -- useMenuDefaults = true
         local p2Mapping = GameInfo.p2KeyboardMapping or 2
         for k,v in pairs(keyboardJustPressed[p2Mapping]) do
             if v then justStates[2][k] = true end
         end
-        p2Input = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2)
+        p2Input = InputManager.getKeyboardInput(GameInfo.p2KeyboardMapping or 2, true)  -- useMenuDefaults = true
     elseif GameInfo.p2InputType then
         local js = InputManager.getJoystick(GameInfo.player2Controller)
         if js then
             local jid = js:getID()
             justStates[2] = justPressed[jid] or {}
             justPressed[jid] = nil
-            p2Input = InputManager.get(GameInfo.player2Controller)
+            p2Input = InputManager.get(GameInfo.player2Controller, true)  -- useMenuDefaults = true
         end
     end
 
@@ -637,7 +641,7 @@ function CharacterSelect.update(GameInfo)
         end
     end
 
-    -- Handle back button navigation (up/down) for each player
+    -- Handle back button navigation (up/down/left/right) for each player
     -- This needs to happen before character updates to prevent horizontal movement when on back button
     local function handleBackButtonNavigation(playerIndex, input, justState, dt)
         local ps = playerSelections[playerIndex]
@@ -668,8 +672,18 @@ function CharacterSelect.update(GameInfo)
             end
         end
         
+        -- Check for right press to navigate to remap button (when on back button)
+        local moveRight = false
+        if ps.verticalMoveCooldown <= 0 and ps.backButtonSelected then
+            if input and input.moveX > 0.5 then
+                moveRight = true
+            elseif justState and justState.right then
+                moveRight = true
+            end
+        end
+        
         -- Navigate to back button
-        if moveDown and not ps.backButtonSelected then
+        if moveDown and not ps.backButtonSelected and not ps.remapButtonSelected then
             ps.previousCursor = ps.cursor
             ps.backButtonSelected = true
             ps.verticalMoveCooldown = 0.25  -- 250ms cooldown
@@ -680,6 +694,14 @@ function CharacterSelect.update(GameInfo)
         if moveUp and ps.backButtonSelected then
             ps.cursor = ps.previousCursor
             ps.backButtonSelected = false
+            ps.verticalMoveCooldown = 0.25  -- 250ms cooldown
+            playCharacterSelectSound("counter")
+        end
+        
+        -- Navigate from back button to remap button
+        if moveRight and ps.backButtonSelected then
+            ps.backButtonSelected = false
+            ps.remapButtonSelected = true
             ps.verticalMoveCooldown = 0.25  -- 250ms cooldown
             playCharacterSelectSound("counter")
         end
@@ -697,6 +719,96 @@ function CharacterSelect.update(GameInfo)
         return false
     end
     
+    -- Handle remap button navigation (right side, opposite to back button)
+    local function handleRemapButtonNavigation(playerIndex, input, justState, dt)
+        local ps = playerSelections[playerIndex]
+        ps.verticalMoveCooldown = math.max(0, ps.verticalMoveCooldown - dt)
+        
+        -- Only handle navigation if not locked
+        if ps.locked then
+            return false
+        end
+        
+        -- Check for down press to navigate to remap button (from stick or keyboard)
+        local moveDown = false
+        if ps.verticalMoveCooldown <= 0 then
+            if input and input.moveY > 0.5 then
+                moveDown = true
+            elseif justState and justState.down then
+                moveDown = true
+            end
+        end
+        
+        -- Check for up press to navigate back to character selection (from stick or keyboard)
+        local moveUp = false
+        if ps.verticalMoveCooldown <= 0 then
+            if input and input.moveY < -0.5 then
+                moveUp = true
+            elseif justState and justState.up then
+                moveUp = true
+            end
+        end
+        
+        -- Check for right press to navigate to remap button (from character selection)
+        local moveRight = false
+        if ps.verticalMoveCooldown <= 0 and not ps.backButtonSelected and not ps.remapButtonSelected then
+            if input and input.moveX > 0.5 then
+                moveRight = true
+            elseif justState and justState.right then
+                moveRight = true
+            end
+        end
+        
+        -- Check for left press to navigate to back button (when on remap button)
+        local moveLeft = false
+        if ps.verticalMoveCooldown <= 0 and ps.remapButtonSelected then
+            if input and input.moveX < -0.5 then
+                moveLeft = true
+            elseif justState and justState.left then
+                moveLeft = true
+            end
+        end
+        
+        -- Navigate to remap button (right side) - from character selection with down or right
+        if (moveDown or moveRight) and not ps.remapButtonSelected and not ps.backButtonSelected then
+            ps.remapButtonPreviousCursor = ps.cursor
+            ps.remapButtonSelected = true
+            ps.verticalMoveCooldown = 0.25  -- 250ms cooldown
+            playCharacterSelectSound("counter")
+        end
+        
+        -- Navigate back to character selection
+        if moveUp and ps.remapButtonSelected then
+            ps.cursor = ps.remapButtonPreviousCursor
+            ps.remapButtonSelected = false
+            ps.verticalMoveCooldown = 0.25  -- 250ms cooldown
+            playCharacterSelectSound("counter")
+        end
+        
+        -- Navigate from remap button to back button
+        if moveLeft and ps.remapButtonSelected then
+            ps.remapButtonSelected = false
+            ps.backButtonSelected = true
+            ps.verticalMoveCooldown = 0.25  -- 250ms cooldown
+            playCharacterSelectSound("counter")
+        end
+        
+        -- Handle A press on remap button
+        local aPressed = (justState and justState.a) or false
+        
+        if aPressed and ps.remapButtonSelected then
+            -- Open remap menu for this player
+            playCharacterSelectSound("downAir")
+            GameInfo.remapMenuActive = true
+            GameInfo.remapMenuPlayer = playerIndex
+            GameInfo.remapMenuSelectedOption = 1
+            GameInfo.remapMenuRemapping = nil
+            return true  -- Signal that we're opening remap menu
+        end
+        
+        return false
+    end
+    
     -- Handle back button navigation for each active player
     if isOnePlayer or isStoryMode then
         -- In 1P/Story mode, handle for the active player (P1 if not locked, P2 if P1 is locked and in 1P mode)
@@ -708,6 +820,12 @@ function CharacterSelect.update(GameInfo)
             clearKeyboardEdgeDetection()
             return
         end
+        
+        -- Handle remap button navigation
+        if handleRemapButtonNavigation(activePlayer, activeInput, activeJustState, dt) then
+            clearKeyboardEdgeDetection()
+            return
+        end
     else
         -- In 2P mode, handle for both players independently
         if p1Input then
@@ -715,9 +833,17 @@ function CharacterSelect.update(GameInfo)
                 clearKeyboardEdgeDetection()
                 return
             end
+            if handleRemapButtonNavigation(1, p1Input, justStates[1], dt) then
+                clearKeyboardEdgeDetection()
+                return
+            end
         end
         if GameInfo.p2InputType and p2Input then
             if handleBackButtonNavigation(2, p2Input, justStates[2], dt) then
+                clearKeyboardEdgeDetection()
+                return
+            end
+            if handleRemapButtonNavigation(2, p2Input, justStates[2], dt) then
                 clearKeyboardEdgeDetection()
                 return
             end
@@ -770,8 +896,8 @@ function CharacterSelect.update(GameInfo)
     if isOnePlayer or isStoryMode then
         if not playerSelections[1].locked then
             if p1Input then
-                -- Prevent horizontal movement when back button is selected
-                local moveX = playerSelections[1].backButtonSelected and 0 or p1Input.moveX
+                -- Prevent horizontal movement when back button or remap button is selected
+                local moveX = (playerSelections[1].backButtonSelected or playerSelections[1].remapButtonSelected) and 0 or p1Input.moveX
                 local aPressed = (justStates[1] and justStates[1].a) or false
                 local yPressed = (justStates[1] and justStates[1].y) or false
                 local wasLocked = playerSelections[1].locked
@@ -803,8 +929,8 @@ function CharacterSelect.update(GameInfo)
         elseif isOnePlayer then
             -- Only handle P2 selection in 1P mode, not story mode
             if p1Input then
-                -- Prevent horizontal movement when back button is selected
-                local moveX = playerSelections[2].backButtonSelected and 0 or p1Input.moveX
+                -- Prevent horizontal movement when back button or remap button is selected
+                local moveX = (playerSelections[2].backButtonSelected or playerSelections[2].remapButtonSelected) and 0 or p1Input.moveX
                 local aPressed = (justStates[1] and justStates[1].a) or false
                 local yPressed = (justStates[1] and justStates[1].y) or false
                 -- Only clear A button if P2 is not locked (we might use it to lock P2)
@@ -825,8 +951,8 @@ function CharacterSelect.update(GameInfo)
         end
     else
         if p1Input then
-            -- Prevent horizontal movement when back button is selected
-            local moveX = playerSelections[1].backButtonSelected and 0 or p1Input.moveX
+            -- Prevent horizontal movement when back button or remap button is selected
+            local moveX = (playerSelections[1].backButtonSelected or playerSelections[1].remapButtonSelected) and 0 or p1Input.moveX
             local aPressed = (justStates[1] and justStates[1].a) or false
             local yPressed = (justStates[1] and justStates[1].y) or false
             -- Only clear A button if P1 is not locked (we might use it to lock P1)
@@ -845,8 +971,8 @@ function CharacterSelect.update(GameInfo)
             end
         end
         if GameInfo.p2InputType and p2Input then
-            -- Prevent horizontal movement when back button is selected
-            local moveX = playerSelections[2].backButtonSelected and 0 or p2Input.moveX
+            -- Prevent horizontal movement when back button or remap button is selected
+            local moveX = (playerSelections[2].backButtonSelected or playerSelections[2].remapButtonSelected) and 0 or p2Input.moveX
             local aPressed = (justStates[2] and justStates[2].a) or false
             local yPressed = (justStates[2] and justStates[2].y) or false
             -- Only clear A button if P2 is not locked (we might use it to lock P2)
@@ -1227,8 +1353,8 @@ function CharacterSelect.draw(GameInfo)
                 -- Hide P2 cursor in 2P mode until P2 joins
             else
                 local cs = playerSelections[playerIndex]
-                -- Only draw arrow if back button is not selected for this player
-                if not cs.backButtonSelected then
+                -- Only draw arrow if back button and remap button are not selected for this player
+                if not cs.backButtonSelected and not cs.remapButtonSelected then
                     local cursorIndex = cs.cursor
                     local offsetX = (playerIndex == 1) and -3 or 3
                     local x = startX + (cursorIndex - 1) * (charBoxWidth + charSpacing)
@@ -1296,6 +1422,39 @@ function CharacterSelect.draw(GameInfo)
         end
     end
     
+    -- Draw remap button in bottom right (opposite to back button)
+    love.graphics.setColor(1, 1, 1, 1)
+    local remapText = "Remap"
+    local remapTextWidth = font:getWidth(remapText)
+    local remapTextX = gameWidth - remapTextWidth - 6
+    
+    local remapTextY = gameHeight - 13
+    love.graphics.printf(remapText, 0, remapTextY, gameWidth, "right", 0, 1, 1)
+    
+    
+    -- Draw player arrows to the left of "Remap" text when remap button is selected
+    local remapArrowSize = 5
+    local remapArrowSpacing = 8  -- Space between arrows if multiple players select remap
+    local remapBaseArrowX = gameWidth - remapTextWidth - 6 - remapArrowSpacing  -- Position arrow to the left of text
+    local remapArrowY = remapTextY + 5  -- Center vertically with text
+    
+    -- Draw arrow for each player who has selected the remap button
+    local remapArrowOffset = 0
+    for playerIndex = 1, 2 do
+        if playerSelections[playerIndex].remapButtonSelected then
+            local remapArrowX = remapBaseArrowX - remapArrowOffset  -- Offset to the left
+            love.graphics.setColor(getPlayerColor(playerIndex))
+            -- Draw right-pointing arrow (triangle pointing right)
+            love.graphics.polygon(
+                "fill",
+                remapArrowX, remapArrowY,  -- Right point
+                remapArrowX - remapArrowSize, remapArrowY - remapArrowSize/2,  -- Top left
+                remapArrowX - remapArrowSize, remapArrowY + remapArrowSize/2   -- Bottom left
+            )
+            love.graphics.setColor(1, 1, 1, 1)
+            remapArrowOffset = remapArrowOffset + remapArrowSpacing  -- Offset next arrow if both players select
+        end
+    end
 
     -- Show keyboard controls if keyboard is enabled
     -- if GameInfo.p1InputType == "keyboard" or GameInfo.p2InputType == "keyboard" then
