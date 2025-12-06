@@ -409,7 +409,13 @@ function AIController:selectTactic(player, opponent)
         -- Berserker: can use heavy attack at both close and far range (> 30)
         elseif player.characterType == "Berserker" then
             if bb.absDistX > 30 then
-                distScore = 0.8  -- Good score for long range heavy attack (occasional use)
+                -- At long range, occasionally use heavy attack since it's ranged
+                -- Use probability to make it less frequent (only ~30% chance)
+                if math.random() < 0.3 then
+                    distScore = 0.7  -- Moderate score when it does use it
+                else
+                    distScore = 0  -- Most of the time, don't use heavy attack at long range
+                end
             elseif bb.absDistX < idealDist + PARAM.APPROACH_TOLERANCE then
                 -- At close range, reduce heavy attack score to encourage light attacks
                 distScore = distScore * 0.4  -- Reduce score at close range
@@ -543,6 +549,9 @@ function AIController:executeAction(action, input, player, opponent)
             self:faceOpponent(input, player, opponent)
         end
     elseif actionType == "heavyAttack" then
+        -- Ensure player faces opponent before attacking
+        local distX = opponent.x - player.x
+        player.direction = (distX > 0) and 1 or -1
         input.heavyAttack = true
         input.attack = true
         self:faceOpponent(input, player, opponent)
