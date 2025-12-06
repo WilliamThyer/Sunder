@@ -677,9 +677,28 @@ end
 
 function CharacterBase:initializeUIAnimations()
     self.iconSpriteSheet = love.graphics.newImage("assets/sprites/icons.png")
+    
+    -- Map color name to starting column (1-indexed)
+    -- Blue: columns 1-2, Red: columns 3-4, Yellow: columns 5-6, Purple: columns 7-8
+    local colorToColumn = {
+        Blue = 1,
+        Red = 3,
+        Yellow = 5,
+        Purple = 7
+    }
+    
+    -- Get starting column for this player's color, default to Blue (column 1)
+    local colorName = self.colorName or "Blue"
+    local startColumn = colorToColumn[colorName] or 1
+    
+    -- Calculate x positions: x = 1 + (column - 1) * 9
+    -- Each sprite is 8x8 pixels with 1 pixel spacing (9 pixels per sprite)
+    local heartX = 1 + (startColumn - 1) * 9
+    local emptyHeartX = 1 + (startColumn) * 9
+    
     self.iconSprites = {
-        heart        = love.graphics.newQuad(1, 1, 8, 8, self.iconSpriteSheet),
-        emptyHeart   = love.graphics.newQuad(10, 1, 8, 8, self.iconSpriteSheet),
+        heart        = love.graphics.newQuad(heartX, 1, 8, 8, self.iconSpriteSheet),
+        emptyHeart   = love.graphics.newQuad(emptyHeartX, 1, 8, 8, self.iconSpriteSheet),
         stamina      = love.graphics.newQuad(1, 10, 8, 8, self.iconSpriteSheet),
         emptyStamina = love.graphics.newQuad(10, 10, 8, 8, self.iconSpriteSheet),
         stock      = love.graphics.newQuad(1, 19, 8, 8, self.iconSpriteSheet),
