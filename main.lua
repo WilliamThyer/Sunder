@@ -49,7 +49,29 @@ GameInfo = {
     storyPlayerStocks = nil,   -- player's stocks to persist between battles (nil = start fresh)
     -- Fight start sequence
     fightStartPhase = nil,     -- nil, "ready", or "fight"
-    fightStartTimer = nil      -- timer for current phase
+    fightStartTimer = nil,     -- timer for current phase
+    -- Freeze frame system
+    freezeFrameTimer = 0,      -- current freeze frame timer (0 = not frozen)
+    freezeFrameEnabled = true  -- toggle to enable/disable freeze frames
+}
+
+-- Freeze Frame Configuration
+-- Easily adjustable values for freeze frame duration per attack type
+FreezeFrameConfig = {
+    -- Global multiplier: adjust this to make all freeze frames stronger/weaker
+    globalMultiplier = 1.0,
+    
+    -- Base durations in seconds for each attack type
+    -- Increase these values for longer freeze frames, decrease for shorter
+    durations = {
+        lightAttack = 0.05,    -- 50ms base duration
+        heavyAttack = 0.12,    -- 120ms base duration
+        downAir = 0.08,       -- 80ms base duration
+        shockWave = 0.06,    -- 60ms base duration
+        shieldHit = 0.03,    -- 30ms base duration (blocks)
+        counter = 0.10,       -- 100ms base duration (successful counters)
+        death = 0.15          -- 150ms base duration (deaths)
+    }
 }
 
 -- track if a button was pressed this frame
@@ -292,10 +314,40 @@ local function filterButtonInput(input, inputSource, waitForRelease, playerIndex
     return input
 end
 
+-- Freeze Frame Functions
+function triggerFreezeFrame(attackType)
+    if not GameInfo.freezeFrameEnabled then return end
+    
+    local baseDuration = FreezeFrameConfig.durations[attackType] or 0.05
+    local duration = baseDuration * FreezeFrameConfig.globalMultiplier
+    GameInfo.freezeFrameTimer = math.max(GameInfo.freezeFrameTimer, duration)
+end
+
+function updateFreezeFrame(dt)
+    if GameInfo.freezeFrameTimer > 0 then
+        GameInfo.freezeFrameTimer = GameInfo.freezeFrameTimer - dt
+        if GameInfo.freezeFrameTimer < 0 then
+            GameInfo.freezeFrameTimer = 0
+        end
+    end
+end
+
+function isFrozen()
+    return GameInfo.freezeFrameTimer > 0
+end
+
 -- Update the game (1P or 2P)
 function updateGame(dt)
     if not map then return end
     if #players < 2 then return end
+
+    -- Handle freeze frames: if frozen, don't update game logic
+    if isFrozen() then
+        -- Only update freeze frame timer and map (for visual continuity)
+        updateFreezeFrame(dt)
+        map:update(dt)
+        return
+    end
 
     local p1, p2 = players[1], players[2]
     
@@ -406,6 +458,9 @@ function updateGame(dt)
 end
 
 function love.update(dt)
+    -- Update freeze frame timer (always update, even when paused)
+    updateFreezeFrame(dt)
+    
     -- Update InputManager for periodic controller detection
     InputManager.update(dt)
 
@@ -452,6 +507,7 @@ function love.update(dt)
             end
         end
         
+        -- Only update game if not frozen (freeze frame handling is inside updateGame)
         updateGame(dt)
         -- Handle story mode fight completion
         if GameInfo.gameState == "game_story" then

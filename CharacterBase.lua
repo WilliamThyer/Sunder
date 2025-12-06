@@ -385,6 +385,10 @@ function CharacterBase:handleAttackEffects(attacker, dt, knockbackMultiplier, at
             self.shieldKnockTimer  = self.shieldKnockDuration
             self.shieldKnockDir    = self:getKnockbackDirection(attacker)
             self.shieldKnockSpeed  = self.shieldKnockBase * (knockbackMultiplier or 1)
+            -- Trigger freeze frame for shield hits (shorter duration)
+            if GameInfo and triggerFreezeFrame then
+                triggerFreezeFrame('shieldHit')
+            end
         else
             -- full damage goes through
             self:playSound('hitHurt')
@@ -399,6 +403,10 @@ function CharacterBase:handleAttackEffects(attacker, dt, knockbackMultiplier, at
             self.knockbackSpeed     = self.knockbackBase * (knockbackMultiplier or 1)
             self.knockbackDirection = self:getKnockbackDirection(attacker)
             self.x = self.x - self.knockbackSpeed * self.knockbackDirection * dt
+            -- Trigger freeze frame for successful hits
+            if GameInfo and triggerFreezeFrame then
+                triggerFreezeFrame(attackType)
+            end
         end
     end
 end
@@ -416,6 +424,11 @@ function CharacterBase:triggerSuccessfulCounter(attacker)
     attacker.isHeavyAttacking = false
     attacker.isLightAttacking = false
     attacker.isDownAir        = false
+    
+    -- Trigger freeze frame for successful counters
+    if GameInfo and triggerFreezeFrame then
+        triggerFreezeFrame('counter')
+    end
 end
 
 --------------------------------------------------
@@ -438,6 +451,10 @@ function CharacterBase:updateHurtState(dt)
             self.soundEffects['finalDie']:play()
         else
             self.soundEffects['die']:play()
+        end
+        -- Trigger freeze frame for deaths
+        if GameInfo and triggerFreezeFrame then
+            triggerFreezeFrame('death')
         end
     elseif self.isDying then
         self.isDyingTimer = self.isDyingTimer - dt
