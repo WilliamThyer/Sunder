@@ -257,10 +257,10 @@ function Menu.updateMenu(GameInfo)
         previousSelectedOption = GameInfo.selectedOption
         Menu.menuMoveCooldown = 0.25  -- Set cooldown after movement
     elseif moveDown then
-        if currentSelection < 3 then
+        if currentSelection < 4 then
             playMenuSound("counter")
         end
-        GameInfo.selectedOption = math.min(3, currentSelection + 1)
+        GameInfo.selectedOption = math.min(4, currentSelection + 1)
         previousSelectedOption = GameInfo.selectedOption
         Menu.menuMoveCooldown = 0.25  -- Set cooldown after movement
     else
@@ -320,7 +320,7 @@ function Menu.updateMenu(GameInfo)
             GameInfo.player2Controller = nil
             GameInfo.p2Assigned = false
             GameInfo.keyboardPlayer = nil
-        else
+        elseif GameInfo.selectedOption == 3 then
             -- Story Mode
             GameInfo.previousMode = "game_story"
             -- Ensure keyboardPlayer is set for story mode
@@ -330,9 +330,17 @@ function Menu.updateMenu(GameInfo)
             GameInfo.p2InputType = nil
             GameInfo.player2Controller = nil
             GameInfo.p2Assigned = false
+        else
+            -- Exit option (option 4)
+            love.event.quit()
+            return
         end
-        GameInfo.gameState = "characterselect"
-        GameInfo.justEnteredCharacterSelect = true
+        
+        -- Only transition to character select if not exiting
+        if GameInfo.selectedOption ~= 4 then
+            GameInfo.gameState = "characterselect"
+            GameInfo.justEnteredCharacterSelect = true
+        end
     end
     
     -- Clear keyboard edge detection after processing
@@ -372,6 +380,10 @@ function Menu.drawMenu(GameInfo)
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.printf("GAUNTLET", 0, 50, GameInfo.gameWidth, "center", 0, 1, 1)
 
+    -- Option 4: EXIT
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.printf("EXIT", 0, 60, GameInfo.gameWidth, "center", 0, 1, 1)
+
     -- Draw blue arrow to the left of selected option
     local centerX = GameInfo.gameWidth / 2
     local textOffset = 30  -- Approximate offset to left of centered text
@@ -397,6 +409,15 @@ function Menu.drawMenu(GameInfo)
         )
     elseif GameInfo.selectedOption == 3 then
         local arrowY = 55
+        love.graphics.setColor(blueColor)
+        love.graphics.polygon(
+            "fill",
+            arrowX, arrowY - arrowSize/2,
+            arrowX, arrowY + arrowSize/2,
+            arrowX + arrowSize, arrowY
+        )
+    elseif GameInfo.selectedOption == 4 then
+        local arrowY = 65
         love.graphics.setColor(blueColor)
         love.graphics.polygon(
             "fill",

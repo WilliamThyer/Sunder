@@ -887,7 +887,16 @@ function CharacterBase:drawUI()
     end
 
     for s = 0, self.maxStamina - 1 do
-        local icon = (self.stamina > s) and 'stamina' or 'emptyStamina'
+        -- Player 1 depletes from left to right, Player 2 depletes from right to left
+        local staminaCheck
+        if self.index == 1 then
+            -- P1: reverse the check so leftmost depletes first
+            staminaCheck = self.stamina > (self.maxStamina - 1 - s)
+        else
+            -- P2: keep current behavior (rightmost depletes first)
+            staminaCheck = self.stamina > s
+        end
+        local icon = staminaCheck and 'stamina' or 'emptyStamina'
         local xPos = self.iconXPos + 6 * s
         self:drawIcon(xPos, self.staminaYPos, icon)
     end
