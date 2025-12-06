@@ -140,7 +140,7 @@ function Mage:initializeAnimations()
         dashEnd      = anim8.newAnimation(self.grid(3, '3-1'), 0.075),
         heavyAttack  = anim8.newAnimation(self.attackGrid(1, '1-4'), {0.1, 0.3, 0.3, 0.05}),
         lightAttack  = anim8.newAnimation(self.attackGrid(2, '1-3'), {0.2, 0.15, .5}),
-        downAir      = anim8.newAnimation(self.attackGrid(3, '1-2'), {0.2, 0.8}),
+        downAir      = anim8.newAnimation(self.attackGrid(3, '1-2'), {0.2, 0.2}),
         shield       = anim8.newAnimation(self.grid(2, '1-3'), .1),
         shieldBlock  = anim8.newAnimation(self.grid(2, 4), 1),
         hurt         = anim8.newAnimation(self.grid(5, 1), 1),
@@ -515,21 +515,28 @@ function Mage:updateAnimation(dt)
         return
     end
 
-    -- 3) light attack while falling
+    -- 3) downAir animation (must check before isJumping)
+    if self.isDownAir then
+        self.currentAnim = self.animations.downAir
+        self.currentAnim:update(dt)
+        return
+    end
+
+    -- 4) light attack while falling
     if self.isLightAttacking and self.isJumping then
         self.currentAnim = self.animations.lightAttack
         self.currentAnim:update(dt)
         return
     end
 
-    -- 4) falling: show idle animation instead of jump
+    -- 5) falling: show idle animation instead of jump
     if self.isJumping then
         self.currentAnim = self.animations.idle
         self.currentAnim:update(dt)
         return
     end
 
-    -- 5) everything else uses the base character logic
+    -- 6) everything else uses the base character logic
     base_updateAnimation(self, dt)
 end
 
