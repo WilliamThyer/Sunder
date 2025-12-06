@@ -36,6 +36,25 @@ local moveCooldownDuration = 0.25
 -- Track previous button states for remapping
 local lastButtonStates = {}
 local lastKeyStates = {}
+local lastStickLeft = false
+local lastStickRight = false
+
+-- Backup storage for custom mappings when entering the menu
+local backupKeyboardMapping = nil
+local backupGamepadMapping = nil
+local backupInitialized = false
+
+-- Helper function to deep copy a mapping table
+local function copyMapping(mapping)
+    if not mapping then
+        return nil
+    end
+    local copy = {}
+    for k, v in pairs(mapping) do
+        copy[k] = v
+    end
+    return copy
+end
 
 function RemapMenu.update(GameInfo)
     local dt = love.timer.getDelta()
@@ -57,6 +76,16 @@ function RemapMenu.update(GameInfo)
         controllerID = GameInfo.player1Controller
     elseif playerIndex == 2 then
         controllerID = GameInfo.player2Controller
+    end
+    
+    -- Save backup of current mappings when first entering the menu
+    if not backupInitialized then
+        if isKeyboard then
+            backupKeyboardMapping = copyMapping(InputManager.getCustomKeyboardMapping(playerIndex))
+        else
+            backupGamepadMapping = copyMapping(InputManager.getCustomGamepadMapping(playerIndex))
+        end
+        backupInitialized = true
     end
     
     -- Get input using menu defaults (always use defaults for menu navigation)
@@ -140,15 +169,19 @@ function RemapMenu.update(GameInfo)
                         end
                     end
                     
-                    -- Also check stick movement for left/right
+                    -- Also check stick movement for left/right (with edge detection)
                     local lx = js:getGamepadAxis("leftx")
-                    if math.abs(lx) > 0.3 then
-                        if lx < 0 then
-                            pressedButton = "left"
-                        else
-                            pressedButton = "right"
-                        end
+                    local stickLeft = (lx < -0.3)
+                    local stickRight = (lx > 0.3)
+                    
+                    if stickLeft and not lastStickLeft then
+                        pressedButton = "left"
+                    elseif stickRight and not lastStickRight then
+                        pressedButton = "right"
                     end
+                    
+                    lastStickLeft = stickLeft
+                    lastStickRight = stickRight
                 end
             end
         end
@@ -183,15 +216,18 @@ function RemapMenu.update(GameInfo)
                 customMap = InputManager.getCustomGamepadMapping(playerIndex) or {}
             end
             
-            -- Unmap this button/key from any other action
-            for otherAction, mappedButton in pairs(customMap) do
-                if mappedButton == (pressedButton or pressedKey) then
+            -- Get the button/key that was pressed
+            local pressedInput = pressedButton or pressedKey
+            
+            -- Unmap this button/key from any other action (clear any action that currently uses this button/key)
+            for otherAction, mappedInput in pairs(customMap) do
+                if mappedInput == pressedInput then
                     customMap[otherAction] = nil
                 end
             end
             
             -- Map the button/key to this action
-            customMap[actionKey] = pressedButton or pressedKey
+            customMap[actionKey] = pressedInput
             
             -- Save the mapping
             if isKeyboard then
@@ -249,13 +285,15 @@ function RemapMenu.update(GameInfo)
     -- Handle A press
     local aPressed = (justStates.a) or false
     
-    if aPressed then
+        if aPressed then
         if GameInfo.remapMenuSelectedOption <= #actions then
             -- Select an action to remap
             GameInfo.remapMenuRemapping = actions[GameInfo.remapMenuSelectedOption]
             -- Initialize button/key states with current state to prevent the A press from being detected as a remap
             lastButtonStates = {}
             lastKeyStates = {}
+            lastStickLeft = false
+            lastStickRight = false
             
             if isKeyboard then
                 -- Mark all currently pressed keys as already pressed
@@ -276,23 +314,32 @@ function RemapMenu.update(GameInfo)
                         lastButtonStates["y"] = js:isGamepadDown("y")
                         lastButtonStates["shoulderL"] = js:isGamepadDown("leftshoulder")
                         lastButtonStates["shoulderR"] = js:isGamepadDown("rightshoulder")
+                        -- Initialize stick states
+                        local lx = js:getGamepadAxis("leftx")
+                        lastStickLeft = (lx < -0.3)
+                        lastStickRight = (lx > 0.3)
                     end
                 end
             end
         elseif GameInfo.remapMenuSelectedOption == numOptions - 1 then
-            -- Save mapping
+            -- Save mapping (keep current mappings as-is)
+            backupKeyboardMapping = nil
+            backupGamepadMapping = nil
+            backupInitialized = false
             GameInfo.remapMenuActive = false
             GameInfo.remapMenuPlayer = nil
             GameInfo.remapMenuSelectedOption = 1
             GameInfo.remapMenuRemapping = nil
         elseif GameInfo.remapMenuSelectedOption == numOptions then
-            -- Back without save (discard changes)
-            -- Clear custom mappings for this player
+            -- Back without save (restore backup)
             if isKeyboard then
-                InputManager.setCustomKeyboardMapping(playerIndex, nil)
+                InputManager.setCustomKeyboardMapping(playerIndex, backupKeyboardMapping)
             else
-                InputManager.setCustomGamepadMapping(playerIndex, nil)
+                InputManager.setCustomGamepadMapping(playerIndex, backupGamepadMapping)
             end
+            backupKeyboardMapping = nil
+            backupGamepadMapping = nil
+            backupInitialized = false
             GameInfo.remapMenuActive = false
             GameInfo.remapMenuPlayer = nil
             GameInfo.remapMenuSelectedOption = 1
@@ -302,12 +349,15 @@ function RemapMenu.update(GameInfo)
     
     -- Handle B/back to exit menu
     if (justStates.b or justStates.back) then
-        -- Back without save (discard changes)
+        -- Back without save (restore backup)
         if isKeyboard then
-            InputManager.setCustomKeyboardMapping(playerIndex, nil)
+            InputManager.setCustomKeyboardMapping(playerIndex, backupKeyboardMapping)
         else
-            InputManager.setCustomGamepadMapping(playerIndex, nil)
+            InputManager.setCustomGamepadMapping(playerIndex, backupGamepadMapping)
         end
+        backupKeyboardMapping = nil
+        backupGamepadMapping = nil
+        backupInitialized = false
         GameInfo.remapMenuActive = false
         GameInfo.remapMenuPlayer = nil
         GameInfo.remapMenuSelectedOption = 1
