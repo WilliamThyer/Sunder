@@ -359,7 +359,7 @@ function RemapMenu.draw(GameInfo)
         -- Draw arrow to the left of selected action
         if i == GameInfo.remapMenuSelectedOption then
             local arrowX = leftColumnX - 6
-            local arrowY = y + 4  -- Center vertically on the text line
+            local arrowY = y + 5  -- Center vertically on the text line
             love.graphics.setColor(blueColor)
             love.graphics.polygon(
                 "fill",
@@ -385,16 +385,15 @@ function RemapMenu.draw(GameInfo)
     
     -- Draw Save and Back options
     local saveY = startY + #actions * lineHeight
-    local backY = saveY + lineHeight
     
-    love.graphics.printf("Save Mapping", leftColumnX, backY, GameInfo.gameWidth - 10, "center", 0, 1, 1)
+    love.graphics.printf("Save Mapping", leftColumnX, saveY, GameInfo.gameWidth - 10, "center", 0, 1, 1)
     
     -- Draw arrow to the left of Save if selected
     if GameInfo.remapMenuSelectedOption == #actions + 1 then
         local centerX = GameInfo.gameWidth / 2
         local textOffset = 40  -- Approximate offset to left of centered text
         local arrowX = centerX - textOffset
-        local arrowY = saveY + 4
+        local arrowY = saveY + 5
         love.graphics.setColor(blueColor)
         love.graphics.polygon(
             "fill",
@@ -405,14 +404,14 @@ function RemapMenu.draw(GameInfo)
         love.graphics.setColor(1, 1, 1, 1)
     end
     
-    love.graphics.printf("Back without Saving", leftColumnX, backY, GameInfo.gameWidth - 10, "center", 0, 1, 1)
+    love.graphics.printf("Back without Saving", leftColumnX, saveY+6, GameInfo.gameWidth - 10, "center", 0, 1, 1)
     
     -- Draw arrow to the left of Back if selected
     if GameInfo.remapMenuSelectedOption == #actions + 2 then
         local centerX = GameInfo.gameWidth / 2
         local textOffset = 50  -- Approximate offset to left of centered text (longer text)
         local arrowX = centerX - textOffset
-        local arrowY = backY + 2
+        local arrowY = saveY + 11
         love.graphics.setColor(blueColor)
         love.graphics.polygon(
             "fill",

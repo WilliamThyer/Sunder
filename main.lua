@@ -145,6 +145,9 @@ function setButtonReleaseWait(playerIndex, inputSource, currentInput)
 end
 
 function love.load()
+    
+    love.audio.setVolume(0.3)
+    
     -- Initialize InputManager
     InputManager.initialize()
     
