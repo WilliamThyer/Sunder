@@ -343,21 +343,32 @@ function RemapMenu.draw(GameInfo)
     -- Draw action list
     local startY = 8
     local lineHeight = 6
-    local leftColumnX = 5
+    local leftColumnX = 7
     local rightColumnX = 70
+    
+    -- Blue color matching Main Menu and Pause Menu
+    local blueColor = {127/255, 146/255, 237/255}
+    local arrowSize = 5
     
     for i, action in ipairs(actions) do
         local y = startY + (i - 1) * lineHeight
         
-        -- Highlight selected action
-        if i == GameInfo.remapMenuSelectedOption then
-            love.graphics.setColor(127/255, 146/255, 237/255, 1)  -- Blue highlight
-            love.graphics.rectangle("fill", leftColumnX - 2, y - 1, GameInfo.gameWidth - 10, lineHeight)
-            love.graphics.setColor(1, 1, 1, 1)
-        end
-        
         -- Draw action name
         love.graphics.printf(action, leftColumnX, y, rightColumnX - leftColumnX, "left", 0, 1, 1)
+        
+        -- Draw arrow to the left of selected action
+        if i == GameInfo.remapMenuSelectedOption then
+            local arrowX = leftColumnX - 6
+            local arrowY = y + 4  -- Center vertically on the text line
+            love.graphics.setColor(blueColor)
+            love.graphics.polygon(
+                "fill",
+                arrowX, arrowY - arrowSize/2,
+                arrowX, arrowY + arrowSize/2,
+                arrowX + arrowSize, arrowY
+            )
+            love.graphics.setColor(1, 1, 1, 1)
+        end
         
         -- Draw current mapping
         local actionKey = actionKeys[action]
@@ -373,26 +384,44 @@ function RemapMenu.draw(GameInfo)
     end
     
     -- Draw Save and Back options
-    local saveY = startY + #actions * lineHeight + 2
+    local saveY = startY + #actions * lineHeight
     local backY = saveY + lineHeight
     
-    -- Highlight Save if selected
+    love.graphics.printf("Save Mapping", leftColumnX, backY, GameInfo.gameWidth - 10, "center", 0, 1, 1)
+    
+    -- Draw arrow to the left of Save if selected
     if GameInfo.remapMenuSelectedOption == #actions + 1 then
-        love.graphics.setColor(127/255, 146/255, 237/255, 1)  -- Blue highlight
-        love.graphics.rectangle("fill", leftColumnX - 2, saveY - 1, GameInfo.gameWidth - 10, lineHeight)
-        love.graphics.setColor(1, 1, 1, 1)
-    end
-    
-    love.graphics.printf("Save Mapping", leftColumnX, saveY, GameInfo.gameWidth - 10, "center", 0, 1, 1)
-    
-    -- Highlight Back if selected
-    if GameInfo.remapMenuSelectedOption == #actions + 2 then
-        love.graphics.setColor(127/255, 146/255, 237/255, 1)  -- Blue highlight
-        love.graphics.rectangle("fill", leftColumnX - 2, backY - 1, GameInfo.gameWidth - 10, lineHeight)
+        local centerX = GameInfo.gameWidth / 2
+        local textOffset = 40  -- Approximate offset to left of centered text
+        local arrowX = centerX - textOffset
+        local arrowY = saveY + 4
+        love.graphics.setColor(blueColor)
+        love.graphics.polygon(
+            "fill",
+            arrowX, arrowY - arrowSize/2,
+            arrowX, arrowY + arrowSize/2,
+            arrowX + arrowSize, arrowY
+        )
         love.graphics.setColor(1, 1, 1, 1)
     end
     
     love.graphics.printf("Back without Saving", leftColumnX, backY, GameInfo.gameWidth - 10, "center", 0, 1, 1)
+    
+    -- Draw arrow to the left of Back if selected
+    if GameInfo.remapMenuSelectedOption == #actions + 2 then
+        local centerX = GameInfo.gameWidth / 2
+        local textOffset = 50  -- Approximate offset to left of centered text (longer text)
+        local arrowX = centerX - textOffset
+        local arrowY = backY + 2
+        love.graphics.setColor(blueColor)
+        love.graphics.polygon(
+            "fill",
+            arrowX, arrowY - arrowSize/2,
+            arrowX, arrowY + arrowSize/2,
+            arrowX + arrowSize, arrowY
+        )
+        love.graphics.setColor(1, 1, 1, 1)
+    end
 end
 
 return RemapMenu
