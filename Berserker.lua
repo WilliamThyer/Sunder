@@ -340,6 +340,23 @@ function Berserker:processInput(dt, input, otherPlayer)
     end
 end
 
+function Berserker:getHitbox(attackType)
+    if attackType == "heavyAttack" then
+        -- Position hitbox to extend downward so it can hit opponents below/in front
+        -- The hitbox extends both forward and downward (like a hammer striking the ground)
+        -- Start at character's vertical center so it extends both above and below
+        return {
+            width  = self.heavyAttackWidth,
+            height = self.heavyAttackHeight,
+            x      = (self.direction == 1) and (self.x + self.width - self.heavyAttackHitboxOffset) or (self.x - self.heavyAttackWidth + self.heavyAttackHitboxOffset),
+            y      = self.y - (self.height * 0.25)  -- Start slightly above center to extend downward below the player
+        }
+    else
+        -- For other attack types, use the base implementation
+        return CharacterBase.getHitbox(self, attackType)
+    end
+end
+
 function Berserker:handleAttacks(dt, otherPlayer)
     if not otherPlayer then return end
 
