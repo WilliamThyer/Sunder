@@ -338,10 +338,10 @@ function RemapMenu.draw(GameInfo)
     
     -- Draw title
     local title = "Player " .. playerIndex .. " Controls"
-    love.graphics.printf(title, 0, 3, GameInfo.gameWidth, "center", 0, 1, 1)
+    love.graphics.printf(title, 0, 1, GameInfo.gameWidth, "center", 0, 1, 1)
     
     -- Draw action list
-    local startY = 10
+    local startY = 8
     local lineHeight = 6
     local leftColumnX = 5
     local rightColumnX = 70
@@ -373,7 +373,7 @@ function RemapMenu.draw(GameInfo)
     end
     
     -- Draw Save and Back options
-    local saveY = startY + #actions * lineHeight + 5
+    local saveY = startY + #actions * lineHeight + 2
     local backY = saveY + lineHeight
     
     -- Highlight Save if selected
@@ -392,7 +392,7 @@ function RemapMenu.draw(GameInfo)
         love.graphics.setColor(1, 1, 1, 1)
     end
     
-    love.graphics.printf("Back without Save", leftColumnX, backY, GameInfo.gameWidth - 10, "center", 0, 1, 1)
+    love.graphics.printf("Back without Saving", leftColumnX, backY, GameInfo.gameWidth - 10, "center", 0, 1, 1)
 end
 
 return RemapMenu
