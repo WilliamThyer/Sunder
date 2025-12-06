@@ -456,6 +456,10 @@ function CharacterBase:updateHurtState(dt)
         if GameInfo and triggerFreezeFrame then
             triggerFreezeFrame('death')
         end
+        -- Trigger hit flash for death visual feedback
+        if GameInfo and triggerHitFlash then
+            triggerHitFlash()
+        end
     elseif self.isDying then
         self.isDyingTimer = self.isDyingTimer - dt
         if self.isDyingTimer <= 0 then

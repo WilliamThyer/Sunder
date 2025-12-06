@@ -52,7 +52,10 @@ GameInfo = {
     fightStartTimer = nil,     -- timer for current phase
     -- Freeze frame system
     freezeFrameTimer = 0,      -- current freeze frame timer (0 = not frozen)
-    freezeFrameEnabled = true  -- toggle to enable/disable freeze frames
+    freezeFrameEnabled = true,  -- toggle to enable/disable freeze frames
+    -- Hit flash system
+    hitFlashTimer = 0,         -- current hit flash timer (0 = no flash)
+    hitFlashEnabled = true     -- toggle to enable/disable hit flash
 }
 
 -- Freeze Frame Configuration
@@ -72,6 +75,17 @@ FreezeFrameConfig = {
         counter = 0.10,       -- 100ms base duration (successful counters)
         death = 0.15          -- 150ms base duration (deaths)
     }
+}
+
+-- Hit Flash Configuration
+-- Configurable hit flash duration
+HitFlashConfig = {
+    -- Global multiplier: adjust this to make all hit flashes stronger/weaker
+    globalMultiplier = 1.0,
+    
+    -- Base duration in seconds for hit flash
+    -- Increase for longer flash, decrease for shorter
+    duration = 0.05  -- 50ms base duration
 }
 
 -- track if a button was pressed this frame
@@ -336,6 +350,33 @@ function isFrozen()
     return GameInfo.freezeFrameTimer > 0
 end
 
+-- Hit Flash Functions
+function triggerHitFlash()
+    if not GameInfo.hitFlashEnabled then return end
+    
+    local duration = HitFlashConfig.duration * HitFlashConfig.globalMultiplier
+    GameInfo.hitFlashTimer = math.max(GameInfo.hitFlashTimer, duration)
+end
+
+function updateHitFlash(dt)
+    if GameInfo.hitFlashTimer > 0 then
+        GameInfo.hitFlashTimer = GameInfo.hitFlashTimer - dt
+        if GameInfo.hitFlashTimer < 0 then
+            GameInfo.hitFlashTimer = 0
+        end
+    end
+end
+
+function getHitFlashAlpha()
+    if GameInfo.hitFlashTimer <= 0 then
+        return 0
+    end
+    -- Fade from 1.0 to 0.0 over the duration
+    -- Use the remaining timer divided by the base duration to get alpha
+    local baseDuration = HitFlashConfig.duration * HitFlashConfig.globalMultiplier
+    return math.min(1.0, GameInfo.hitFlashTimer / baseDuration)
+end
+
 -- Update the game (1P or 2P)
 function updateGame(dt)
     if not map then return end
@@ -460,6 +501,9 @@ end
 function love.update(dt)
     -- Update freeze frame timer (always update, even when paused)
     updateFreezeFrame(dt)
+    
+    -- Update hit flash timer (always update, even when paused)
+    updateHitFlash(dt)
     
     -- Update InputManager for periodic controller detection
     InputManager.update(dt)
@@ -614,6 +658,14 @@ function love.draw()
         end
         if Menu.paused then
             Menu.drawPauseOverlay()
+        end
+        
+        -- Draw hit flash overlay (white screen flash on damage)
+        if GameInfo.hitFlashTimer > 0 then
+            local alpha = getHitFlashAlpha()
+            love.graphics.setColor(1, 1, 1, alpha)
+            love.graphics.rectangle("fill", 0, 0, GameInfo.gameWidth, GameInfo.gameHeight)
+            love.graphics.setColor(1, 1, 1, 1)  -- Reset color to white/opaque
         end
     end
     push:finish()
