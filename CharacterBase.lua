@@ -268,6 +268,18 @@ function CharacterBase:useStamina(amount)
     return false
 end
 
+function CharacterBase:triggerNoStaminaFeedback()
+    -- Only trigger if not already hurt/dying/dead/respawning
+    if not self.isHurt and not self.isDying and not self.isDead and not self.isRespawning then
+        self:playSound('noStamina')
+        self.isHurt = true
+        self.hurtTimer = 0.5
+        -- Zero out knockback to prevent sliding during the animation
+        self.knockbackSpeed = 0
+        self.knockbackDirection = 0
+    end
+end
+
 function CharacterBase:heal(amount)
     self.health = math.min(self.maxHealth, self.health + amount)
 end
@@ -762,7 +774,10 @@ function CharacterBase:moveWithBump(dt)
 end
 
 function CharacterBase:triggerDownAir()
-    if not self:useStamina(self.staminaMapping['downAir']) then return end
+    if not self:useStamina(self.staminaMapping['downAir']) then
+        self:triggerNoStaminaFeedback()
+        return
+    end
     self:playSound('downAir')
     self.isAttacking  = true
     self.isDownAir    = true

@@ -146,7 +146,8 @@ function Lancer:initializeSoundEffects()
         jump                = love.audio.newSource("assets/soundEffects/jump.wav", "static"),
         shield              = love.audio.newSource("assets/soundEffects/shield.wav", "static"),
         shieldHit           = love.audio.newSource("assets/soundEffects/shieldHit.wav", "static"),
-        successfulCounter   = love.audio.newSource("assets/soundEffects/successfulCounter.wav", "static")
+        successfulCounter   = love.audio.newSource("assets/soundEffects/successfulCounter.wav", "static"),
+        noStamina           = love.audio.newSource("assets/soundEffects/noStamina.wav", "static")
     }
 end
 
@@ -218,6 +219,8 @@ function Lancer:processInput(dt, input, otherPlayer)
             if self.animations and self.animations.heavyAttack then
                 self.animations.heavyAttack:gotoFrame(1)
             end
+        else
+            self:triggerNoStaminaFeedback()
         end
     elseif input.lightAttack and self:canPerformAction("lightAttack") then
         if self:useStamina(self.staminaMapping["lightAttack"]) then
@@ -228,6 +231,8 @@ function Lancer:processInput(dt, input, otherPlayer)
             if self.animations and self.animations.lightAttack then
                 self.animations.lightAttack:gotoFrame(1)
             end
+        else
+            self:triggerNoStaminaFeedback()
         end
     end
     self.attackPressedLastFrame = input.attack
@@ -280,6 +285,8 @@ function Lancer:processInput(dt, input, otherPlayer)
                 if self.animations and self.animations.jump then
                     self.animations.jump:gotoFrame(1)
                 end
+            else
+                self:triggerNoStaminaFeedback()
             end
         -- Double jump
         elseif self.canDoubleJump then
@@ -292,6 +299,8 @@ function Lancer:processInput(dt, input, otherPlayer)
                 if self.animations and self.animations.jump then
                     self.animations.jump:gotoFrame(1)
                 end
+            else
+                self:triggerNoStaminaFeedback()
             end
         end
     end
@@ -310,6 +319,8 @@ function Lancer:processInput(dt, input, otherPlayer)
             if self.animations and self.animations.dash then
                 self.animations.dash:gotoFrame(1)
             end
+        else
+            self:triggerNoStaminaFeedback()
         end
     end
     self.dashPressedLastFrame = input.dash

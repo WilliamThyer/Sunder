@@ -146,7 +146,7 @@ end
 
 function love.load()
     
-    love.audio.setVolume(0.3)
+    love.audio.setVolume(0.7)
     
     -- Initialize InputManager
     InputManager.initialize()

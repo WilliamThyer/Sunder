@@ -164,7 +164,8 @@ function Mage:initializeSoundEffects()
         jump                = love.audio.newSource("assets/soundEffects/jumpMage.wav", "static"),
         shield              = love.audio.newSource("assets/soundEffects/shieldMage.wav", "static"),
         shieldHit           = love.audio.newSource("assets/soundEffects/shieldHitMage.wav", "static"),
-        successfulCounter   = love.audio.newSource("assets/soundEffects/successfulCounterMage.wav", "static")
+        successfulCounter   = love.audio.newSource("assets/soundEffects/successfulCounterMage.wav", "static"),
+        noStamina           = love.audio.newSource("assets/soundEffects/noStamina.wav", "static")
     }
 end
 
@@ -287,6 +288,8 @@ function Mage:processInput(dt, input, otherPlayer)
             if self.animations and self.animations.heavyAttack then
                 self.animations.heavyAttack:gotoFrame(1)
             end
+        else
+            self:triggerNoStaminaFeedback()
         end
     elseif input.lightAttack and self:canPerformAction("lightAttack") then
         if self:useStamina(self.staminaMapping["lightAttack"]) then
@@ -297,6 +300,8 @@ function Mage:processInput(dt, input, otherPlayer)
             if self.animations and self.animations.lightAttack then
                 self.animations.lightAttack:gotoFrame(1)
             end
+        else
+            self:triggerNoStaminaFeedback()
         end
     end
     self.attackPressedLastFrame = input.attack
@@ -358,6 +363,8 @@ function Mage:processInput(dt, input, otherPlayer)
             self.currentAnim       = self.animations.dashStart
             self.currentAnim:gotoFrame(1)
             self.canDash           = false
+        else
+            self:triggerNoStaminaFeedback()
         end
     end
     self.dashPressedLastFrame = input.dash
