@@ -1503,13 +1503,13 @@ function CharacterSelect.draw(GameInfo)
     local remapTextX = gameWidth - remapTextWidth - 6
     
     local remapTextY = gameHeight - 13
-    love.graphics.printf(remapText, 0, remapTextY, gameWidth, "right", 0, 1, 1)
-    
+    love.graphics.printf(remapText, gameWidth - remapTextWidth - 5, remapTextY, remapTextWidth, "right", 0, 1, 1)
     
     -- Draw player arrows to the left of "Remap" text when remap button is selected
     local remapArrowSize = 5
     local remapArrowSpacing = 8  -- Space between arrows if multiple players select remap
-    local remapBaseArrowX = gameWidth - remapTextWidth + 6 - remapArrowSpacing  -- Position arrow to the left of text
+    -- local remapBaseArrowX = gameWidth - remapTextWidth + 6 - remapArrowSpacing  -- Position arrow to the left of text
+    local remapBaseArrowX = gameWidth - remapTextWidth - 5 - remapArrowSpacing  -- Position arrow to the left of text
     local remapArrowY = remapTextY + 5  -- Center vertically with text
     
     -- Draw arrow for each player who has selected the remap button
