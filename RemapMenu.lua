@@ -294,7 +294,8 @@ function RemapMenu.update(GameInfo)
             -- Also check default mappings - if a default action uses this button/key, override it to ""
             if isKeyboard then
                 -- For keyboard, we need to reverse lookup: find which input key (a, b, x, etc.) maps to this keyboard key
-                local defaultKeyboardMap = InputManager.getDefaultKeyboardMapping(GameInfo.p1KeyboardMapping or (playerIndex == 1 and 1 or 2))
+                local keyboardMapping = (playerIndex == 1) and (GameInfo.p1KeyboardMapping or 1) or (GameInfo.p2KeyboardMapping or 2)
+                local defaultKeyboardMap = InputManager.getDefaultKeyboardMapping(keyboardMapping)
                 if defaultKeyboardMap then
                     -- Reverse lookup: find which input key uses this keyboard key
                     for inputKey, keyboardKey in pairs(defaultKeyboardMap) do
@@ -371,7 +372,7 @@ function RemapMenu.update(GameInfo)
             if isKeyboard then
                 -- For keyboard, the lastKeyStates is already updated above (line 257)
                 -- But we need to ensure the key that maps to menu actions is marked as pressed
-                local keyboardMapping = GameInfo.p1KeyboardMapping or (playerIndex == 1 and 1 or 2)
+                local keyboardMapping = (playerIndex == 1) and (GameInfo.p1KeyboardMapping or 1) or (GameInfo.p2KeyboardMapping or 2)
                 local keyboardMap = InputManager.getKeyboardMapping(keyboardMapping)
                 if keyboardMap then
                     -- Mark all menu action keys as already pressed if they match the pressed key
@@ -439,7 +440,7 @@ function RemapMenu.update(GameInfo)
     local justStates = {}
     
     if isKeyboard then
-        local keyboardMapping = GameInfo.p1KeyboardMapping or (playerIndex == 1 and 1 or 2)
+        local keyboardMapping = (playerIndex == 1) and (GameInfo.p1KeyboardMapping or 1) or (GameInfo.p2KeyboardMapping or 2)
         input = InputManager.getKeyboardInput(keyboardMapping, true)  -- useMenuDefaults = true
         
         -- Edge detection for keyboard
