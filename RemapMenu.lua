@@ -5,6 +5,57 @@ local InputManager = require("InputManager")
 local font = love.graphics.newFont("assets/6px-Normal.ttf", 8)
 font:setFilter("nearest", "nearest")
 
+-- ----------------------------------------------------------------------
+-- RemapMenu sound effects
+-- ----------------------------------------------------------------------
+local remapMenuSounds = {}
+
+-- Initialize remap menu sound effects with error handling
+local function initRemapMenuSounds()
+    local success, counter = pcall(love.audio.newSource, "assets/soundEffects/counter.wav", "static")
+    if success then
+        remapMenuSounds.counter = counter
+        remapMenuSounds.counter:setLooping(false)
+    else
+        print("Warning: Could not load counter.wav")
+    end
+    
+    local success2, downAir = pcall(love.audio.newSource, "assets/soundEffects/downAir.wav", "static")
+    if success2 then
+        remapMenuSounds.downAir = downAir
+        remapMenuSounds.downAir:setLooping(false)
+    else
+        print("Warning: Could not load downAir.wav")
+    end
+    
+    local success3, shield = pcall(love.audio.newSource, "assets/soundEffects/shield.wav", "static")
+    if success3 then
+        remapMenuSounds.shield = shield
+        remapMenuSounds.shield:setLooping(false)
+    else
+        print("Warning: Could not load shield.wav")
+    end
+    
+    local success4, heavyAttackBerserker = pcall(love.audio.newSource, "assets/soundEffects/heavyAttackBerserker.wav", "static")
+    if success4 then
+        remapMenuSounds.heavyAttackBerserker = heavyAttackBerserker
+        remapMenuSounds.heavyAttackBerserker:setLooping(false)
+    else
+        print("Warning: Could not load heavyAttackBerserker.wav")
+    end
+end
+
+-- Safely play a remap menu sound effect
+local function playRemapMenuSound(soundName)
+    if remapMenuSounds[soundName] then
+        remapMenuSounds[soundName]:stop()
+        remapMenuSounds[soundName]:play()
+    end
+end
+
+-- Initialize sounds when module loads
+initRemapMenuSounds()
+
 -- Action list for remapping
 local actions = {
     "Light Attack",
@@ -386,11 +437,13 @@ function RemapMenu.update(GameInfo)
     
     if moveUp then
         if GameInfo.remapMenuSelectedOption > 1 then
+            playRemapMenuSound("counter")
             GameInfo.remapMenuSelectedOption = GameInfo.remapMenuSelectedOption - 1
             moveCooldown = moveCooldownDuration
         end
     elseif moveDown then
         if GameInfo.remapMenuSelectedOption < numOptions then
+            playRemapMenuSound("counter")
             GameInfo.remapMenuSelectedOption = GameInfo.remapMenuSelectedOption + 1
             moveCooldown = moveCooldownDuration
         end
@@ -401,6 +454,8 @@ function RemapMenu.update(GameInfo)
     
         if aPressed then
         if GameInfo.remapMenuSelectedOption <= #actions then
+            -- Play selection sound for selecting an action to remap
+            playRemapMenuSound("downAir")
             -- Select an action to remap
             GameInfo.remapMenuRemapping = actions[GameInfo.remapMenuSelectedOption]
             -- Initialize button/key states with current state to prevent the A press from being detected as a remap
@@ -435,6 +490,7 @@ function RemapMenu.update(GameInfo)
             end
         elseif GameInfo.remapMenuSelectedOption == numOptions - 1 then
             -- Save mapping (keep current mappings as-is)
+            playRemapMenuSound("heavyAttackBerserker")
             backupKeyboardMapping = nil
             backupGamepadMapping = nil
             backupInitialized = false
@@ -444,6 +500,7 @@ function RemapMenu.update(GameInfo)
             GameInfo.remapMenuRemapping = nil
         elseif GameInfo.remapMenuSelectedOption == numOptions then
             -- Back without save (restore backup)
+            playRemapMenuSound("downAir")
             if isKeyboard then
                 InputManager.setCustomKeyboardMapping(playerIndex, backupKeyboardMapping)
             else
@@ -461,6 +518,8 @@ function RemapMenu.update(GameInfo)
     
     -- Handle B/back to exit menu
     if (justStates.b or justStates.back) then
+        -- Play back sound
+        playRemapMenuSound("shield")
         -- Back without save (restore backup)
         if isKeyboard then
             InputManager.setCustomKeyboardMapping(playerIndex, backupKeyboardMapping)
