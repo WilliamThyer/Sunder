@@ -219,10 +219,75 @@ function RemapMenu.update(GameInfo)
             -- Get the button/key that was pressed
             local pressedInput = pressedButton or pressedKey
             
-            -- Unmap this button/key from any other action (clear any action that currently uses this button/key)
+            -- Unmap this button/key from any other action in customMap (clear any action that currently uses this button/key)
+            -- Skip the action we're currently remapping - we'll set it to the pressed input below
             for otherAction, mappedInput in pairs(customMap) do
-                if mappedInput == pressedInput then
-                    customMap[otherAction] = nil
+                if mappedInput == pressedInput and otherAction ~= actionKey then
+                    customMap[otherAction] = ""  -- Set to empty string to mark as explicitly cleared (not reset to default)
+                end
+            end
+            
+            -- Also check default mappings - if a default action uses this button/key, override it to ""
+            if isKeyboard then
+                -- For keyboard, we need to reverse lookup: find which input key (a, b, x, etc.) maps to this keyboard key
+                local defaultKeyboardMap = InputManager.getDefaultKeyboardMapping(GameInfo.p1KeyboardMapping or (playerIndex == 1 and 1 or 2))
+                if defaultKeyboardMap then
+                    -- Reverse lookup: find which input key uses this keyboard key
+                    for inputKey, keyboardKey in pairs(defaultKeyboardMap) do
+                        if keyboardKey == pressedInput then
+                            -- Now find which action uses this input key by default
+                            -- Only override if it's not already in customMap (meaning it's using the default)
+                            -- and it's not the action we're currently remapping
+                            if inputKey == "a" then
+                                if not customMap.lightAttack and actionKey ~= "lightAttack" then
+                                    customMap.lightAttack = ""  -- Override default
+                                end
+                            elseif inputKey == "b" then
+                                if not customMap.heavyAttack and actionKey ~= "heavyAttack" then
+                                    customMap.heavyAttack = ""  -- Override default
+                                end
+                            elseif inputKey == "x" then
+                                if not customMap.jump and actionKey ~= "jump" then
+                                    customMap.jump = ""  -- Override default
+                                end
+                            elseif inputKey == "y" then
+                                if not customMap.counter and actionKey ~= "counter" then
+                                    customMap.counter = ""  -- Override default
+                                end
+                            elseif inputKey == "shoulderL" then
+                                if not customMap.shield and actionKey ~= "shield" then
+                                    customMap.shield = ""  -- Override default
+                                end
+                            elseif inputKey == "shoulderR" then
+                                if not customMap.dash and actionKey ~= "dash" then
+                                    customMap.dash = ""  -- Override default
+                                end
+                            elseif inputKey == "left" then
+                                if not customMap.moveLeft and actionKey ~= "moveLeft" then
+                                    customMap.moveLeft = ""  -- Override default
+                                end
+                            elseif inputKey == "right" then
+                                if not customMap.moveRight and actionKey ~= "moveRight" then
+                                    customMap.moveRight = ""  -- Override default
+                                end
+                            end
+                        end
+                    end
+                end
+            else
+                -- For gamepad, check default gamepad mapping directly
+                local defaultGamepadMap = InputManager.getDefaultGamepadMapping()
+                if defaultGamepadMap then
+                    for defaultAction, defaultButton in pairs(defaultGamepadMap) do
+                        if defaultButton == pressedInput then
+                            -- This default action uses the pressed button, so override it
+                            -- Only override if it's not already in customMap (meaning it's using the default)
+                            -- and it's not the action we're currently remapping
+                            if not customMap[defaultAction] and defaultAction ~= actionKey then
+                                customMap[defaultAction] = ""  -- Override default
+                            end
+                        end
+                    end
                 end
             end
             

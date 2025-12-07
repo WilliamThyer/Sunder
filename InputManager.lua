@@ -119,7 +119,8 @@ function M.getKeyboardInput(playerIndex, useMenuDefaults)
         
         -- Check custom mapped keys
         for action, key in pairs(customMap) do
-            if love.keyboard.isDown(key) then
+            -- Skip empty string mappings (explicitly cleared actions)
+            if key ~= "" and love.keyboard.isDown(key) then
                 if action == "lightAttack" then input.a = true
                 elseif action == "heavyAttack" then input.b = true
                 elseif action == "counter" then input.y = true
@@ -138,13 +139,13 @@ function M.getKeyboardInput(playerIndex, useMenuDefaults)
         if love.keyboard.isDown(map.up) then input.moveY = input.moveY - 1 end
         if love.keyboard.isDown(map.down) then input.moveY = input.moveY + 1 end
         
-        -- Also check default movement keys if not remapped
-        if not customMap.moveLeft then
+        -- Also check default movement keys if not remapped (or if remapped to empty string)
+        if not customMap.moveLeft or customMap.moveLeft == "" then
             if love.keyboard.isDown(map.left) then
                 input.moveX = input.moveX - 1
             end
         end
-        if not customMap.moveRight then
+        if not customMap.moveRight or customMap.moveRight == "" then
             if love.keyboard.isDown(map.right) then
                 input.moveX = input.moveX + 1
             end
@@ -270,7 +271,8 @@ function M.get(controllerID, useMenuDefaults)
     if customMap and not useMenuDefaults then
         -- Map custom actions to input structure
         for action, button in pairs(customMap) do
-            if rawButtons[button] then
+            -- Skip empty string mappings (explicitly cleared actions)
+            if button ~= "" and rawButtons[button] then
                 if action == "lightAttack" then input.a = true
                 elseif action == "heavyAttack" then input.b = true
                 elseif action == "counter" then input.y = true
@@ -295,11 +297,11 @@ function M.get(controllerID, useMenuDefaults)
         if rawButtons.up then input.moveY = input.moveY - 1 end
         if rawButtons.down then input.moveY = input.moveY + 1 end
         
-        -- Also check default movement if not remapped
-        if not customMap.moveLeft and rawButtons.left then
+        -- Also check default movement if not remapped (or if remapped to empty string)
+        if (not customMap.moveLeft or customMap.moveLeft == "") and rawButtons.left then
             input.moveX = lx
         end
-        if not customMap.moveRight and rawButtons.right then
+        if (not customMap.moveRight or customMap.moveRight == "") and rawButtons.right then
             input.moveX = lx
         end
     else
@@ -387,7 +389,12 @@ function M.getButtonDisplayName(action, isKeyboard, playerIndex)
         -- Check for custom mapping first
         local customMap = customKeyboardMappings[playerIndex]
         if customMap and customMap[action] then
-            currentMapping = customMap[action]
+            -- If it's an empty string, that means it was explicitly cleared
+            if customMap[action] == "" then
+                currentMapping = nil  -- Will return "None"
+            else
+                currentMapping = customMap[action]
+            end
         else
             -- Use default mapping
             local defaultMap = keyboardMaps[playerIndex]
@@ -437,7 +444,12 @@ function M.getButtonDisplayName(action, isKeyboard, playerIndex)
         -- Gamepad: check for custom mapping first
         local customMap = customGamepadMappings[playerIndex]
         if customMap and customMap[action] then
-            currentMapping = customMap[action]
+            -- If it's an empty string, that means it was explicitly cleared
+            if customMap[action] == "" then
+                currentMapping = nil  -- Will return "None"
+            else
+                currentMapping = customMap[action]
+            end
         else
             -- Use default mapping
             if action == "lightAttack" then currentMapping = "a"
