@@ -56,6 +56,26 @@ local function copyMapping(mapping)
     return copy
 end
 
+-- Helper function to get all keyboard keys to check
+local function getAllKeyboardKeys()
+    return {
+        -- Letters
+        "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
+        "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+        -- Numbers
+        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+        -- Special keys
+        "space", "return", "escape", "backspace", "tab",
+        "lshift", "rshift", "lctrl", "rctrl", "lalt", "ralt",
+        "up", "down", "left", "right",
+        "home", "end", "pageup", "pagedown",
+        "insert", "delete",
+        "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12",
+        -- Punctuation and symbols
+        "`", "-", "=", "[", "]", "\\", ";", "'", ",", ".", "/"
+    }
+end
+
 function RemapMenu.update(GameInfo)
     local dt = love.timer.getDelta()
     moveCooldown = math.max(0, moveCooldown - dt)
@@ -82,13 +102,11 @@ function RemapMenu.update(GameInfo)
     if not backupInitialized then
         if isKeyboard then
             backupKeyboardMapping = copyMapping(InputManager.getCustomKeyboardMapping(playerIndex))
-            -- Initialize key states to current state to prevent the key press that opened the menu from triggering remap
+            -- Initialize all key states to current state (for proper edge detection)
             lastKeyStates = {}
-            local keyboardMap = InputManager.getKeyboardMapping(GameInfo.p1KeyboardMapping or (playerIndex == 1 and 1 or 2))
-            for key, keyName in pairs(keyboardMap) do
-                if love.keyboard.isDown(keyName) then
-                    lastKeyStates[keyName] = true
-                end
+            local allKeys = getAllKeyboardKeys()
+            for _, keyName in ipairs(allKeys) do
+                lastKeyStates[keyName] = love.keyboard.isDown(keyName)
             end
         else
             backupGamepadMapping = copyMapping(InputManager.getCustomGamepadMapping(playerIndex))
@@ -115,40 +133,7 @@ function RemapMenu.update(GameInfo)
         backupInitialized = true
     end
     
-    -- Get input using menu defaults (always use defaults for menu navigation)
-    local input = nil
-    local justStates = {}
-    
-    if isKeyboard then
-        local keyboardMapping = GameInfo.p1KeyboardMapping or (playerIndex == 1 and 1 or 2)
-        input = InputManager.getKeyboardInput(keyboardMapping, true)  -- useMenuDefaults = true
-        
-        -- Edge detection for keyboard
-        local keyboardMap = InputManager.getKeyboardMapping(keyboardMapping)
-        for key, _ in pairs(keyboardMap) do
-            local keyName = keyboardMap[key]
-            local isDown = love.keyboard.isDown(keyName)
-            local wasDown = lastKeyStates[keyName] or false
-            if isDown and not wasDown then
-                justStates[key] = true
-            end
-            lastKeyStates[keyName] = isDown
-        end
-    else
-        if controllerID then
-            input = InputManager.get(controllerID, true)  -- useMenuDefaults = true
-            
-            -- Get joystick for edge detection
-            local js = InputManager.getJoystick(controllerID)
-            if js then
-                local jid = js:getID()
-                justStates = justPressed[jid] or {}
-                justPressed[jid] = nil
-            end
-        end
-    end
-    
-    -- If in remapping mode, wait for next button press
+    -- If in remapping mode, check for key/button presses FIRST (before processing menu input)
     if GameInfo.remapMenuRemapping then
         local actionKey = actionKeys[GameInfo.remapMenuRemapping]
         if not actionKey then
@@ -161,15 +146,15 @@ function RemapMenu.update(GameInfo)
         local pressedKey = nil
         
         if isKeyboard then
-            -- Check all keys
-            local keyboardMap = InputManager.getKeyboardMapping(GameInfo.p1KeyboardMapping or (playerIndex == 1 and 1 or 2))
-            for key, keyName in pairs(keyboardMap) do
-                -- Skip menu navigation keys (start, back, up, down)
-                if key ~= "start" and key ~= "back" and key ~= "up" and key ~= "down" then
-                    if love.keyboard.isDown(keyName) and not (lastKeyStates[keyName] or false) then
-                        pressedKey = keyName
-                        break
-                    end
+            -- Check all possible keyboard keys (not just mapped ones)
+            -- Allow remapping to ANY key, including menu navigation keys
+            local allKeys = getAllKeyboardKeys()
+            
+            -- Check all keys for remapping (don't exclude any keys - user should be able to remap to anything)
+            for _, keyName in ipairs(allKeys) do
+                if love.keyboard.isDown(keyName) and not (lastKeyStates[keyName] or false) then
+                    pressedKey = keyName
+                    break
                 end
             end
         else
@@ -215,8 +200,9 @@ function RemapMenu.update(GameInfo)
         
         -- Update last button/key states
         if isKeyboard then
-            local keyboardMap = InputManager.getKeyboardMapping(GameInfo.p1KeyboardMapping or (playerIndex == 1 and 1 or 2))
-            for key, keyName in pairs(keyboardMap) do
+            -- Track all possible keyboard keys for proper edge detection
+            local allKeys = getAllKeyboardKeys()
+            for _, keyName in ipairs(allKeys) do
                 lastKeyStates[keyName] = love.keyboard.isDown(keyName)
             end
         else
@@ -233,7 +219,7 @@ function RemapMenu.update(GameInfo)
             end
         end
         
-        -- If a button/key was pressed, map it
+        -- If a button/key was pressed, map it (check this FIRST so users can remap to any key, including back)
         if pressedButton or pressedKey then
             -- Get current custom mapping or create new one
             local customMap = nil
@@ -330,17 +316,53 @@ function RemapMenu.update(GameInfo)
             
             -- Exit remapping mode
             GameInfo.remapMenuRemapping = nil
-        end
-        
-        -- Check for B/back to cancel remapping
-        if (justStates.b or justStates.back) then
-            GameInfo.remapMenuRemapping = nil
+        else
+            -- No key/button was pressed for remapping, check for cancel (Escape key)
+            if isKeyboard then
+                local escapeWasDown = lastKeyStates["escape"] or false
+                local escapeIsDown = love.keyboard.isDown("escape")
+                if escapeIsDown and not escapeWasDown then
+                    -- Escape was just pressed, cancel remapping
+                    GameInfo.remapMenuRemapping = nil
+                end
+            end
         end
         
         return
     end
     
-    -- Normal navigation mode
+    -- Normal navigation mode - get input using menu defaults
+    local input = nil
+    local justStates = {}
+    
+    if isKeyboard then
+        local keyboardMapping = GameInfo.p1KeyboardMapping or (playerIndex == 1 and 1 or 2)
+        input = InputManager.getKeyboardInput(keyboardMapping, true)  -- useMenuDefaults = true
+        
+        -- Edge detection for keyboard
+        local keyboardMap = InputManager.getKeyboardMapping(keyboardMapping)
+        for key, _ in pairs(keyboardMap) do
+            local keyName = keyboardMap[key]
+            local isDown = love.keyboard.isDown(keyName)
+            local wasDown = lastKeyStates[keyName] or false
+            if isDown and not wasDown then
+                justStates[key] = true
+            end
+            lastKeyStates[keyName] = isDown
+        end
+    else
+        if controllerID then
+            input = InputManager.get(controllerID, true)  -- useMenuDefaults = true
+            
+            -- Get joystick for edge detection
+            local js = InputManager.getJoystick(controllerID)
+            if js then
+                local jid = js:getID()
+                justStates = justPressed[jid] or {}
+                justPressed[jid] = nil
+            end
+        end
+    end
     local numOptions = #actions + 2  -- 8 actions + Save + Back
     
     -- Handle navigation (up/down)
@@ -388,12 +410,10 @@ function RemapMenu.update(GameInfo)
             lastStickRight = false
             
             if isKeyboard then
-                -- Mark all currently pressed keys as already pressed
-                local keyboardMap = InputManager.getKeyboardMapping(GameInfo.p1KeyboardMapping or (playerIndex == 1 and 1 or 2))
-                for key, keyName in pairs(keyboardMap) do
-                    if love.keyboard.isDown(keyName) then
-                        lastKeyStates[keyName] = true
-                    end
+                -- Initialize all key states to current state (for proper edge detection)
+                local allKeys = getAllKeyboardKeys()
+                for _, keyName in ipairs(allKeys) do
+                    lastKeyStates[keyName] = love.keyboard.isDown(keyName)
                 end
             else
                 -- Mark all currently pressed buttons as already pressed
