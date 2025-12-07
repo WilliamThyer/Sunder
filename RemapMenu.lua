@@ -365,6 +365,58 @@ function RemapMenu.update(GameInfo)
                 InputManager.setCustomGamepadMapping(playerIndex, customMap)
             end
             
+            -- Prevent the button press from triggering navigation by:
+            -- 1. Ensuring button states are marked as already pressed
+            -- 2. For gamepad, clearing the justPressed entry for this button
+            if isKeyboard then
+                -- For keyboard, the lastKeyStates is already updated above (line 257)
+                -- But we need to ensure the key that maps to menu actions is marked as pressed
+                local keyboardMapping = GameInfo.p1KeyboardMapping or (playerIndex == 1 and 1 or 2)
+                local keyboardMap = InputManager.getKeyboardMapping(keyboardMapping)
+                if keyboardMap then
+                    -- Mark all menu action keys as already pressed if they match the pressed key
+                    for menuKey, keyName in pairs(keyboardMap) do
+                        if keyName == pressedKey then
+                            lastKeyStates[keyName] = love.keyboard.isDown(keyName)
+                        end
+                    end
+                end
+            else
+                -- For gamepad, clear the justPressed entry for the button that was pressed
+                -- This prevents it from being detected as a new press in navigation mode
+                if controllerID then
+                    local js = InputManager.getJoystick(controllerID)
+                    if js then
+                        local jid = js:getID()
+                        -- Clear justPressed for the button that was used for remapping
+                        if justPressed and justPressed[jid] then
+                            -- Map pressedButton to gamepad button name used in justPressed
+                            local gamepadButtonName = nil
+                            if pressedButton == "a" then
+                                gamepadButtonName = "a"
+                            elseif pressedButton == "b" then
+                                gamepadButtonName = "b"
+                            elseif pressedButton == "x" then
+                                gamepadButtonName = "x"
+                            elseif pressedButton == "y" then
+                                gamepadButtonName = "y"
+                            elseif pressedButton == "shoulderL" then
+                                gamepadButtonName = "leftshoulder"
+                            elseif pressedButton == "shoulderR" then
+                                gamepadButtonName = "rightshoulder"
+                            -- For stick left/right, we can't clear a specific button in justPressed
+                            -- but the state tracking (lastStickLeft/Right) is already updated above
+                            end
+                            
+                            -- Clear the justPressed entry to prevent it from triggering navigation
+                            if gamepadButtonName and justPressed[jid][gamepadButtonName] then
+                                justPressed[jid][gamepadButtonName] = nil
+                            end
+                        end
+                    end
+                end
+            end
+            
             -- Exit remapping mode
             GameInfo.remapMenuRemapping = nil
         else
