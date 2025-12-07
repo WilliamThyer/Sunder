@@ -80,43 +80,29 @@ local keyboardJustPressed = {
     right = false
 }
 
+-- Track previous key states for proper edge detection
+local keyboardPrevState = {}
+
 -- Update keyboard edge detection
 local function updateKeyboardEdgeDetection()
     local keyboardMap1 = InputManager.getKeyboardMapping(1)
     local keyboardMap2 = InputManager.getKeyboardMapping(2)
     
-    -- Check for key presses this frame for P1
-    if love.keyboard.isDown(keyboardMap1.a) then
-        keyboardJustPressed.a = true
+    -- Check for key presses this frame for P1 (proper edge detection)
+    local keys = {"a", "b", "x", "y", "start", "back", "up", "down", "left", "right"}
+    for _, key in ipairs(keys) do
+        local keyName = keyboardMap1[key]
+        if keyName then
+            local isDown = love.keyboard.isDown(keyName)
+            local wasDown = keyboardPrevState[keyName] or false
+            
+            -- Edge detection: only true on transition from not-pressed to pressed
+            keyboardJustPressed[key] = isDown and not wasDown
+            keyboardPrevState[keyName] = isDown
+        else
+            keyboardJustPressed[key] = false
+        end
     end
-    if love.keyboard.isDown(keyboardMap1.b) then
-        keyboardJustPressed.b = true
-    end
-    if love.keyboard.isDown(keyboardMap1.x) then
-        keyboardJustPressed.x = true
-    end
-    if love.keyboard.isDown(keyboardMap1.y) then
-        keyboardJustPressed.y = true
-    end
-    if love.keyboard.isDown(keyboardMap1.start) then
-        keyboardJustPressed.start = true
-    end
-    if love.keyboard.isDown(keyboardMap1.back) then
-        keyboardJustPressed.back = true
-    end
-    if love.keyboard.isDown(keyboardMap1.up) then
-        keyboardJustPressed.up = true
-    end
-    if love.keyboard.isDown(keyboardMap1.down) then
-        keyboardJustPressed.down = true
-    end
-    if love.keyboard.isDown(keyboardMap1.left) then
-        keyboardJustPressed.left = true
-    end
-    if love.keyboard.isDown(keyboardMap1.right) then
-        keyboardJustPressed.right = true
-    end
-    -- Optionally, add similar checks for P2 if you want edge detection for both
 end
 
 -- Clear keyboard edge detection (call this after processing input)
@@ -193,12 +179,8 @@ function Menu.updateMenu(GameInfo)
         justStates[2] = {}
     end
     
-    -- Merge keyboard edge detection into justStates for player 1
-    for k,v in pairs(keyboardJustPressed) do
-        if v then
-            justStates[1][k] = true
-        end
-    end
+    -- Don't merge keyboard edge detection into justStates yet - we need to check keyboard assignment first
+    -- We'll merge it after checking for P1 assignment
 
     -- Allow either controller or keyboard to move the selection
     -- Only allow movement when cooldown has expired
@@ -269,35 +251,58 @@ function Menu.updateMenu(GameInfo)
     end
 
     -- Check which controller or keyboard pressed A first to determine Player 1
-    local p1Pressed = justStates[1] and justStates[1]["a"]
-    local p2Pressed = justStates[2] and justStates[2]["a"]
+    -- IMPORTANT: Check keyboard BEFORE checking justStates, because justStates includes keyboard input
     local keyboardPressed = keyboardJustPressed.a
+    local p1Pressed = false
+    local p2Pressed = justStates[2] and justStates[2]["a"]
     
-    -- If P1 is not yet assigned, check all controllers and keyboard for A button press
+    print("[Menu] p1NotAssigned: " .. tostring(p1NotAssigned) .. ", keyboardPressed: " .. tostring(keyboardPressed) .. ", p1InputType: " .. tostring(GameInfo.p1InputType))
+    
+    -- If P1 is not yet assigned, check keyboard first, then controllers
     if p1NotAssigned then
-        -- Check all controllers for A button press
-        for _, js in ipairs(love.joystick.getJoysticks()) do
-            local jid = js:getID()
-            if justPressed[jid] and justPressed[jid]["a"] then
-                -- Assign this controller as P1
-                GameInfo.p1InputType = jid
-                GameInfo.player1Controller = jid
-                GameInfo.p1KeyboardMapping = nil
-                GameInfo.keyboardPlayer = nil
-                -- Consume the button press
-                justPressed[jid]["a"] = nil
-                p1Pressed = true
-                break
-            end
-        end
-        
-        -- Check keyboard for Space (A) press
-        if not p1Pressed and keyboardPressed then
+        -- Check keyboard for Space (A) press FIRST (before controllers)
+        if keyboardPressed then
             -- Assign keyboard as P1
+            print("[Menu] Assigning keyboard as P1. keyboardPressed: " .. tostring(keyboardPressed))
             GameInfo.p1InputType = "keyboard"
             GameInfo.p1KeyboardMapping = 1
             GameInfo.keyboardPlayer = 1
             p1Pressed = true
+            print("[Menu] After assignment - p1InputType: " .. tostring(GameInfo.p1InputType) .. ", p1KeyboardMapping: " .. tostring(GameInfo.p1KeyboardMapping))
+        else
+            -- Check all controllers for A button press (only if keyboard wasn't pressed)
+            for _, js in ipairs(love.joystick.getJoysticks()) do
+                local jid = js:getID()
+                if justPressed[jid] and justPressed[jid]["a"] then
+                    -- Assign this controller as P1
+                    GameInfo.p1InputType = jid
+                    GameInfo.player1Controller = jid
+                    GameInfo.p1KeyboardMapping = nil
+                    GameInfo.keyboardPlayer = nil
+                    -- Consume the button press
+                    justPressed[jid]["a"] = nil
+                    p1Pressed = true
+                    break
+                end
+            end
+        end
+    else
+        -- P1 already assigned, merge keyboard edge detection into justStates for player 1
+        for k,v in pairs(keyboardJustPressed) do
+            if v then
+                justStates[1][k] = true
+            end
+        end
+        -- Check if they pressed A
+        p1Pressed = justStates[1] and justStates[1]["a"]
+    end
+    
+    -- If P1 was just assigned via keyboard, merge keyboard into justStates now
+    if GameInfo.p1InputType == "keyboard" and p1Pressed then
+        for k,v in pairs(keyboardJustPressed) do
+            if v then
+                justStates[1][k] = true
+            end
         end
     end
     
@@ -338,6 +343,7 @@ function Menu.updateMenu(GameInfo)
         
         -- Only transition to character select if not exiting
         if GameInfo.selectedOption ~= 4 then
+            print("[Menu] Transitioning to character select. p1InputType: " .. tostring(GameInfo.p1InputType) .. ", p1KeyboardMapping: " .. tostring(GameInfo.p1KeyboardMapping))
             GameInfo.gameState = "characterselect"
             GameInfo.justEnteredCharacterSelect = true
         end
