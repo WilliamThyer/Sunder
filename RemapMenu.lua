@@ -543,7 +543,7 @@ function RemapMenu.update(GameInfo)
             end
         elseif GameInfo.remapMenuSelectedOption == numOptions - 1 then
             -- Save mapping (keep current mappings as-is)
-            playRemapMenuSound("heavyAttackBerserker")
+            playRemapMenuSound("downAir")
             backupKeyboardMapping = nil
             backupGamepadMapping = nil
             backupInitialized = false

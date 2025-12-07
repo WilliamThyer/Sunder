@@ -517,12 +517,20 @@ function CharacterSelect.update(GameInfo)
         if (love.keyboard.isDown("kpenter") and CharacterSelect._p2KpenterReleased) or (love.keyboard.isDown("return") and CharacterSelect._p2ReturnReleased) then
             GameInfo.p2InputType = "keyboard"
             GameInfo.player2Controller = "keyboard"
-            -- If P1 is using keyboard (mapping 1), P2 gets mapping 2; otherwise P2 gets mapping 1
+            -- Assign keyboard mapping to P2:
+            -- - If P1 is using keyboard, P2 gets the second keyboard mapping (2)
+            -- - If P1 is using gamepad (or anything else), P2 gets the main keyboard mapping (1)
+            print("[CharacterSelect] P2 joining with keyboard. P1 inputType: " .. tostring(GameInfo.p1InputType) .. " (type: " .. type(GameInfo.p1InputType) .. ")")
+            -- Explicitly check if P1 is using keyboard
             if GameInfo.p1InputType == "keyboard" then
                 GameInfo.p2KeyboardMapping = 2
+                print("[CharacterSelect] P1 is using keyboard, assigning P2 mapping 2")
             else
+                -- P1 is using a gamepad (p1InputType is a number/joystick ID) or nil, so P2 gets the main keyboard mapping
                 GameInfo.p2KeyboardMapping = 1
+                print("[CharacterSelect] P1 is using gamepad (or nil), assigning P2 mapping 1. p1InputType=" .. tostring(GameInfo.p1InputType))
             end
+            print("[CharacterSelect] Final p2KeyboardMapping: " .. tostring(GameInfo.p2KeyboardMapping))
             playCharacterSelectSound("downAir")
             CharacterSelect._p2KpenterReleased = false
             CharacterSelect._p2ReturnReleased = false
@@ -735,12 +743,15 @@ function CharacterSelect.update(GameInfo)
             end
         end
         
-        -- Navigate to back button
+        -- Navigate to back button (only from left side character boxes: cursor 1 or 2)
         if moveDown and not ps.backButtonSelected and not ps.remapButtonSelected then
-            ps.previousCursor = ps.cursor
-            ps.backButtonSelected = true
-            ps.verticalMoveCooldown = 0.25  -- 250ms cooldown
-            playCharacterSelectSound("counter")
+            -- Only allow navigation to back button if on left side characters (1 or 2)
+            if ps.cursor == 1 or ps.cursor == 2 then
+                ps.previousCursor = ps.cursor
+                ps.backButtonSelected = true
+                ps.verticalMoveCooldown = 0.25  -- 250ms cooldown
+                playCharacterSelectSound("counter")
+            end
         end
         
         -- Navigate back to character selection
@@ -802,16 +813,6 @@ function CharacterSelect.update(GameInfo)
             end
         end
         
-        -- Check for right press to navigate to remap button (from character selection)
-        local moveRight = false
-        if ps.verticalMoveCooldown <= 0 and not ps.backButtonSelected and not ps.remapButtonSelected then
-            if input and input.moveX > 0.5 then
-                moveRight = true
-            elseif justState and justState.right then
-                moveRight = true
-            end
-        end
-        
         -- Check for left press to navigate to back button (when on remap button)
         local moveLeft = false
         if ps.verticalMoveCooldown <= 0 and ps.remapButtonSelected then
@@ -822,12 +823,15 @@ function CharacterSelect.update(GameInfo)
             end
         end
         
-        -- Navigate to remap button (right side) - from character selection with down or right
-        if (moveDown or moveRight) and not ps.remapButtonSelected and not ps.backButtonSelected then
-            ps.remapButtonPreviousCursor = ps.cursor
-            ps.remapButtonSelected = true
-            ps.verticalMoveCooldown = 0.25  -- 250ms cooldown
-            playCharacterSelectSound("counter")
+        -- Navigate to remap button (right side) - from character selection with down (only from right side: cursor 3 or 4)
+        if moveDown and not ps.remapButtonSelected and not ps.backButtonSelected then
+            -- Only allow navigation to remap button if on right side characters (3 or 4)
+            if ps.cursor == 3 or ps.cursor == 4 then
+                ps.remapButtonPreviousCursor = ps.cursor
+                ps.remapButtonSelected = true
+                ps.verticalMoveCooldown = 0.25  -- 250ms cooldown
+                playCharacterSelectSound("counter")
+            end
         end
         
         -- Navigate back to character selection
@@ -851,9 +855,14 @@ function CharacterSelect.update(GameInfo)
         
         if aPressed and ps.remapButtonSelected then
             -- Open remap menu for this player
+            -- In 1 Player mode, always remap P1 controls (P2 is CPU)
+            local remapPlayer = playerIndex
+            if GameInfo.previousMode == "game_1P" then
+                remapPlayer = 1
+            end
             playCharacterSelectSound("downAir")
             GameInfo.remapMenuActive = true
-            GameInfo.remapMenuPlayer = playerIndex
+            GameInfo.remapMenuPlayer = remapPlayer
             GameInfo.remapMenuSelectedOption = 1
             GameInfo.remapMenuRemapping = nil
             return true  -- Signal that we're opening remap menu
@@ -1500,7 +1509,7 @@ function CharacterSelect.draw(GameInfo)
     -- Draw player arrows to the left of "Remap" text when remap button is selected
     local remapArrowSize = 5
     local remapArrowSpacing = 8  -- Space between arrows if multiple players select remap
-    local remapBaseArrowX = gameWidth - remapTextWidth - 6 - remapArrowSpacing  -- Position arrow to the left of text
+    local remapBaseArrowX = gameWidth - remapTextWidth + 6 - remapArrowSpacing  -- Position arrow to the left of text
     local remapArrowY = remapTextY + 5  -- Center vertically with text
     
     -- Draw arrow for each player who has selected the remap button

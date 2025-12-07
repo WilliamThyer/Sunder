@@ -46,12 +46,13 @@ function M.initialize()
     end
 end
 
--- Get keyboard input for a given player (1 or 2)
+-- Get keyboard input for a given keyboard mapping (1 or 2)
+-- keyboardMapping: which keyboard mapping to use (1 = WASD, 2 = IJKL)
 -- useMenuDefaults: if true, always use default mappings (for menu navigation)
 --                  if false or nil, use custom mappings if they exist, otherwise defaults (for gameplay)
-function M.getKeyboardInput(playerIndex, useMenuDefaults)
-    -- Determine which mapping to use
-    local map = keyboardMaps[playerIndex]
+function M.getKeyboardInput(keyboardMapping, useMenuDefaults)
+    -- Determine which default map to use based on keyboard mapping number
+    local map = keyboardMaps[keyboardMapping]
     if not map then
         local input = {
             moveX  = 0,
@@ -68,10 +69,20 @@ function M.getKeyboardInput(playerIndex, useMenuDefaults)
         return input
     end
     
+    -- Determine which player is using this keyboard mapping (for custom mappings lookup)
+    local playerIndex = nil
+    if GameInfo then
+        if GameInfo.p1InputType == "keyboard" and (GameInfo.p1KeyboardMapping or 1) == keyboardMapping then
+            playerIndex = 1
+        elseif GameInfo.p2InputType == "keyboard" and (GameInfo.p2KeyboardMapping or 2) == keyboardMapping then
+            playerIndex = 2
+        end
+    end
+    
     -- If useMenuDefaults is true, always use default mapping
     -- Otherwise, check for custom mapping first
     local customMap = nil
-    if not useMenuDefaults then
+    if not useMenuDefaults and playerIndex then
         customMap = customKeyboardMappings[playerIndex]
     end
     
@@ -441,8 +452,19 @@ function M.getButtonDisplayName(action, isKeyboard, playerIndex)
                 currentMapping = customMap[action]
             end
         else
-            -- Use default mapping
-            local defaultMap = keyboardMaps[playerIndex]
+            -- Use default mapping - get the actual keyboard mapping number from GameInfo
+            local keyboardMapping = nil
+            if GameInfo then
+                if playerIndex == 1 then
+                    keyboardMapping = GameInfo.p1KeyboardMapping or 1
+                else
+                    keyboardMapping = GameInfo.p2KeyboardMapping or 2
+                end
+            else
+                -- Fallback to player index if GameInfo not available
+                keyboardMapping = playerIndex
+            end
+            local defaultMap = keyboardMaps[keyboardMapping]
             if defaultMap then
                 -- Map action to default key
                 if action == "lightAttack" then currentMapping = defaultMap.a
