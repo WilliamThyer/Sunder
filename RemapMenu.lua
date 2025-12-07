@@ -82,8 +82,35 @@ function RemapMenu.update(GameInfo)
     if not backupInitialized then
         if isKeyboard then
             backupKeyboardMapping = copyMapping(InputManager.getCustomKeyboardMapping(playerIndex))
+            -- Initialize key states to current state to prevent the key press that opened the menu from triggering remap
+            lastKeyStates = {}
+            local keyboardMap = InputManager.getKeyboardMapping(GameInfo.p1KeyboardMapping or (playerIndex == 1 and 1 or 2))
+            for key, keyName in pairs(keyboardMap) do
+                if love.keyboard.isDown(keyName) then
+                    lastKeyStates[keyName] = true
+                end
+            end
         else
             backupGamepadMapping = copyMapping(InputManager.getCustomGamepadMapping(playerIndex))
+            -- Initialize button states to current state to prevent the button press that opened the menu from triggering remap
+            lastButtonStates = {}
+            lastStickLeft = false
+            lastStickRight = false
+            if controllerID then
+                local js = InputManager.getJoystick(controllerID)
+                if js then
+                    lastButtonStates["a"] = js:isGamepadDown("a")
+                    lastButtonStates["b"] = js:isGamepadDown("b")
+                    lastButtonStates["x"] = js:isGamepadDown("x")
+                    lastButtonStates["y"] = js:isGamepadDown("y")
+                    lastButtonStates["shoulderL"] = js:isGamepadDown("leftshoulder")
+                    lastButtonStates["shoulderR"] = js:isGamepadDown("rightshoulder")
+                    -- Initialize stick states
+                    local lx = js:getGamepadAxis("leftx")
+                    lastStickLeft = (lx < -0.3)
+                    lastStickRight = (lx > 0.3)
+                end
+            end
         end
         backupInitialized = true
     end
