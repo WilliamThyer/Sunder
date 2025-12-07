@@ -107,16 +107,6 @@ function M.getKeyboardInput(playerIndex, useMenuDefaults)
     -- For gameplay (useMenuDefaults = false/nil), use custom if available
     local activeMap = map
     if customMap and not useMenuDefaults then
-        -- We need to reverse the custom mapping: action -> key to key -> action
-        -- Create a reverse lookup
-        local reverseMap = {}
-        for action, key in pairs(customMap) do
-            reverseMap[key] = action
-        end
-        -- Now check which keys are pressed and map them to actions
-        -- But we still need the default map structure for menu buttons (start, back, up, down)
-        -- So we'll check both
-        
         -- Check custom mapped keys
         for action, key in pairs(customMap) do
             -- Skip empty string mappings (explicitly cleared actions)
@@ -133,23 +123,45 @@ function M.getKeyboardInput(playerIndex, useMenuDefaults)
             end
         end
         
+        -- Check defaults for actions that aren't in customMap or are explicitly cleared
+        -- lightAttack defaults to map.a
+        if (not customMap.lightAttack or customMap.lightAttack == "") and love.keyboard.isDown(map.a) then
+            input.a = true
+        end
+        -- heavyAttack defaults to map.b
+        if (not customMap.heavyAttack or customMap.heavyAttack == "") and love.keyboard.isDown(map.b) then
+            input.b = true
+        end
+        -- counter defaults to map.y
+        if (not customMap.counter or customMap.counter == "") and love.keyboard.isDown(map.y) then
+            input.y = true
+        end
+        -- shield defaults to map.shoulderL
+        if (not customMap.shield or customMap.shield == "") and love.keyboard.isDown(map.shoulderL) then
+            input.shoulderL = true
+        end
+        -- dash defaults to map.shoulderR
+        if (not customMap.dash or customMap.dash == "") and love.keyboard.isDown(map.shoulderR) then
+            input.shoulderR = true
+        end
+        -- jump defaults to map.x
+        if (not customMap.jump or customMap.jump == "") and love.keyboard.isDown(map.x) then
+            input.x = true
+        end
+        -- moveLeft defaults to map.left
+        if (not customMap.moveLeft or customMap.moveLeft == "") and love.keyboard.isDown(map.left) then
+            input.moveX = input.moveX - 1
+        end
+        -- moveRight defaults to map.right
+        if (not customMap.moveRight or customMap.moveRight == "") and love.keyboard.isDown(map.right) then
+            input.moveX = input.moveX + 1
+        end
+        
         -- Always use defaults for menu navigation buttons (start, back, up, down)
         if love.keyboard.isDown(map.start) then input.start = true end
         if love.keyboard.isDown(map.back) then input.back = true end
         if love.keyboard.isDown(map.up) then input.moveY = input.moveY - 1 end
         if love.keyboard.isDown(map.down) then input.moveY = input.moveY + 1 end
-        
-        -- Also check default movement keys if not remapped (or if remapped to empty string)
-        if not customMap.moveLeft or customMap.moveLeft == "" then
-            if love.keyboard.isDown(map.left) then
-                input.moveX = input.moveX - 1
-            end
-        end
-        if not customMap.moveRight or customMap.moveRight == "" then
-            if love.keyboard.isDown(map.right) then
-                input.moveX = input.moveX + 1
-            end
-        end
     else
         -- Use default mapping
         activeMap = map
@@ -269,6 +281,9 @@ function M.get(controllerID, useMenuDefaults)
     
     -- Apply custom mapping if available and not using menu defaults
     if customMap and not useMenuDefaults then
+        -- Get default mapping for fallback
+        local defaultMap = M.getDefaultGamepadMapping()
+        
         -- Map custom actions to input structure
         for action, button in pairs(customMap) do
             -- Skip empty string mappings (explicitly cleared actions)
@@ -291,19 +306,49 @@ function M.get(controllerID, useMenuDefaults)
             end
         end
         
+        -- Check defaults for actions that aren't in customMap or are explicitly cleared
+        -- lightAttack defaults to "a"
+        if (not customMap.lightAttack or customMap.lightAttack == "") and rawButtons[defaultMap.lightAttack] then
+            input.a = true
+        end
+        -- heavyAttack defaults to "b"
+        if (not customMap.heavyAttack or customMap.heavyAttack == "") and rawButtons[defaultMap.heavyAttack] then
+            input.b = true
+        end
+        -- counter defaults to "y"
+        if (not customMap.counter or customMap.counter == "") and rawButtons[defaultMap.counter] then
+            input.y = true
+        end
+        -- shield defaults to "shoulderL"
+        if (not customMap.shield or customMap.shield == "") and rawButtons[defaultMap.shield] then
+            input.shoulderL = true
+        end
+        -- dash defaults to "shoulderR"
+        if (not customMap.dash or customMap.dash == "") and rawButtons[defaultMap.dash] then
+            input.shoulderR = true
+        end
+        -- jump defaults to "x"
+        if (not customMap.jump or customMap.jump == "") and rawButtons[defaultMap.jump] then
+            input.x = true
+        end
+        -- moveLeft defaults to "left"
+        if (not customMap.moveLeft or customMap.moveLeft == "") and rawButtons[defaultMap.moveLeft] then
+            if math.abs(lx) > M.deadzone and lx < 0 then
+                input.moveX = lx
+            end
+        end
+        -- moveRight defaults to "right"
+        if (not customMap.moveRight or customMap.moveRight == "") and rawButtons[defaultMap.moveRight] then
+            if math.abs(lx) > M.deadzone and lx > 0 then
+                input.moveX = lx
+            end
+        end
+        
         -- Always use defaults for menu navigation buttons (start, back, up, down)
         input.start = rawButtons.start
         input.back = rawButtons.back
         if rawButtons.up then input.moveY = input.moveY - 1 end
         if rawButtons.down then input.moveY = input.moveY + 1 end
-        
-        -- Also check default movement if not remapped (or if remapped to empty string)
-        if (not customMap.moveLeft or customMap.moveLeft == "") and rawButtons.left then
-            input.moveX = lx
-        end
-        if (not customMap.moveRight or customMap.moveRight == "") and rawButtons.right then
-            input.moveX = lx
-        end
     else
         -- Use default mapping
         if math.abs(lx) > M.deadzone then input.moveX = lx end
